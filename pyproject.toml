@@ -1,0 +1,11 @@
+[project]
+name = "ance"
+version = "0.1.0"
+description = "ANCE - A Neural-network Chess Engine: a UCI engine driven by a swappable evaluator."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: 100-game self-play gauntlet (deselect with -m 'not slow')",
+]
