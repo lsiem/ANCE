@@ -11,9 +11,9 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 
 - [x] **UCI-01**: Engine responds to `uci` with `id name`, `id author`, declared `option` lines, then `uciok`
 - [x] **UCI-02**: Engine responds to `isready` with `readyok` and never blocks, including mid-initialization
-- [ ] **UCI-03**: Engine handles `ucinewgame` by resetting per-game state (no-op in M1; clears TT/history in M2)
-- [ ] **UCI-04**: Engine sets its board from `position startpos [moves ...]`
-- [ ] **UCI-05**: Engine sets its board from `position fen <fen> [moves ...]` and rejects malformed FEN without crashing
+- [x] **UCI-03**: Engine handles `ucinewgame` by resetting per-game state (no-op in M1; clears TT/history in M2)
+- [x] **UCI-04**: Engine sets its board from `position startpos [moves ...]`
+- [x] **UCI-05**: Engine sets its board from `position fen <fen> [moves ...]` and rejects malformed FEN without crashing
 - [ ] **UCI-06**: Every `go` command yields exactly one legal `bestmove <uci>` and never hangs
 - [ ] **UCI-07**: Engine honors `go movetime <ms>` and `go depth <n>`
 - [ ] **UCI-08**: Engine honors clock control `go wtime/btime/winc/binc` and computes a per-move time budget
@@ -24,7 +24,7 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 
 ### Search
 
-- [ ] **SRCH-01**: Engine generates only legal moves and detects checkmate, stalemate, and draws via python-chess
+- [x] **SRCH-01**: Engine generates only legal moves and detects checkmate, stalemate, and draws via python-chess
 - [ ] **SRCH-02**: Engine searches with fail-soft negamax alpha-beta
 - [ ] **SRCH-03**: Engine uses iterative deepening and always keeps the best move from the last completed depth
 - [ ] **SRCH-04**: Engine runs a quiescence search over captures to avoid the horizon effect
@@ -98,15 +98,15 @@ Which phases cover which requirements. Populated during roadmap creation.
 |-------------|-------|--------|
 | UCI-01 | Phase 1 | Complete |
 | UCI-02 | Phase 1 | Complete |
-| UCI-03 | Phase 1 | Pending |
-| UCI-04 | Phase 1 | Pending |
-| UCI-05 | Phase 1 | Pending |
+| UCI-03 | Phase 1 | Complete |
+| UCI-04 | Phase 1 | Complete |
+| UCI-05 | Phase 1 | Complete |
 | UCI-06 | Phase 1 | Pending |
 | UCI-07 | Phase 1 | Pending |
 | UCI-09 | Phase 1 | Pending |
 | UCI-10 | Phase 1 | Pending |
 | UCI-12 | Phase 1 | Complete |
-| SRCH-01 | Phase 1 | Pending |
+| SRCH-01 | Phase 1 | Complete |
 | EVAL-01 | Phase 1 | Pending |
 | EVAL-02 | Phase 1 | Pending |
 | TOOL-01 | Phase 1 | Pending |
@@ -130,6 +130,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | TOOL-04 | Phase 5 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 32 total
 - Mapped to phases: 32 (100%) — Phase 1: 15, Phase 2: 5, Phase 3: 5, Phase 4: 5, Phase 5: 2
 - Unmapped: 0 (no orphans, no duplicates)
