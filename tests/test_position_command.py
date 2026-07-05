@@ -124,3 +124,17 @@ def test_ponder_and_ponderhit_are_noop(engine):
     engine.send("ponderhit")
     engine.send("isready")
     assert engine.read_line(timeout=1.0) == "readyok"
+
+
+def test_debug_off_by_default_no_stderr_output(engine):
+    _handshake(engine)
+    engine.send("isready")
+    assert engine.read_line(timeout=1.0) == "readyok"
+    assert engine.has_stderr_output(timeout=0.3) is False
+
+
+def test_debug_on_enables_stderr_logging(engine):
+    engine.send("debug on")
+    engine.send("isready")
+    assert engine.read_line(timeout=1.0) == "readyok"
+    assert engine.has_stderr_output(timeout=1.0) is True
