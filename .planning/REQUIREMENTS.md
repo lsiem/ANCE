@@ -9,8 +9,8 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 
 ### UCI Protocol
 
-- [ ] **UCI-01**: Engine responds to `uci` with `id name`, `id author`, declared `option` lines, then `uciok`
-- [ ] **UCI-02**: Engine responds to `isready` with `readyok` and never blocks, including mid-initialization
+- [x] **UCI-01**: Engine responds to `uci` with `id name`, `id author`, declared `option` lines, then `uciok`
+- [x] **UCI-02**: Engine responds to `isready` with `readyok` and never blocks, including mid-initialization
 - [ ] **UCI-03**: Engine handles `ucinewgame` by resetting per-game state (no-op in M1; clears TT/history in M2)
 - [ ] **UCI-04**: Engine sets its board from `position startpos [moves ...]`
 - [ ] **UCI-05**: Engine sets its board from `position fen <fen> [moves ...]` and rejects malformed FEN without crashing
@@ -20,7 +20,7 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 - [ ] **UCI-09**: Engine honors `stop` by ending search promptly and emitting the current `bestmove`
 - [ ] **UCI-10**: Engine handles `quit` with a clean exit that never deadlocks on a running search
 - [ ] **UCI-11**: Engine emits `info depth <d> score cp <x>|mate <y> nodes <n> nps <n> pv <moves>` during search
-- [ ] **UCI-12**: The stdin/stdout loop stays readable during search so `stop`/`quit` are always honored (non-blocking)
+- [x] **UCI-12**: The stdin/stdout loop stays readable during search so `stop`/`quit` are always honored (non-blocking)
 
 ### Search
 
@@ -96,8 +96,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UCI-01 | Phase 1 | Pending |
-| UCI-02 | Phase 1 | Pending |
+| UCI-01 | Phase 1 | Complete |
+| UCI-02 | Phase 1 | Complete |
 | UCI-03 | Phase 1 | Pending |
 | UCI-04 | Phase 1 | Pending |
 | UCI-05 | Phase 1 | Pending |
@@ -105,7 +105,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | UCI-07 | Phase 1 | Pending |
 | UCI-09 | Phase 1 | Pending |
 | UCI-10 | Phase 1 | Pending |
-| UCI-12 | Phase 1 | Pending |
+| UCI-12 | Phase 1 | Complete |
 | SRCH-01 | Phase 1 | Pending |
 | EVAL-01 | Phase 1 | Pending |
 | EVAL-02 | Phase 1 | Pending |

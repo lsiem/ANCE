@@ -193,3 +193,7 @@ None - no external service configuration required. The `.venv/` created in this 
 ---
 *Phase: 01-minimal-uci-engine-evaluator-seam*
 *Completed: 2026-07-05*
+
+## Self-Check: PASSED
+
+All created files verified present on disk (pyproject.toml, ance/ package tree, tests/conftest.py, tests/test_uci_handshake.py, .gitignore). All commit hashes verified present in git log: ce69a12 (venv+pyproject), 9dda263 (RED test commit), 40fd89a (GREEN feat commit), 89efe6f (this summary).

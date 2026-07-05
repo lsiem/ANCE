@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Walking Skeleton: ance package, python -m ance entry point, non-blocking uci/isready/quit handshake, trivial first-legal-move bestmove, pytest subprocess harness
+- [x] 01-01-PLAN.md — Walking Skeleton: ance package, python -m ance entry point, non-blocking uci/isready/quit handshake, trivial first-legal-move bestmove, pytest subprocess harness
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Minimal UCI Engine & Evaluator Seam | 0/TBD | Not started | - |
+| 1. Minimal UCI Engine & Evaluator Seam | 1/6 | In Progress|  |
 | 2. Core Alpha-Beta Search | 0/TBD | Not started | - |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
