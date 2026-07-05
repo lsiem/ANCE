@@ -17,8 +17,14 @@ import sys
 import threading
 
 from ance.board.position import Position
-from ance.uci.parser import tokenize
-from ance.uci.protocol import send_bestmove, send_id, send_readyok, send_uciok
+from ance.uci.parser import parse_position, tokenize
+from ance.uci.protocol import (
+    send_bestmove,
+    send_id,
+    send_info_string,
+    send_readyok,
+    send_uciok,
+)
 
 stop_flag = threading.Event()
 worker: threading.Thread | None = None
@@ -54,6 +60,61 @@ def handle_go(pos: Position) -> None:
     worker.start()
 
 
+def handle_position(pos: Position, tokens: list[str]) -> None:
+    """`tokens` is the full line's tokens (leading `position` word included).
+
+    D-10's "reject and keep, never reject and reset" contract: a malformed
+    `fen` clause returns before `moves` is even looked at, leaving `pos`
+    exactly as it was before this command. A malformed `moves` clause is
+    caught the same way, leaving `pos` at the just-set (valid) startpos/fen
+    base -- `try_push_uci_moves` never partially commits (Position adapter,
+    Task 1), so the whole command's net effect on `pos` is always either
+    "fully applied" or "the last-known-good state", never a partial one.
+    """
+    cmd = parse_position(tokens[1:])
+    if cmd is None:
+        send_info_string("invalid position command, board unchanged")
+        return
+    if cmd.kind == "startpos":
+        pos.try_set_startpos()
+    else:
+        if not pos.try_set_fen(cmd.fen):
+            send_info_string("invalid position command, board unchanged")
+            return
+    if cmd.moves and not pos.try_push_uci_moves(cmd.moves):
+        send_info_string("invalid position command, board unchanged")
+
+
+def handle_ucinewgame(pos: Position) -> None:
+    # No-op reset of per-game state in M1 (D-17) -- no TT/history exists yet.
+    pos.try_set_startpos()
+
+
+def handle_setoption(tokens: list[str]) -> None:
+    """Accept and silently discard `setoption` (D-09).
+
+    An explicit handler -- rather than relying on the generic
+    unknown-leading-token skip (D-11) -- consumes the whole line
+    (`name ... value ...` included) with no partial parsing and no side
+    effects, per the cross-AI review finding: forward-compatible with a
+    real `setoption` handler landing in v2 (CFG-01) without risking the
+    dispatcher misinterpreting trailing tokens as a new command.
+    """
+    return
+
+
+def handle_ponder() -> None:
+    """`ponder`/`ponderhit` explicit no-ops.
+
+    Pondering itself is unsupported this phase, but GUIs send these
+    unconditionally; an explicit (accepted-and-ignored) handler avoids
+    GUI-side ponder-related warnings that D-11's generic unknown-token skip
+    would not itself cause any problem for, but which an explicit handler
+    documents intentionally rather than leaving to incidental behavior.
+    """
+    return
+
+
 def handle_quit() -> None:
     # Set the flag, let the worker unwind, then exit cleanly -- bounded
     # join means quit never deadlocks on a running search (UCI-10/D-13).
@@ -66,9 +127,14 @@ def handle_quit() -> None:
 def main() -> None:
     pos = Position()
     dispatch = {
-        "uci": handle_uci,
-        "isready": handle_isready,
-        "go": lambda: handle_go(pos),
+        "uci": lambda tokens: handle_uci(),
+        "isready": lambda tokens: handle_isready(),
+        "go": lambda tokens: handle_go(pos),
+        "position": lambda tokens: handle_position(pos, tokens),
+        "ucinewgame": lambda tokens: handle_ucinewgame(pos),
+        "setoption": lambda tokens: handle_setoption(tokens),
+        "ponder": lambda tokens: handle_ponder(),
+        "ponderhit": lambda tokens: handle_ponder(),
     }
     for line in sys.stdin:
         tokens = tokenize(line.strip())
@@ -80,7 +146,7 @@ def main() -> None:
             continue
         handler = dispatch.get(command)
         if handler is not None:
-            handler()
+            handler(tokens)
         # Any other leading token is silently skipped (D-11, applied from
         # the very first version of the loop, not bolted on later).
 
