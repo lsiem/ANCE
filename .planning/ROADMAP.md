@@ -1,0 +1,108 @@
+# Roadmap: ANCE — A Neural-network Chess Engine
+
+## Overview
+
+ANCE is delivered as five vertical slices that follow the discovered dependency
+chain **UCI seam → search core → search strength → offline training → NNUE swap-in**.
+Phase 1 stands up a non-blocking UCI engine with the `evaluate()` seam and a
+handcrafted eval — enough to play a full legal game in a GUI and beat a random
+mover. Phases 2–3 turn that into a genuinely strong, clock-safe alpha-beta engine
+(the milestone's guaranteed fallback per Core Value) and build the gauntlet
+measurement backbone. Phase 4 runs offline (it binds only to the shared weights
+contract, so it can proceed in parallel once the eval seam exists) and produces a
+validated, exported NNUE. Phase 5 is the payoff: the trained net drops in behind
+the untouched search seam and is proven to beat the handcrafted baseline over a
+rigorous ≥1000-game gauntlet.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game and beats a random mover 100/100
+- [ ] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess
+- [ ] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness
+- [ ] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights
+- [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain
+
+## Phase Details
+
+### Phase 1: Minimal UCI Engine & Evaluator Seam
+**Goal**: A GUI-playable UCI engine that never hangs, routes every leaf through a swappable `evaluate(position)->cp` seam, and plays a full legal game with a handcrafted eval.
+**Mode:** mvp
+**Depends on**: Nothing (first phase)
+**Requirements**: UCI-01, UCI-02, UCI-03, UCI-04, UCI-05, UCI-06, UCI-07, UCI-09, UCI-10, UCI-12, SRCH-01, EVAL-01, EVAL-02, TOOL-01, TOOL-02
+**Success Criteria** (what must be TRUE):
+  1. In Cute Chess / Arena the engine completes the `uci`/`isready` handshake and plays a full legal game to a natural result without hanging or being disqualified.
+  2. A piped `position … / go / stop` script always returns exactly one legal `bestmove` promptly — even mid-search and in mate/stalemate/zero-legal-move positions (stdout flushed on every line).
+  3. The engine beats a random-mover opponent 100 games out of 100.
+  4. Swapping the evaluator behind the `evaluate(position)->cp` seam (side-to-move relative) changes only the eval — no search-side change is required.
+  5. `position fen <malformed>` is rejected without crashing, and `ucinewgame` resets per-game state cleanly.
+**Plans**: TBD
+
+### Phase 2: Core Alpha-Beta Search
+**Goal**: The engine plays real, tactically sound chess via iterative-deepening fail-soft negamax with quiescence and correct draw/terminal handling, reporting its thinking each iteration.
+**Mode:** mvp
+**Depends on**: Phase 1
+**Requirements**: SRCH-02, SRCH-03, SRCH-04, SRCH-07, UCI-11
+**Success Criteria** (what must be TRUE):
+  1. The engine searches with fail-soft negamax alpha-beta and iterative deepening, always keeping and returning the best move from the last completed depth when interrupted.
+  2. Quiescence search resolves captures/promotions so the engine stops hanging pieces to the horizon effect (node counts stay bounded in tactical positions).
+  3. During search the engine emits `info depth <d> score cp <x>|mate <y> nodes <n> nps <n> pv <moves>` each iteration, with `pv[0]` matching `bestmove`.
+  4. The engine detects threefold repetition and the 50-move rule inside search and does not repeat or draw a won position.
+  5. Terminal nodes score correctly (checkmate = −(MATE−ply), stalemate = 0, negamax sign correct) and deeper search never plays measurably worse.
+**Plans**: TBD
+
+### Phase 3: Search Acceleration & Time Management
+**Goal**: A strong, clock-safe engine — Zobrist transposition table, full move ordering, and real time management — plus a reusable self-play gauntlet harness to measure eval changes honestly.
+**Mode:** mvp
+**Depends on**: Phase 2
+**Requirements**: SRCH-05, SRCH-06, SRCH-08, UCI-08, TOOL-03
+**Success Criteria** (what must be TRUE):
+  1. A Zobrist-keyed transposition table stores correct EXACT/LOWER/UPPER bounds with ply-adjusted mate scores; fixed-depth search is reproducible and mate-in-2/3 report a stable `score mate N` across depths.
+  2. Move ordering (hash move → MVV-LVA → killers → history) measurably increases cutoffs / reaches greater depth than the Phase 2 baseline at equal time.
+  3. Under `go wtime/btime/winc/binc` the engine computes a per-move budget and never loses on time across a 100-game blitz gauntlet (soft + hard limits; `movetime`/`depth`/`infinite` honored).
+  4. `ucinewgame` clears the transposition table so state never leaks across games.
+  5. A `cutechess-cli` gauntlet harness runs two identical-search builds from a fixed opening book and reports a score with error bars (validated handcrafted-vs-handcrafted ≈ 50%).
+**Plans**: TBD
+
+### Phase 4: Offline NNUE Training Pipeline
+**Goal**: An offline PyTorch/MPS pipeline turns Stockfish-labeled positions into a validated, exported `(768→N)×2→1` weights file the engine can load — binding to the engine only through the shared `nnue_format` contract.
+**Mode:** mvp
+**Depends on**: Phase 1
+**Requirements**: TRN-01, TRN-02, TRN-03, TRN-04, TRN-05
+**Success Criteria** (what must be TRUE):
+  1. A Stockfish labeling pipeline produces (FEN → centipawn) samples at a fixed depth/nodes using normalized UCI cp, with the exact labeling command recorded.
+  2. The dataset is deduplicated by FEN and split train/val by game (not by position), with an automated check that no FEN appears in both splits.
+  3. The `(768→N)×2→1` net trains in PyTorch on the MPS backend against a sigmoid-scaled win-probability target, with a decreasing, trustworthy validation loss.
+  4. Training first verifies `torch.backends.mps.is_available()` and passes a float32 CPU-vs-MPS numeric sanity check before the real run.
+  5. Trained weights export to a plain versioned format (npz/safetensors) that the shared loader validates (arch id / feature-set / shapes) and roundtrips with zero torch dependency.
+**Plans**: TBD
+
+### Phase 5: NNUE Swap-In & Elo Gauntlet
+**Goal**: The trained NNUE drops in behind the untouched evaluator seam and is proven to beat the handcrafted baseline over a rigorous gauntlet — the milestone's defining payoff.
+**Mode:** mvp
+**Depends on**: Phase 3, Phase 4
+**Requirements**: EVAL-03, TOOL-04
+**Success Criteria** (what must be TRUE):
+  1. A numpy `NnueEval` (full recompute, zero torch) implements the same `evaluate(position)->cp` seam, loads the exported weights, and passes a parity check against the torch forward pass on held-out FENs.
+  2. Golden perspective/sign tests pass: symmetric positions evaluate to ≈ 0, a color-mirror-with-STM-flip gives equal scores, and net eval sign/magnitude match Stockfish on sample FENs.
+  3. Swapping handcrafted → NNUE changes only the eval; the two gauntlet builds are diff-verified to share identical search configuration.
+  4. Over a ≥1000-game fixed-opening-book `cutechess-cli` gauntlet the NNUE build shows a measurable positive Elo gain over the handcrafted build, reported with error bars (CI/SPRT) and reproducible on a rerun.
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed in parallel with 2–3; Phase 5 requires both 3 and 4).
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Minimal UCI Engine & Evaluator Seam | 0/TBD | Not started | - |
+| 2. Core Alpha-Beta Search | 0/TBD | Not started | - |
+| 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
+| 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
+| 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |

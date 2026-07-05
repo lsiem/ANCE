@@ -96,13 +96,44 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | — | Pending |
+| UCI-01 | Phase 1 | Pending |
+| UCI-02 | Phase 1 | Pending |
+| UCI-03 | Phase 1 | Pending |
+| UCI-04 | Phase 1 | Pending |
+| UCI-05 | Phase 1 | Pending |
+| UCI-06 | Phase 1 | Pending |
+| UCI-07 | Phase 1 | Pending |
+| UCI-09 | Phase 1 | Pending |
+| UCI-10 | Phase 1 | Pending |
+| UCI-12 | Phase 1 | Pending |
+| SRCH-01 | Phase 1 | Pending |
+| EVAL-01 | Phase 1 | Pending |
+| EVAL-02 | Phase 1 | Pending |
+| TOOL-01 | Phase 1 | Pending |
+| TOOL-02 | Phase 1 | Pending |
+| SRCH-02 | Phase 2 | Pending |
+| SRCH-03 | Phase 2 | Pending |
+| SRCH-04 | Phase 2 | Pending |
+| SRCH-07 | Phase 2 | Pending |
+| UCI-11 | Phase 2 | Pending |
+| SRCH-05 | Phase 3 | Pending |
+| SRCH-06 | Phase 3 | Pending |
+| SRCH-08 | Phase 3 | Pending |
+| UCI-08 | Phase 3 | Pending |
+| TOOL-03 | Phase 3 | Pending |
+| TRN-01 | Phase 4 | Pending |
+| TRN-02 | Phase 4 | Pending |
+| TRN-03 | Phase 4 | Pending |
+| TRN-04 | Phase 4 | Pending |
+| TRN-05 | Phase 4 | Pending |
+| EVAL-03 | Phase 5 | Pending |
+| TOOL-04 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 32 total
-- Mapped to phases: (pending roadmap)
-- Unmapped: (pending roadmap)
+- Mapped to phases: 32 (100%) — Phase 1: 15, Phase 2: 5, Phase 3: 5, Phase 4: 5, Phase 5: 2
+- Unmapped: 0 (no orphans, no duplicates)
 
 ---
 *Requirements defined: 2026-07-05*
-*Last updated: 2026-07-05 after initial definition*
+*Last updated: 2026-07-05 after roadmap creation (traceability populated)*
