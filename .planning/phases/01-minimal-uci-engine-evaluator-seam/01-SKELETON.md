@@ -47,6 +47,7 @@ later phase in the project) builds on without renegotiating.
 - `setoption` handling, tapered (blended) evaluation — v2 (CFG-01, EVAL-04)
 - Mate-score ply-adjustment in the transposition table — no TT exists yet; deferred with the TT itself to Phase 2/3
 - Console-script (`ance`) packaging entry point — `python -m ance` only, this milestone
+- Preemption of overlapping `go`/`position`/`ucinewgame` during an active search — this wave-1 walking-skeleton worker has no guard against a second command arriving mid-search; Plan 01-03 Task 3 introduces the stop -> join -> clear -> respawn policy once the real search substrate exists (cross-AI review consensus finding)
 
 ## Subsequent Slice Plan (within Phase 1)
 
