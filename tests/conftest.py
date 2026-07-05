@@ -48,6 +48,15 @@ class EngineProcess:
         return self.process.wait(timeout=timeout)
 
 
+def send_lines(engine: EngineProcess, lines: list[str]) -> None:
+    """Write each line with `flush=True` so multi-line integration tests
+    (e.g. a `position` command followed by `go`) stay readable as a plain
+    list of strings instead of one embedded-`\\n` string.
+    """
+    for line in lines:
+        engine.send(line)
+
+
 @pytest.fixture
 def engine() -> Iterator[EngineProcess]:
     process = subprocess.Popen(
