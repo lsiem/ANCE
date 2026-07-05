@@ -41,7 +41,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The engine beats a random-mover opponent 100 games out of 100.
   4. Swapping the evaluator behind the `evaluate(position)->cp` seam (side-to-move relative) changes only the eval — no search-side change is required.
   5. `position fen <malformed>` is rejected without crashing, and `ucinewgame` resets per-game state cleanly.
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Walking Skeleton: ance package, python -m ance entry point, non-blocking uci/isready/quit handshake, trivial first-legal-move bestmove, pytest subprocess harness
+- [ ] 01-02-PLAN.md — Position adapter: position startpos/fen/moves, malformed-input rejection (D-10), ucinewgame reset, terminal detection (SRCH-01), stderr debug channel (D-18)
+- [ ] 01-03-PLAN.md — Evaluator seam (Evaluator Protocol) + fixed-depth negamax substrate; full go depth/movetime/infinite/stop/quit handling with tie-break RNG and bestmove (none)
+- [ ] 01-04-PLAN.md — Full handcrafted evaluator: Simplified Evaluation Function PSTs + king mg/eg tables + mobility/bishop-pair/tempo/pawn-structure terms, wired in as the default eval
+- [ ] 01-05-PLAN.md — Random-mover self-play gauntlet proving ANCE wins 100 games out of 100
+- [ ] 01-06-PLAN.md — Manual GUI validation checkpoint (Cute Chess/Arena full game, TOOL-01)
 
 ### Phase 2: Core Alpha-Beta Search
 **Goal**: The engine plays real, tactically sound chess via iterative-deepening fail-soft negamax with quiescence and correct draw/terminal handling, reporting its thinking each iteration.
