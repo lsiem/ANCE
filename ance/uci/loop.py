@@ -16,6 +16,7 @@ from __future__ import annotations
 import sys
 import threading
 
+import ance.debug as debug
 from ance.board.position import Position
 from ance.uci.parser import parse_position, tokenize
 from ance.uci.protocol import (
@@ -36,9 +37,11 @@ def _trivial_bestmove(pos: Position, stop_flag: threading.Event) -> None:
     No evaluator or negamax call exists yet (that substrate is built in
     Plan 01-03); this only proves the stdin-to-stdout threading loop.
     """
+    debug.log("worker started")
     moves = pos.legal_moves()
     move = moves[0] if moves else None
     send_bestmove(move.uci() if move is not None else None)
+    debug.log("worker stopped")
 
 
 def handle_uci() -> None:
@@ -74,15 +77,18 @@ def handle_position(pos: Position, tokens: list[str]) -> None:
     cmd = parse_position(tokens[1:])
     if cmd is None:
         send_info_string("invalid position command, board unchanged")
+        debug.log(f"rejected malformed position command: {tokens!r}")
         return
     if cmd.kind == "startpos":
         pos.try_set_startpos()
     else:
         if not pos.try_set_fen(cmd.fen):
             send_info_string("invalid position command, board unchanged")
+            debug.log(f"rejected malformed fen: {cmd.fen!r}")
             return
     if cmd.moves and not pos.try_push_uci_moves(cmd.moves):
         send_info_string("invalid position command, board unchanged")
+        debug.log(f"rejected illegal move list: {cmd.moves!r}")
 
 
 def handle_ucinewgame(pos: Position) -> None:
@@ -115,6 +121,18 @@ def handle_ponder() -> None:
     return
 
 
+def handle_debug(tokens: list[str]) -> None:
+    """`debug on`/`debug off` toggles the stderr-only diagnostic channel
+    (D-18). Logging the toggle itself is deliberate -- it makes `debug on`
+    immediately observable on stderr rather than only affecting later
+    events, which is genuinely useful when diagnosing a hang (the very
+    scenario this channel exists for).
+    """
+    enabled = len(tokens) > 1 and tokens[1] == "on"
+    debug.set_enabled(enabled)
+    debug.log(f"debug logging {'enabled' if enabled else 'disabled'}")
+
+
 def handle_quit() -> None:
     # Set the flag, let the worker unwind, then exit cleanly -- bounded
     # join means quit never deadlocks on a running search (UCI-10/D-13).
@@ -135,6 +153,7 @@ def main() -> None:
         "setoption": lambda tokens: handle_setoption(tokens),
         "ponder": lambda tokens: handle_ponder(),
         "ponderhit": lambda tokens: handle_ponder(),
+        "debug": lambda tokens: handle_debug(tokens),
     }
     for line in sys.stdin:
         tokens = tokenize(line.strip())
