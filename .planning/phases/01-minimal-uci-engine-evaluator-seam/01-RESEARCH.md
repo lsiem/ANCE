@@ -851,6 +851,163 @@ no network, no filesystem writes beyond normal Python process behavior).
 ### Project-level (already HIGH confidence, reused verbatim)
 - `.planning/research/STACK.md`, `.planning/research/ARCHITECTURE.md`, `.planning/research/PITFALLS.md` — this phase builds on, not duplicates, that research
 
+## Appendix: Simplified Evaluation Function Tables (pinned)
+
+**Source:** `https://www.chessprogramming.org/Simplified_Evaluation_Function`
+(Tomasz Michniewski), fetched directly this session (2026-07-05) via
+WebFetch and cross-checked against the well-known published values. This
+appendix is the single in-repo source of truth for D-05/EVAL-02 — Plan
+01-04 transcribes from here at execution time, it does NOT re-fetch the
+live page.
+
+### Piece values (centipawns)
+
+| Piece | Value |
+|-------|-------|
+| Pawn | 100 |
+| Knight | 320 |
+| Bishop | 330 |
+| Rook | 500 |
+| Queen | 900 |
+| King | excluded from `PIECE_VALUES` (D-05/Plan 01-03) — search terminal scoring uses `MATE`, not a king material value |
+
+### Orientation convention (READ BEFORE TRANSCRIBING)
+
+The tables below are reproduced **exactly as chessprogramming.org prints
+them**: each table's first printed row is **rank 8**, its last printed
+row is **rank 1**, and within each row the columns run **a-file to
+h-file** (the standard "looking at the board from White's side, rank 8
+at the top" diagram convention).
+
+`ance/eval/tables.py` stores each table as a flat 64-tuple indexed with
+python-chess's `chess.square(file, rank)` convention, where index `0` =
+a1, index `7` = h1, index `56` = a8, index `63` = h8 (rank index `0` =
+rank 1, increasing upward). **This is the opposite row order from how
+the tables are printed below** — to transcribe correctly, reverse the
+row order: the table's printed **last** row (rank 1) becomes tuple
+indices `0..7`, and its printed **first** row (rank 8) becomes tuple
+indices `56..63`. Getting this reversal backwards is the single most
+likely transcription error, and it will NOT be caught by a
+64-entries-and-zero-back-ranks structural check alone (the pawn table's
+rank 1 and rank 8 rows are both zero either way) — see "Pinned reference
+cells" below, chosen specifically because they differ between the top
+and bottom rows and will fail loudly if reversed.
+
+Black's lookup for the same physical square is
+`TABLE[chess.square_mirror(square)]` — standard PST-mirroring, applied
+in `ance/eval/handcrafted.py` (Plan 01-04 Task 2), not in `tables.py`
+itself.
+
+### Pawn (`PAWN_PST`)
+
+Printed rank 8 (top) → rank 1 (bottom), a-file → h-file:
+
+```
+ 0,  0,  0,  0,  0,  0,  0,  0
+50, 50, 50, 50, 50, 50, 50, 50
+10, 10, 20, 30, 30, 20, 10, 10
+ 5,  5, 10, 25, 25, 10,  5,  5
+ 0,  0,  0, 20, 20,  0,  0,  0
+ 5, -5,-10,  0,  0,-10, -5,  5
+ 5, 10, 10,-20,-20, 10, 10,  5
+ 0,  0,  0,  0,  0,  0,  0,  0
+```
+
+### Knight (`KNIGHT_PST`)
+
+```
+-50,-40,-30,-30,-30,-30,-40,-50
+-40,-20,  0,  0,  0,  0,-20,-40
+-30,  0, 10, 15, 15, 10,  0,-30
+-30,  5, 15, 20, 20, 15,  5,-30
+-30,  0, 15, 20, 20, 15,  0,-30
+-30,  5, 10, 15, 15, 10,  5,-30
+-40,-20,  0,  5,  5,  0,-20,-40
+-50,-40,-30,-30,-30,-30,-40,-50
+```
+
+### Bishop (`BISHOP_PST`)
+
+```
+-20,-10,-10,-10,-10,-10,-10,-20
+-10,  0,  0,  0,  0,  0,  0,-10
+-10,  0,  5, 10, 10,  5,  0,-10
+-10,  5,  5, 10, 10,  5,  5,-10
+-10,  0, 10, 10, 10, 10,  0,-10
+-10, 10, 10, 10, 10, 10, 10,-10
+-10,  5,  0,  0,  0,  0,  5,-10
+-20,-10,-10,-10,-10,-10,-10,-20
+```
+
+### Rook (`ROOK_PST`)
+
+```
+ 0,  0,  0,  0,  0,  0,  0,  0
+ 5, 10, 10, 10, 10, 10, 10,  5
+-5,  0,  0,  0,  0,  0,  0, -5
+-5,  0,  0,  0,  0,  0,  0, -5
+-5,  0,  0,  0,  0,  0,  0, -5
+-5,  0,  0,  0,  0,  0,  0, -5
+-5,  0,  0,  0,  0,  0,  0, -5
+ 0,  0,  0,  5,  5,  0,  0,  0
+```
+
+### Queen (`QUEEN_PST`)
+
+```
+-20,-10,-10, -5, -5,-10,-10,-20
+-10,  0,  0,  0,  0,  0,  0,-10
+-10,  0,  5,  5,  5,  5,  0,-10
+ -5,  0,  5,  5,  5,  5,  0, -5
+  0,  0,  5,  5,  5,  5,  0, -5
+-10,  5,  5,  5,  5,  5,  0,-10
+-10,  0,  5,  0,  0,  0,  0,-10
+-20,-10,-10, -5, -5,-10,-10,-20
+```
+
+### King, middlegame (`KING_MG_PST`)
+
+```
+-30,-40,-40,-50,-50,-40,-40,-30
+-30,-40,-40,-50,-50,-40,-40,-30
+-30,-40,-40,-50,-50,-40,-40,-30
+-30,-40,-40,-50,-50,-40,-40,-30
+-20,-30,-30,-40,-40,-30,-30,-20
+-10,-20,-20,-20,-20,-20,-20,-10
+ 20, 20,  0,  0,  0,  0, 20, 20
+ 20, 30, 10,  0,  0, 10, 30, 20
+```
+
+### King, endgame (`KING_EG_PST`)
+
+```
+-50,-40,-30,-20,-20,-30,-40,-50
+-30,-20,-10,  0,  0,-10,-20,-30
+-30,-10, 20, 30, 30, 20,-10,-30
+-30,-10, 30, 40, 40, 30,-10,-30
+-30,-10, 30, 40, 40, 30,-10,-30
+-30,-10, 20, 30, 30, 20,-10,-30
+-30,-30,  0,  0,  0,  0,-30,-30
+-50,-30,-30,-30,-30,-30,-30,-50
+```
+
+### Pinned reference cells (for Plan 01-04 Task 1's transcription test)
+
+After correct transcription into `chess.square()`-indexed tuples, these
+cells MUST hold exactly these values. Each was chosen because it differs
+from its vertically-mirrored counterpart, so a reversed-row transcription
+error fails loudly instead of silently passing a merely-structural check:
+
+| Cell(s) | Table | Expected value |
+|---------|-------|-----------------|
+| d4, e4 | `PAWN_PST` | `20` |
+| d2, e2 | `PAWN_PST` | `-20` |
+| d7, e7 | `PAWN_PST` | `50` |
+| a1, h1, a8, h8 | `KNIGHT_PST` | `-50` |
+| d4, e4, d5, e5 | `KING_EG_PST` | `40` |
+| b1 | `KING_EG_PST` | `-30` |
+| b8 | `KING_EG_PST` | `-40` |
+
 ## Metadata
 
 **Confidence breakdown:**
