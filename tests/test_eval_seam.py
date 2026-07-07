@@ -17,7 +17,8 @@ import chess
 
 from ance.board.position import Position
 from ance.eval import tables
-from ance.eval.material import MaterialEval, NaiveEval
+from ance.eval.handcrafted import HandcraftedEval, _is_endgame, _material_and_pst
+from ance.eval.material import PIECE_VALUES, MaterialEval, NaiveEval
 from ance.search.negamax import search_root
 
 
@@ -150,3 +151,40 @@ def test_pst_reference_cells_match_pinned_appendix() -> None:
     )
     assert tables.KING_EG_PST[chess.B1] == -30
     assert tables.KING_EG_PST[chess.B8] == -40
+
+
+# --- Plan 01-04 Task 2: material+PST helper, discrete king-table switch --
+
+
+def test_material_and_pst_helper_symmetric_at_startpos() -> None:
+    board = chess.Board()
+    assert _material_and_pst(board, chess.WHITE) == _material_and_pst(board, chess.BLACK)
+
+
+def test_king_table_switches_to_endgame_below_threshold() -> None:
+    startpos = chess.Board()
+    assert not _is_endgame(startpos)
+
+    kings_and_pawns = chess.Board("4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1")
+    assert _is_endgame(kings_and_pawns)
+
+    pawn_subtotal = sum(
+        PIECE_VALUES[chess.PAWN] + tables.PAWN_PST[square]
+        for square in chess.SquareSet(chess.BB_RANK_2)
+    )
+    eg_king_contribution = _material_and_pst(kings_and_pawns, chess.WHITE) - pawn_subtotal
+    assert eg_king_contribution == tables.KING_EG_PST[chess.E1]
+
+    # Force the same king+pawn skeleton back above the endgame threshold
+    # with extra queens, isolating the king's own contribution the same
+    # way -- proving the switch is driven by `_is_endgame`, not by the
+    # kings-and-pawns FEN shape itself.
+    mg_forcing = chess.Board("q3k3/pppppppp/8/8/8/8/PPPPPPPP/Q3K2Q w - - 0 1")
+    assert not _is_endgame(mg_forcing)
+    queens_subtotal = sum(
+        PIECE_VALUES[chess.QUEEN] + tables.QUEEN_PST[square] for square in (chess.A1, chess.H1)
+    )
+    mg_king_contribution = (
+        _material_and_pst(mg_forcing, chess.WHITE) - pawn_subtotal - queens_subtotal
+    )
+    assert mg_king_contribution == tables.KING_MG_PST[chess.E1]
