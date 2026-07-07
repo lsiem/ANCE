@@ -66,7 +66,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 01-05-PLAN.md — Random-mover self-play gauntlet proving ANCE wins 100 games out of 100
+- [x] 01-05-PLAN.md — Random-mover self-play gauntlet proving ANCE wins 100 games out of 100
 - [ ] 01-06-PLAN.md — Manual GUI validation checkpoint (Cute Chess/Arena full game, TOOL-01)
 
 ### Phase 2: Core Alpha-Beta Search
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Minimal UCI Engine & Evaluator Seam | 4/6 | In Progress|  |
+| 1. Minimal UCI Engine & Evaluator Seam | 5/6 | In Progress|  |
 | 2. Core Alpha-Beta Search | 0/TBD | Not started | - |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |

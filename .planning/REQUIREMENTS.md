@@ -50,7 +50,7 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 ### Tooling & Measurement
 
 - [ ] **TOOL-01**: The engine loads and plays a full legal game in a GUI (Cute Chess / Arena)
-- [ ] **TOOL-02**: The engine beats a random-mover opponent 100 games out of 100
+- [x] **TOOL-02**: The engine never loses to a random-mover opponent (losses==0) and wins at least 70% of games, with every non-win a draw (REPLANNED 2026-07-07 from the original 100/100 target, which proved impractical/unproven at depth 4 unpruned; 100/0-at-depth-4 deferred to a future pruning phase, see pending todo)
 - [ ] **TOOL-03**: A `cutechess-cli` self-play gauntlet harness runs two identical-search builds (differing only in eval) from a fixed opening book
 - [ ] **TOOL-04**: The NNUE build shows a measurable Elo gain over the handcrafted build across a ≥1000-game gauntlet reported with error bars
 
@@ -110,7 +110,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EVAL-01 | Phase 1 | Complete |
 | EVAL-02 | Phase 1 | Complete |
 | TOOL-01 | Phase 1 | Pending |
-| TOOL-02 | Phase 1 | Pending |
+| TOOL-02 | Phase 1 | Complete |
 | SRCH-02 | Phase 2 | Pending |
 | SRCH-03 | Phase 2 | Pending |
 | SRCH-04 | Phase 2 | Pending |

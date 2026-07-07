@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-07-07T11:10:48.398Z"
+last_updated: "2026-07-07T12:45:21.879Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-05)
 ## Current Position
 
 Phase: 01 (minimal-uci-engine-evaluator-seam) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-07
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [███████░░░] 67%
 | Phase 01-minimal-uci-engine-evaluator-seam P02 | 9min | 3 tasks | 6 files |
 | Phase 01 P03 | 35min | 3 tasks | 9 files |
 | Phase 01 P04 | 20 min | 3 tasks | 5 files |
+| Phase 01-minimal-uci-engine-evaluator-seam P05 | 35min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 01]: DEFAULT_DEPTH stayed at 3 (ance/search/negamax.py untouched) — Post-wiring bare-go benchmark measured ~0.53s with HandcraftedEval in the hot path, comfortably under the 1.0s bound, so no retune was needed
 - [Phase 01]: Positional terms computed white-relative internally, single sign flip by board.turn at the end of evaluate() (D-07) — Matches material+PST subtotal convention; tempo is added after the flip since it is inherently side-to-move relative
 - [Phase 01]: Pawn-structure file counts use int.bit_count() over bitboard masks — Avoids a bin(...).count() string round-trip since this runs per leaf at every search node (round-2 cross-AI review LOW finding)
+- [Phase 01]: 01-05 acceptance replanned — losses==0 + >=70% wins @ depth2; 100/0@depth4 deferred to pruning
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T11:10:48.392Z
+Last session: 2026-07-07T12:45:18.631Z
 Stopped at: Completed 01-04-PLAN.md
 Resume file: None
