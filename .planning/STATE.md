@@ -2,17 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 01
-current_phase_name: minimal-uci-engine-evaluator-seam
 status: executing
-stopped_at: Completed 01-03-PLAN.md (resumed after session-limit interruption mid-Task-3)
-last_updated: "2026-07-07T10:54:50.719Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-07-07T11:10:48.398Z"
 last_activity: 2026-07-07
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -28,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-05)
 ## Current Position
 
 Phase: 01 (minimal-uci-engine-evaluator-seam) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-07
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -57,6 +55,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 01 P01 | 20min | 3 tasks | 12 files |
 | Phase 01-minimal-uci-engine-evaluator-seam P02 | 9min | 3 tasks | 6 files |
 | Phase 01 P03 | 35min | 3 tasks | 9 files |
+| Phase 01 P04 | 20 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -74,6 +73,9 @@ Recent decisions affecting current work:
 - [Phase 01]: setoption/ponder/ponderhit have explicit no-op handlers rather than relying on the generic unknown-token skip — cross-AI review finding; forward-compatible with a real setoption handler in v2 without risking dispatcher misparse
 - [Phase 01]: search_generation gating: a monotonic counter bumped before preemption (not join() timing) is the single correctness mechanism gating send_bestmove for overlapping go commands
 - [Phase 01]: DEFAULT_DEPTH=3 confirmed via test suite to keep a bare go under 1.0s with MaterialEval in pure Python
+- [Phase 01]: DEFAULT_DEPTH stayed at 3 (ance/search/negamax.py untouched) — Post-wiring bare-go benchmark measured ~0.53s with HandcraftedEval in the hot path, comfortably under the 1.0s bound, so no retune was needed
+- [Phase 01]: Positional terms computed white-relative internally, single sign flip by board.turn at the end of evaluate() (D-07) — Matches material+PST subtotal convention; tempo is added after the flip since it is inherently side-to-move relative
+- [Phase 01]: Pawn-structure file counts use int.bit_count() over bitboard masks — Avoids a bin(...).count() string round-trip since this runs per leaf at every search node (round-2 cross-AI review LOW finding)
 
 ### Pending Todos
 
@@ -94,6 +96,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T10:54:32.742Z
-Stopped at: Completed 01-03-PLAN.md (resumed after session-limit interruption mid-Task-3)
+Last session: 2026-07-07T11:10:48.392Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
