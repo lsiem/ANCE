@@ -40,7 +40,7 @@ import threading
 import ance.debug as debug
 from ance.board.position import Position
 from ance.eval.base import Evaluator
-from ance.eval.material import MaterialEval
+from ance.eval.handcrafted import HandcraftedEval
 from ance.search.negamax import DEFAULT_DEPTH, search_root
 from ance.uci.parser import GoCommand, parse_go, parse_position, tokenize
 from ance.uci.protocol import (
@@ -62,9 +62,10 @@ search_generation = 0
 # reach and cancel a leftover timer from a preempted `go movetime` search.
 movetime_timer: threading.Timer | None = None
 
-# Bootstrap evaluator (D-05 material values only) proving the search<->eval
-# wiring; Plan 01-04 swaps this for the real HandcraftedEval.
-evaluator: Evaluator = MaterialEval()
+# The engine's real default evaluator (EVAL-02): Simplified Evaluation
+# Function material+PST plus mobility/bishop-pair/tempo/pawn-structure
+# terms (D-05/D-06), replacing Plan 01-03's bootstrap MaterialEval.
+evaluator: Evaluator = HandcraftedEval()
 
 # Seedable tie-break RNG (D-04); reseeded by handle_ucinewgame (D-17).
 rng = random.Random(int(os.environ.get("ANCE_SEED", "0")))

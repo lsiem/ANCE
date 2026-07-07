@@ -73,14 +73,93 @@ def _material_and_pst(board: chess.Board, color: chess.Color) -> int:
     return score
 
 
+# D-06 positional terms, all combined white-relative below (D-07) before
+# the single sign flip at the end of `HandcraftedEval.evaluate()`.
+TEMPO_BONUS = 10
+BISHOP_PAIR_BONUS = 30
+MOBILITY_WEIGHT = 2
+DOUBLED_PAWN_PENALTY = -10
+ISOLATED_PAWN_PENALTY = -15
+
+
+def _bishop_pair_term(board: chess.Board) -> int:
+    """White-relative bishop-pair bonus: `+BISHOP_PAIR_BONUS` for White
+    holding two or more bishops, `-BISHOP_PAIR_BONUS` for Black."""
+    score = 0
+    if len(board.pieces(chess.BISHOP, chess.WHITE)) >= 2:
+        score += BISHOP_PAIR_BONUS
+    if len(board.pieces(chess.BISHOP, chess.BLACK)) >= 2:
+        score -= BISHOP_PAIR_BONUS
+    return score
+
+
+def _pawn_penalty(board: chess.Board, color: chess.Color) -> int:
+    """Doubled + isolated pawn penalty for `color`, counting pawns per
+    file via the bitboard `bit_count()` method (not a `bin(...).count()`
+    string round-trip -- this runs per leaf at every node)."""
+    pawns_bitboard = board.pieces_mask(chess.PAWN, color)
+    file_counts = [(chess.BB_FILES[file] & pawns_bitboard).bit_count() for file in range(8)]
+
+    penalty = 0
+    for file, count in enumerate(file_counts):
+        if count == 0:
+            continue
+        if count > 1:
+            penalty += DOUBLED_PAWN_PENALTY * (count - 1)
+        left_count = file_counts[file - 1] if file > 0 else 0
+        right_count = file_counts[file + 1] if file < 7 else 0
+        if left_count == 0 and right_count == 0:
+            penalty += ISOLATED_PAWN_PENALTY * count
+    return penalty
+
+
+def _pawn_structure_term(board: chess.Board) -> int:
+    """White-relative doubled/isolated pawn penalty."""
+    return _pawn_penalty(board, chess.WHITE) - _pawn_penalty(board, chess.BLACK)
+
+
+def _mobility_term(board: chess.Board) -> int:
+    """White-relative mobility term: `MOBILITY_WEIGHT` times the side to
+    move's own legal-move count minus the opponent's (obtained via the
+    standard null-move idiom), converted to White's perspective. A null
+    move is illegal while the side to move is in check (T-01-14) -- that
+    case skips the null-move push entirely and falls back to `0` for the
+    opponent-mobility sub-term rather than pushing an invalid null move.
+    """
+    stm = board.turn
+    own_moves = len(list(board.legal_moves))
+
+    if board.is_check():
+        opponent_moves = 0
+    else:
+        board.push(chess.Move.null())
+        try:
+            opponent_moves = len(list(board.legal_moves))
+        finally:
+            board.pop()
+
+    stm_relative = MOBILITY_WEIGHT * (own_moves - opponent_moves)
+    return stm_relative if stm == chess.WHITE else -stm_relative
+
+
 class HandcraftedEval:
-    """Side-to-move-relative material+PST evaluator (D-07). Positional
-    terms (mobility, bishop pair, tempo, pawn structure -- D-06) are added
-    on top of this in the same `evaluate()` method."""
+    """Side-to-move-relative evaluator (D-07) combining material+PST
+    (D-05) with mobility, bishop-pair, tempo, and pawn-structure
+    positional terms (D-06). All terms are computed white-relative inside
+    `evaluate()` and sign-flipped by `pos.board.turn` exactly once at the
+    end."""
 
     def evaluate(self, pos: Position) -> int:
         board = pos.board
+        stm = board.turn
+
         white_score = _material_and_pst(board, chess.WHITE) - _material_and_pst(
             board, chess.BLACK
         )
-        return white_score if board.turn == chess.WHITE else -white_score
+        white_score += _bishop_pair_term(board)
+        white_score += _pawn_structure_term(board)
+        white_score += _mobility_term(board)
+
+        score = white_score if stm == chess.WHITE else -white_score
+        score += TEMPO_BONUS
+        return score

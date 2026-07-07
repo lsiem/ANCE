@@ -234,16 +234,19 @@ def test_doubled_and_isolated_pawn_penalty() -> None:
 
 
 def test_mobility_term_rewards_more_legal_moves() -> None:
-    # White queen in the open (d5) vs. boxed into a corner by its own
-    # pawns (a1) -- clearly more legal moves in the open position, all
-    # else (both kings) equal.
+    # Same material (one queen, two kings, no pawns) in both positions --
+    # White queen centralized in the open (d5) has clearly more legal
+    # moves than the same queen cornered (a1), all else equal.
     open_fen = "7k/8/8/3Q4/8/8/8/7K w - - 0 1"
-    boxed_fen = "7k/8/8/8/8/8/PP6/QP5K w - - 0 1"
+    cornered_fen = "7k/8/8/8/8/8/8/Q6K w - - 0 1"
+    assert len(list(chess.Board(open_fen).legal_moves)) > len(
+        list(chess.Board(cornered_fen).legal_moves)
+    )
 
     open_score = HandcraftedEval().evaluate(Position(chess.Board(open_fen)))
-    boxed_score = HandcraftedEval().evaluate(Position(chess.Board(boxed_fen)))
+    cornered_score = HandcraftedEval().evaluate(Position(chess.Board(cornered_fen)))
 
-    assert open_score > boxed_score
+    assert open_score > cornered_score
 
 
 def test_mobility_term_no_crash_when_side_to_move_in_check() -> None:
