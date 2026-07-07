@@ -8,9 +8,16 @@ adds the `slow`-marked 100-game proof against the real `HandcraftedEval`.
 from __future__ import annotations
 
 import chess
+import pytest
 
+from ance.eval.handcrafted import HandcraftedEval
 from ance.eval.material import MaterialEval
-from ance.tools.random_mover_gauntlet import RandomMover, play_game
+from ance.tools.random_mover_gauntlet import (
+    GAUNTLET_SEARCH_DEPTH,
+    RandomMover,
+    play_game,
+    run_gauntlet,
+)
 
 
 def test_random_mover_picks_legal_move() -> None:
@@ -42,3 +49,13 @@ def test_play_game_terminates_with_a_valid_result() -> None:
     )
     assert result.result in {"1-0", "0-1", "1/2-1/2"}
     assert result.terminal_fen != ""
+
+
+@pytest.mark.slow
+def test_ance_beats_random_mover_100_of_100() -> None:
+    result = run_gauntlet(n_games=100, ance_depth=GAUNTLET_SEARCH_DEPTH, evaluator=HandcraftedEval())
+    assert result["wins"] == 100 and result["losses"] == 0, (
+        f"ANCE failed to beat the random mover 100/100: {result['wins']} wins, "
+        f"{result['losses']} losses, {result['draws']} draws. "
+        f"Non-win games (seed/result/terminal_fen): {result['non_win_games']}"
+    )
