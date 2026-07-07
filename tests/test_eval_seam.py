@@ -16,6 +16,7 @@ from pathlib import Path
 import chess
 
 from ance.board.position import Position
+from ance.eval import tables
 from ance.eval.material import MaterialEval, NaiveEval
 from ance.search.negamax import search_root
 
@@ -100,3 +101,52 @@ def test_negamax_module_never_imports_a_concrete_evaluator() -> None:
     )
     assert "MaterialEval" not in non_comment_source
     assert "NaiveEval" not in non_comment_source
+
+
+# --- Plan 01-04 Task 1: pinned Simplified Evaluation Function PSTs -------
+
+
+def test_pst_tables_have_64_entries() -> None:
+    for table in (
+        tables.PAWN_PST,
+        tables.KNIGHT_PST,
+        tables.BISHOP_PST,
+        tables.ROOK_PST,
+        tables.QUEEN_PST,
+        tables.KING_MG_PST,
+        tables.KING_EG_PST,
+    ):
+        assert len(table) == 64
+        assert all(isinstance(value, int) for value in table)
+
+
+def test_pawn_pst_is_zero_on_first_and_last_rank() -> None:
+    for file in range(8):
+        assert tables.PAWN_PST[chess.square(file, 0)] == 0  # rank 1
+        assert tables.PAWN_PST[chess.square(file, 7)] == 0  # rank 8
+
+
+def test_pst_reference_cells_match_pinned_appendix() -> None:
+    # 01-RESEARCH.md "Pinned reference cells" -- chosen because each cell
+    # differs from its vertically-mirrored counterpart, so a reversed-row
+    # transcription error fails loudly here rather than slipping past the
+    # two structural checks above.
+    assert tables.PAWN_PST[chess.D4] == tables.PAWN_PST[chess.E4] == 20
+    assert tables.PAWN_PST[chess.D2] == tables.PAWN_PST[chess.E2] == -20
+    assert tables.PAWN_PST[chess.D7] == tables.PAWN_PST[chess.E7] == 50
+    assert (
+        tables.KNIGHT_PST[chess.A1]
+        == tables.KNIGHT_PST[chess.H1]
+        == tables.KNIGHT_PST[chess.A8]
+        == tables.KNIGHT_PST[chess.H8]
+        == -50
+    )
+    assert (
+        tables.KING_EG_PST[chess.D4]
+        == tables.KING_EG_PST[chess.E4]
+        == tables.KING_EG_PST[chess.D5]
+        == tables.KING_EG_PST[chess.E5]
+        == 40
+    )
+    assert tables.KING_EG_PST[chess.B1] == -30
+    assert tables.KING_EG_PST[chess.B8] == -40
