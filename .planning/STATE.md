@@ -5,14 +5,14 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: minimal-uci-engine-evaluator-seam
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-07-05T20:19:01.490Z"
-last_activity: 2026-07-05
+stopped_at: Completed 01-03-PLAN.md (resumed after session-limit interruption mid-Task-3)
+last_updated: "2026-07-07T10:54:50.719Z"
+last_activity: 2026-07-07
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-07-05)
 ## Current Position
 
 Phase: 01 (minimal-uci-engine-evaluator-seam) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-07-05
+Last activity: 2026-07-07
 
 Progress: [██░░░░░░░░] 17%
 
@@ -56,6 +56,7 @@ Progress: [██░░░░░░░░] 17%
 *Updated after each plan completion*
 | Phase 01 P01 | 20min | 3 tasks | 12 files |
 | Phase 01-minimal-uci-engine-evaluator-seam P02 | 9min | 3 tasks | 6 files |
+| Phase 01 P03 | 35min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 01]: quit performs a bounded (2s) join() on the daemon worker thread before sys.exit(0), closing a race where an immediate exit could kill the worker before it prints its bestmove line
 - [Phase 01]: Position adapter's moves-list failure leaves the board at the just-set valid startpos/fen base, not the pre-command board — try_push_uci_moves never partially commits, so this remains a fully-defined non-corrupting state; matches plan wording
 - [Phase 01]: setoption/ponder/ponderhit have explicit no-op handlers rather than relying on the generic unknown-token skip — cross-AI review finding; forward-compatible with a real setoption handler in v2 without risking dispatcher misparse
+- [Phase 01]: search_generation gating: a monotonic counter bumped before preemption (not join() timing) is the single correctness mechanism gating send_bestmove for overlapping go commands
+- [Phase 01]: DEFAULT_DEPTH=3 confirmed via test suite to keep a bare go under 1.0s with MaterialEval in pure Python
 
 ### Pending Todos
 
@@ -91,6 +94,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-05T20:19:01.484Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-07-07T10:54:32.742Z
+Stopped at: Completed 01-03-PLAN.md (resumed after session-limit interruption mid-Task-3)
 Resume file: None

@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Swapping the evaluator behind the `evaluate(position)->cp` seam (side-to-move relative) changes only the eval — no search-side change is required.
   5. `position fen <malformed>` is rejected without crashing, and `ucinewgame` resets per-game state cleanly.
 
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -58,7 +58,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Evaluator seam (Evaluator Protocol) + fixed-depth negamax substrate; full go depth/movetime/infinite/stop/quit handling with tie-break RNG and bestmove (none)
+- [x] 01-03-PLAN.md — Evaluator seam (Evaluator Protocol) + fixed-depth negamax substrate; full go depth/movetime/infinite/stop/quit handling with tie-break RNG and bestmove (none)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Minimal UCI Engine & Evaluator Seam | 2/6 | In Progress|  |
+| 1. Minimal UCI Engine & Evaluator Seam | 3/6 | In Progress|  |
 | 2. Core Alpha-Beta Search | 0/TBD | Not started | - |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
