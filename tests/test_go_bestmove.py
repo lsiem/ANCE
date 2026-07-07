@@ -96,6 +96,21 @@ def test_bare_go_uses_default_depth_and_completes_under_a_second(engine):
     assert elapsed < 1.0, f"bare go took {elapsed:.3f}s, expected under 1.0s"
 
 
+def test_bare_go_completes_under_a_second_with_handcrafted_eval(engine):
+    """Plan 01-04 Task 3 (cross-AI review's other HIGH-consensus finding):
+    re-runs the exact benchmark above now that `HandcraftedEval` -- with
+    its extra `legal_moves`/null-move mobility calls at every leaf -- is
+    wired in as the engine's real default evaluator, not the cheap
+    bootstrap `MaterialEval` the benchmark above originally ran against.
+    """
+    start = time.perf_counter()
+    engine.send("go")
+    line = engine.read_line(timeout=1.0)
+    elapsed = time.perf_counter() - start
+    _assert_bestmove(line)
+    assert elapsed < 1.0, f"bare go took {elapsed:.3f}s, expected under 1.0s"
+
+
 def test_go_movetime_aborts_promptly(engine):
     engine.send("go movetime 200")
     line = engine.read_line(timeout=1.0)

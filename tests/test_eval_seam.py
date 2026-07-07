@@ -17,7 +17,12 @@ import chess
 
 from ance.board.position import Position
 from ance.eval import tables
-from ance.eval.handcrafted import HandcraftedEval, _is_endgame, _material_and_pst
+from ance.eval.handcrafted import (
+    TEMPO_BONUS,
+    HandcraftedEval,
+    _is_endgame,
+    _material_and_pst,
+)
 from ance.eval.material import PIECE_VALUES, MaterialEval, NaiveEval
 from ance.search.negamax import search_root
 
@@ -188,3 +193,92 @@ def test_king_table_switches_to_endgame_below_threshold() -> None:
         _material_and_pst(mg_forcing, chess.WHITE) - pawn_subtotal - queens_subtotal
     )
     assert mg_king_contribution == tables.KING_MG_PST[chess.E1]
+
+
+# --- Plan 01-04 Task 3: positional terms, wiring, swap-seam reinforcement,
+# --- post-wiring performance re-benchmark ---------------------------------
+
+
+def test_startpos_evaluates_to_exact_tempo_bonus() -> None:
+    # Material, PST, mobility, and bishop-pair all cancel by symmetry on
+    # move one -- only the side-to-move tempo term survives.
+    pos = Position()
+    assert HandcraftedEval().evaluate(pos) == TEMPO_BONUS
+
+
+def test_bishop_pair_bonus_applied() -> None:
+    two_bishops_fen = "4k3/8/8/8/8/2B1B3/8/4K3 w - - 0 1"
+    one_bishop_fen = "4k3/8/8/8/8/4B3/8/4K3 w - - 0 1"
+
+    two_bishops_score = HandcraftedEval().evaluate(Position(chess.Board(two_bishops_fen)))
+    one_bishop_score = HandcraftedEval().evaluate(Position(chess.Board(one_bishop_fen)))
+
+    assert two_bishops_score > one_bishop_score
+
+
+def test_doubled_and_isolated_pawn_penalty() -> None:
+    # Both white pawns doubled AND isolated on the d-file.
+    doubled_isolated_fen = "4k3/8/8/8/3P4/8/3P4/4K3 w - - 0 1"
+    # Same pawn count, spread across adjacent (mutually-supporting, hence
+    # non-isolated) files, no doubling.
+    distinct_supported_fen = "4k3/8/8/8/3P4/8/2P5/4K3 w - - 0 1"
+
+    doubled_isolated_score = HandcraftedEval().evaluate(
+        Position(chess.Board(doubled_isolated_fen))
+    )
+    distinct_supported_score = HandcraftedEval().evaluate(
+        Position(chess.Board(distinct_supported_fen))
+    )
+
+    assert doubled_isolated_score < distinct_supported_score
+
+
+def test_mobility_term_rewards_more_legal_moves() -> None:
+    # White queen in the open (d5) vs. boxed into a corner by its own
+    # pawns (a1) -- clearly more legal moves in the open position, all
+    # else (both kings) equal.
+    open_fen = "7k/8/8/3Q4/8/8/8/7K w - - 0 1"
+    boxed_fen = "7k/8/8/8/8/8/PP6/QP5K w - - 0 1"
+
+    open_score = HandcraftedEval().evaluate(Position(chess.Board(open_fen)))
+    boxed_score = HandcraftedEval().evaluate(Position(chess.Board(boxed_fen)))
+
+    assert open_score > boxed_score
+
+
+def test_mobility_term_no_crash_when_side_to_move_in_check() -> None:
+    # White king e1 in check from a rook on a1 -- a null move is illegal
+    # here, so the opponent-mobility sub-term must fall back to 0 instead
+    # of pushing chess.Move.null() while the side to move is in check.
+    fen = "4k3/8/8/8/8/8/8/r3K3 w - - 0 1"
+    pos = Position(chess.Board(fen))
+    score = HandcraftedEval().evaluate(pos)
+    assert isinstance(score, int)
+
+
+def test_evaluator_swap_handcrafted_vs_material_no_negamax_change() -> None:
+    pos = Position()
+    material_move = search_root(
+        pos.copy(),
+        depth=2,
+        evaluator=MaterialEval(),
+        stop_flag=_never_stop(),
+        rng=random.Random(0),
+    )
+    handcrafted_move = search_root(
+        pos.copy(),
+        depth=2,
+        evaluator=HandcraftedEval(),
+        stop_flag=_never_stop(),
+        rng=random.Random(0),
+    )
+    assert material_move in pos.board.legal_moves
+    assert handcrafted_move in pos.board.legal_moves
+
+    source = Path("ance/search/negamax.py").read_text()
+    non_comment_source = "\n".join(
+        line for line in source.splitlines() if not line.strip().startswith("#")
+    )
+    assert "HandcraftedEval" not in non_comment_source
+    assert "MaterialEval" not in non_comment_source
+    assert "NaiveEval" not in non_comment_source
