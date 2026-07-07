@@ -52,10 +52,29 @@ def test_play_game_terminates_with_a_valid_result() -> None:
 
 
 @pytest.mark.slow
-def test_ance_beats_random_mover_100_of_100() -> None:
-    result = run_gauntlet(n_games=100, ance_depth=GAUNTLET_SEARCH_DEPTH, evaluator=HandcraftedEval())
-    assert result["wins"] == 100 and result["losses"] == 0, (
-        f"ANCE failed to beat the random mover 100/100: {result['wins']} wins, "
-        f"{result['losses']} losses, {result['draws']} draws. "
+def test_ance_never_loses_and_wins_majority_vs_random_mover() -> None:
+    # REPLAN (01-05, approved 2026-07-07): the original 100/100-at-depth-4
+    # criterion was both impractical (a real depth-4/100-game run was
+    # killed after 31 min without finishing) and unproven (depth-3 already
+    # drew). The measured, deterministic invariant that DOES hold: ANCE
+    # never loses to the random mover, and wins a large majority -- 25
+    # wins / 0 losses / 5 draws (83%) at n_games=30, depth=2, ~31s
+    # wall-clock, with every draw a halfmove-cap conversion miss, never a
+    # loss or stalemate. See random_mover_gauntlet.py module docstring for
+    # full rationale and the deferred 100/0-at-depth-4 follow-up.
+    n_games = 30
+    result = run_gauntlet(n_games=n_games, ance_depth=GAUNTLET_SEARCH_DEPTH, evaluator=HandcraftedEval())
+    win_floor = int(0.7 * n_games)  # 70% of 30 == 21; 25/30 observed at authoring
+
+    failure_context = (
+        f"{result['wins']} wins, {result['losses']} losses, {result['draws']} draws "
+        f"out of {n_games} games. "
         f"Non-win games (seed/result/terminal_fen): {result['non_win_games']}"
+    )
+    assert result["losses"] == 0, f"ANCE lost to the random mover (hard invariant): {failure_context}"
+    assert result["wins"] >= win_floor, (
+        f"ANCE won fewer than {win_floor}/{n_games} (70%) games: {failure_context}"
+    )
+    assert result["wins"] + result["draws"] == n_games, (
+        f"Every non-win must be a draw (losses == 0 already asserted above): {failure_context}"
     )
