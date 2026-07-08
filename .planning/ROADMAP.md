@@ -23,7 +23,7 @@ rigorous ≥1000-game gauntlet.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game and beats a random mover 100/100 (completed 2026-07-08)
+- [x] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game (validated live in En Croissant) and never loses to a random mover (0 losses, ≥70% wins — replanned 2026-07-07) (completed 2026-07-08)
 - [ ] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess
 - [ ] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness
 - [ ] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights
