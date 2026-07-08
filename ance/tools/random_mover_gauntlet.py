@@ -97,7 +97,9 @@ def play_game(
 
     while not pos.board.is_game_over() and halfmoves < max_halfmoves:
         if pos.board.turn == ance_color:
-            move = search_root(pos, ance_depth, ance_evaluator, threading.Event(), random.Random(seed))
+            move = search_root(
+                pos, ance_depth, ance_evaluator, threading.Event()
+            ).best_move
         else:
             move = RandomMover(seed).choose(pos.board)
         if move is None:

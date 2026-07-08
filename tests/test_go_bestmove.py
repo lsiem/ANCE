@@ -41,9 +41,8 @@ FOOLS_MATE_FEN = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"
 def seeded_engine() -> Iterator[EngineProcess]:
     """Same subprocess wiring as `tests.conftest.engine`, but with
     `ANCE_SEED=42` forced into the child's environment -- needed only by
-    `test_ucinewgame_reseeds_tie_break_rng` (D-17), which must control the
-    tie-break RNG's exact seed to make the "reseed reproduces the same
-    draw" assertion deterministic rather than a flaky 1-in-20 coincidence.
+    `test_ucinewgame_produces_deterministic_bestmove` (D-10), which asserts
+    the engine picks the same root move on repeated startpos depth-1 searches.
     """
     env = {k: v for k, v in os.environ.items() if k != "ANCE_DEBUG"}
     env["ANCE_SEED"] = "42"
@@ -150,7 +149,7 @@ def test_zero_legal_move_position_returns_bestmove_none(engine):
     assert line == "bestmove (none)"
 
 
-def test_ucinewgame_reseeds_tie_break_rng(seeded_engine):
+def test_ucinewgame_produces_deterministic_bestmove(seeded_engine):
     engine = seeded_engine
     engine.send("go depth 1")
     first = engine.read_line(timeout=2.0)
@@ -161,11 +160,9 @@ def test_ucinewgame_reseeds_tie_break_rng(seeded_engine):
     second = engine.read_line(timeout=2.0)
     _assert_bestmove(second)
 
-    # At depth 1 every one of the startpos's 20 legal first moves is a
-    # non-capture, so MaterialEval scores them all 0 -- the choice is
-    # determined entirely by rng.choice's current draw state. A collision
-    # without a genuine reseed is a 1/20 chance, making this a reliable
-    # deterministic check, not a flaky statistical one.
+    # D-10: root tie-break is deterministic (first-best-found), not RNG-driven.
+    # After ucinewgame resets to startpos, the same depth-1 search picks the
+    # same first legal move every time.
     assert first == second
 
 
@@ -236,11 +233,17 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
 
     release = threading.Event()
 
-    def blocking_search_root(pos, depth, evaluator, stop_flag, rng):
+    from ance.search.types import SearchResult
+
+    def blocking_search_root(pos, max_depth, evaluator, stop_flag, **kwargs):
         # Simulates a worker still finishing (blocked) when a new `go` has
         # already arrived and moved search_generation on.
         release.wait(timeout=2.0)
-        return chess.Move.from_uci("e2e4")
+        return SearchResult(
+            best_move=chess.Move.from_uci("e2e4"),
+            score=0,
+            depth=max_depth,
+        )
 
     monkeypatch.setattr(loop_module, "search_root", blocking_search_root)
 
@@ -254,7 +257,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "search_generation", 1)
     runner = threading.Thread(
         target=loop_module._run_search,
-        args=(pos, 1, evaluator, threading.Event(), random.Random(0), False, None, 1),
+        args=(pos, 1, evaluator, threading.Event(), False, None, 1),
     )
     runner.start()
     time.sleep(0.05)  # let the runner enter blocking_search_root first
@@ -271,7 +274,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "search_generation", 5)
     runner2 = threading.Thread(
         target=loop_module._run_search,
-        args=(pos, 1, evaluator, threading.Event(), random.Random(0), False, None, 5),
+        args=(pos, 1, evaluator, threading.Event(), False, None, 5),
     )
     runner2.start()
     time.sleep(0.05)

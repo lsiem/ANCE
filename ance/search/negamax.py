@@ -1,133 +1,148 @@
-"""Fixed-depth negamax (D-01) -- the minimal move-selection substrate that
-exercises the Evaluator seam (D-00a) before Phase 2 layers alpha-beta,
-quiescence, and iterative deepening onto this exact skeleton. No pruning,
-no move ordering -- every legal move at every ply is searched in full.
+"""Fail-soft alpha-beta negamax with ply-adjusted mate scoring (SRCH-02).
 
-**Search remains the sole mate scorer in Phase 1.** A checkmate leaf scores
-a flat ``-(MATE)`` and a stalemate leaf scores ``0``, with no
-ply-adjustment -- the ``±(MATE - ply)`` refinement described in the
-Evaluator Protocol's docstring only matters once mate scores propagate
-through multiple plies via Phase 2's iterative deepening + transposition
-table. No Phase 1 evaluator ever returns a mate score itself. A future
-NNUE-based evaluator must implement mate scoring inside its own
-`evaluate()` if it needs to change this, or accept that search stays the
-sole mate scorer -- a documented Phase 1 tradeoff (cross-AI review), not a
-gap.
+Extends the Phase 1 fixed-depth skeleton with alpha-beta pruning, ply-adjusted
+mate propagation, and deterministic root move selection (D-10). Quiescence,
+iterative deepening, and draw detection land in later Phase 2 plans.
 
 This module imports only the `Evaluator` Protocol from `ance.eval.base` --
-never any concrete evaluator class. `tests/test_eval_seam.py`'s
-structural swap-seam test proves this by reading this file's source text
-and asserting no concrete evaluator class name appears in it.
+never any concrete evaluator class.
 """
 
 from __future__ import annotations
 
-import random
 import threading
 
 import chess
 
 from ance.board.position import Position
 from ance.eval.base import MATE, Evaluator
+from ance.search.types import SearchContext, SearchResult
 
-# Benchmarked (Task 3) to keep a bare `go` well under a second in pure
-# Python with a cheap bootstrap evaluator (D-02, 01-RESEARCH.md Assumption
-# A1). Plan 01-04 Task 3 re-benchmarks once the real, costlier handcrafted
-# evaluator lands and may tune this constant down.
+# Benchmarked to keep a bare `go` well under a second in pure Python with a
+# cheap bootstrap evaluator. Plan 02-04 retunes for iterative deepening.
 DEFAULT_DEPTH = 3
 
-# D-13: sampled polling, not a stop_flag check on every negamax call --
-# checking every node would dominate runtime at these leaf counts for no
-# latency benefit at Phase 1's shallow, fixed depths.
 NODE_POLL_INTERVAL = 2048
 
 
 class SearchAborted(Exception):
     """Raised by `negamax` when a sampled node-count poll finds `stop_flag`
     set. Caught by `search_root`, which returns the best root move found
-    before the abort (D-03)."""
+    before the abort."""
+
+
+def _poll_stop(ctx: SearchContext) -> None:
+    if ctx.counter[0] % NODE_POLL_INTERVAL == 0 and ctx.stop_flag.is_set():
+        raise SearchAborted()
 
 
 def negamax(
     pos: Position,
     depth: int,
-    evaluator: Evaluator,
-    stop_flag: threading.Event,
-    counter: list[int],
+    alpha: int,
+    beta: int,
+    ctx: SearchContext,
 ) -> int:
-    """Returns a centipawn score, side-to-move relative, for `pos` searched
-    `depth` plies deep. `counter[0]` is shared mutable node-visit state
-    across the whole search tree (a one-element list so nested calls all
-    increment the same counter) -- `search_root` owns and resets it per
-    root move.
-    """
-    counter[0] += 1
-    if counter[0] % NODE_POLL_INTERVAL == 0 and stop_flag.is_set():
-        raise SearchAborted()
+    """Fail-soft alpha-beta negamax. Returns centipawns, side-to-move relative."""
+    ctx.counter[0] += 1
+    _poll_stop(ctx)
 
     moves = pos.legal_moves()
     if not moves:
-        # Checkmate vs. stalemate -- the only two zero-legal-move states
-        # reachable by a legal move sequence (Position.has_no_legal_moves).
-        return -MATE if pos.is_check() else 0
+        if pos.is_check():
+            return -(MATE - ctx.ply)
+        return 0
 
     if depth == 0:
-        return evaluator.evaluate(pos)  # THE seam.
+        return ctx.evaluator.evaluate(pos)
 
     best = -MATE - 1
     board = pos.board
+    child_ply = ctx.ply + 1
     for move in moves:
         board.push(move)
         try:
-            score = -negamax(pos, depth - 1, evaluator, stop_flag, counter)
+            score = -negamax(
+                pos,
+                depth - 1,
+                -beta,
+                -alpha,
+                SearchContext(
+                    stop_flag=ctx.stop_flag,
+                    counter=ctx.counter,
+                    evaluator=ctx.evaluator,
+                    ply=child_ply,
+                    path_keys=ctx.path_keys,
+                    game_history_keys=ctx.game_history_keys,
+                    deadline=ctx.deadline,
+                    max_depth=ctx.max_depth,
+                    info_callback=ctx.info_callback,
+                ),
+            )
         finally:
             board.pop()
         if score > best:
             best = score
+        if score >= beta:
+            return score
+        if score > alpha:
+            alpha = score
     return best
 
 
 def search_root(
     pos: Position,
-    depth: int,
+    max_depth: int,
     evaluator: Evaluator,
     stop_flag: threading.Event,
-    rng: random.Random,
-) -> chess.Move | None:
-    """Returns the chosen root move, or `None` on zero legal moves (the UCI
-    layer converts that to `bestmove (none)`, D-12 -- this function never
-    decides the wire format itself). Checks `stop_flag` at the start of
-    every root-move iteration (D-13's "at each root move" half) and
-    collects every move tying for the best score into `best_moves`,
-    returning a uniform random choice among them (D-04) for reproducible-
-    with-a-seed variety against a random-mover opponent.
-    """
+    *,
+    deadline: float | None = None,
+) -> SearchResult:
+    """Fixed-depth root search. Returns SearchResult with deterministic ties (D-10)."""
     if pos.has_no_legal_moves():
-        return None
+        return SearchResult(best_move=None, score=0, depth=max_depth, pv=[], nodes=0)
 
     moves = pos.legal_moves()
-    best_moves: list[chess.Move] = []
+    best_move: chess.Move | None = None
     best_score = -MATE - 1
     counter = [0]
     board = pos.board
+
     for move in moves:
         if stop_flag.is_set():
-            break  # D-03: return best-so-far.
+            break
         board.push(move)
         try:
-            score = -negamax(pos, depth - 1, evaluator, stop_flag, counter)
+            ctx = SearchContext(
+                stop_flag=stop_flag,
+                counter=counter,
+                evaluator=evaluator,
+                ply=1,
+                path_keys=[],
+                game_history_keys=set(),
+                deadline=deadline,
+                max_depth=max_depth,
+            )
+            score = -negamax(pos, max_depth - 1, -MATE - 1, MATE + 1, ctx)
         except SearchAborted:
-            board.pop()
             break
-        board.pop()
-        if score > best_score:
-            best_score, best_moves = score, [move]
-        elif score == best_score:
-            best_moves.append(move)
+        finally:
+            if board.move_stack:
+                board.pop()
 
-    if best_moves:
-        return rng.choice(best_moves)
-    # Aborted before evaluating a single root move -- fall back to the
-    # first legal move rather than returning None (moves is non-empty here
-    # since has_no_legal_moves() already returned False above).
-    return moves[0]
+        if score > best_score:
+            best_score = score
+            best_move = move
+
+    if best_move is None:
+        best_move = moves[0]
+        if best_score == -MATE - 1:
+            best_score = 0
+
+    return SearchResult(
+        best_move=best_move,
+        score=best_score,
+        depth=max_depth,
+        pv=[best_move] if best_move is not None else [],
+        nodes=counter[0],
+    )

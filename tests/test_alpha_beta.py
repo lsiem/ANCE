@@ -74,7 +74,7 @@ def test_stalemate_scores_zero_at_terminal() -> None:
 
 
 def test_alpha_beta_visits_fewer_nodes_than_unpruned() -> None:
-    fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK1R w KQkq - 4 4"
+    fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
     pos = Position(chess.Board(fen))
     evaluator = MaterialEval()
 

@@ -32,8 +32,6 @@ a `finally` block on every exit path -- so a stale timer from an earlier
 
 from __future__ import annotations
 
-import os
-import random
 import sys
 import threading
 
@@ -67,9 +65,6 @@ movetime_timer: threading.Timer | None = None
 # terms (D-05/D-06), replacing Plan 01-03's bootstrap MaterialEval.
 evaluator: Evaluator = HandcraftedEval()
 
-# Seedable tie-break RNG (D-04); reseeded by handle_ucinewgame (D-17).
-rng = random.Random(int(os.environ.get("ANCE_SEED", "0")))
-
 
 def _stop_active_worker(timeout: float = 0.5) -> None:
     """Stop -> join -> clear -> cancel-timer. The cross-AI review's HIGH-
@@ -99,7 +94,6 @@ def _run_search(
     depth: int,
     evaluator_: Evaluator,
     stop_flag_: threading.Event,
-    rng_: random.Random,
     infinite: bool,
     timer: threading.Timer | None,
     my_generation: int,
@@ -117,7 +111,8 @@ def _run_search(
     global movetime_timer
     move = None
     try:
-        move = search_root(pos, depth, evaluator_, stop_flag_, rng_)
+        result = search_root(pos, max_depth=depth, evaluator=evaluator_, stop_flag=stop_flag_)
+        move = result.best_move
         if infinite:
             stop_flag_.wait()
     finally:
@@ -171,7 +166,6 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
             depth,
             evaluator,
             stop_flag,
-            rng,
             cmd.infinite,
             timer,
             my_generation,
@@ -223,10 +217,9 @@ def handle_position(pos: Position, tokens: list[str]) -> None:
 def handle_ucinewgame(pos: Position) -> None:
     # No-op reset of per-game state in M1 (D-17) -- no TT/history exists
     # yet. Stops/joins any active worker first (same D-13 flush contract as
-    # handle_position), resets the board, and reseeds the tie-break RNG.
+    # handle_position), resets the board.
     _stop_active_worker()
     pos.try_set_startpos()
-    rng.seed(int(os.environ.get("ANCE_SEED", "0")))
 
 
 def handle_setoption(tokens: list[str]) -> None:
