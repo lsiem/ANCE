@@ -14,6 +14,7 @@ import re
 
 from ance.board.position import Position
 from tests.conftest import send_lines
+from tests.test_go_bestmove import _read_bestmove
 
 BESTMOVE_RE = re.compile(r"^bestmove ([a-h][1-8][a-h][1-8][qrbn]?|\(none\))$")
 
@@ -77,8 +78,7 @@ def test_malformed_fen_rejected_board_unchanged(engine):
     )
     line = engine.read_line(timeout=2.0)
     assert line.startswith("info string"), f"expected info string, got: {line!r}"
-    line = engine.read_line(timeout=2.0)
-    assert BESTMOVE_RE.match(line), f"unexpected line: {line!r}"
+    line = _read_bestmove(engine, timeout=2.0)
     # A legal black reply proves the board is still at "startpos + e2e4",
     # not corrupted/reset by the malformed second `position` command (D-10).
     move_uci = line.split()[1]
@@ -102,8 +102,7 @@ def test_ucinewgame_resets_board_to_startpos(engine):
             "go depth 1",
         ],
     )
-    line = engine.read_line(timeout=2.0)
-    assert BESTMOVE_RE.match(line), f"unexpected line: {line!r}"
+    line = _read_bestmove(engine, timeout=2.0)
     move_uci = line.split()[1]
     # The king-only endgame FEN's only legal moves all originate from a1
     # (the lone white king). A startpos-reset bestmove can never originate

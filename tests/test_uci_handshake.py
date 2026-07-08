@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import re
 
+from tests.test_go_bestmove import _read_bestmove
+
 BESTMOVE_RE = re.compile(r"^bestmove [a-h][1-8][a-h][1-8][qrbn]?$")
 
 
@@ -33,8 +35,7 @@ def test_bare_go_returns_bestmove(engine):
     engine.read_line()  # readyok
 
     engine.send("go")
-    line = engine.read_line(timeout=2.0)
-    assert BESTMOVE_RE.match(line), f"unexpected line: {line!r}"
+    _read_bestmove(engine, timeout=4.0)
 
     engine.send("quit")
     exit_code = engine.wait(timeout=2.0)

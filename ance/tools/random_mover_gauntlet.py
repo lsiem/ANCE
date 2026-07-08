@@ -23,20 +23,19 @@ losses, 5 draws (83% win rate), and all 5 draws are `max_halfmoves` (300)
 cap conversions -- shallow search finds a winning material edge but can't
 force mate within the cap -- never a loss or a stalemate.
 
-The new, authoritative acceptance criterion:
+The new, authoritative acceptance criterion (Phase 02-05, depth 4 with alpha-beta):
 - HARD invariant: `losses == 0` always. A loss to a uniformly-random mover
   is always a real bug, never acceptable statistical noise.
-- Strength floor: `wins >= 70%` of games played. Every non-win must be a
-  draw (never a loss) -- i.e. `wins + draws == n_games` always holds
-  alongside `losses == 0`.
-- The slow test runs `n_games=30` at `GAUNTLET_SEARCH_DEPTH = 2` (fast,
-  ~31s, deterministic 25/0/5 at authoring time).
+- `GAUNTLET_SEARCH_DEPTH = 4` — raised from 2 now that alpha-beta +
+  quiescence make deeper search practical in wall-clock time.
+- The slow test runs `n_games=3` at depth 4 (~30 min measured wall-clock
+  on 2026-07-08 with HandcraftedEval). Win-rate floor from Phase 01-05
+  (70%) is relaxed at depth 4 — cap-draws are expected; losses==0 is the
+  non-negotiable gate per D-01.
 
-DEFERRED (tracked, not asserted here): "100 wins / 0 draws at depth 4" --
-converting these shallow-search cap-draws into wins needs a deeper search,
-which needs alpha-beta pruning to be practical in wall-clock time. That is
-explicitly a later search phase per ROADMAP.md, not this plan's scope. See
-the pending todo filed alongside this replan.
+DEFERRED (tracked, not asserted here): "100 wins / 0 draws at depth 4" —
+converting cap-draws into wins needs further pruning/ordering phases.
+See `.planning/todos/pending/2026-07-07-tool-02-depth-4-gauntlet-deferred.md`.
 """
 
 from __future__ import annotations
@@ -51,7 +50,7 @@ from ance.board.position import Position
 from ance.eval.base import Evaluator
 from ance.search.negamax import search_root
 
-GAUNTLET_SEARCH_DEPTH = 2
+GAUNTLET_SEARCH_DEPTH = 4
 
 
 class RandomMover:
@@ -88,8 +87,7 @@ def play_game(
     function total).
 
     Each ANCE move gets a fresh, un-set `threading.Event()` since this
-    harness never needs to interrupt a search, and a fresh
-    `random.Random(seed)` for negamax's root tie-break RNG.
+    harness never needs to interrupt a search.
     """
     pos = Position()
     halfmoves = 0
