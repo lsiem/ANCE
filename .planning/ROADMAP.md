@@ -83,7 +83,28 @@ Plans:
   4. The engine detects threefold repetition and the 50-move rule inside search and does not repeat or draw a won position.
   5. Terminal nodes score correctly (checkmate = −(MATE−ply), stalemate = 0, negamax sign correct) and deeper search never plays measurably worse.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Fail-soft alpha-beta negamax, ply-adjusted mate scoring, SearchResult types, deterministic root (SRCH-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Quiescence search: captures + queen promos, stand-pat + delta pruning, MVV-LVA in qsearch only (SRCH-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-03-PLAN.md — Iterative deepening, twofold/50-move/insufficient-material draw detection (SRCH-03, SRCH-07)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-04-PLAN.md — UCI info lines per completed depth, bare-go movetime budget, go infinite until stop (UCI-11)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-05-PLAN.md — Tactical/mate-in-N tests, folded depth-4 gauntlet, depth-vs-depth strength proof (D-01, D-13, D-14)
 
 ### Phase 3: Search Acceleration & Time Management
 
@@ -140,7 +161,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
-| 2. Core Alpha-Beta Search | 0/TBD | Not started | - |
+| 2. Core Alpha-Beta Search | 0/5 | Planned | - |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |
