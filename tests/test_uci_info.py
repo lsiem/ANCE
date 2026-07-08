@@ -8,7 +8,7 @@ import time
 import pytest
 
 from tests.conftest import EngineProcess, send_lines
-from tests.test_go_bestmove import BESTMOVE_RE, _assert_bestmove
+from tests.test_go_bestmove import BESTMOVE_RE, _assert_bestmove, _read_bestmove
 
 INFO_DEPTH_RE = re.compile(
     r"^info depth (\d+) score (cp (-?\d+)|mate (-?\d+)) nodes (\d+) nps (\d+) pv (.*)$"
@@ -93,7 +93,4 @@ def test_go_infinite_responds_to_stop_without_hang(engine: EngineProcess) -> Non
     time.sleep(0.15)
     stop_sent = time.perf_counter()
     engine.send("stop")
-    line = engine.read_line(timeout=2.0)
-    elapsed = time.perf_counter() - stop_sent
-    _assert_bestmove(line)
-    assert elapsed < 2.0
+    _read_bestmove(engine, timeout=2.0)

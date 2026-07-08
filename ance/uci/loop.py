@@ -34,16 +34,19 @@ from __future__ import annotations
 
 import sys
 import threading
+import time
 
 import ance.debug as debug
 from ance.board.position import Position
 from ance.eval.base import Evaluator
 from ance.eval.handcrafted import HandcraftedEval
-from ance.search.negamax import DEFAULT_DEPTH, search_root
+from ance.search.negamax import search_root
+from ance.search.types import DEFAULT_BARE_GO_MOVETIME_MS, MAX_PLY, SearchResult
 from ance.uci.parser import GoCommand, parse_go, parse_position, tokenize
 from ance.uci.protocol import (
     send_bestmove,
     send_id,
+    send_info_depth,
     send_info_string,
     send_readyok,
     send_uciok,
@@ -89,32 +92,39 @@ def _stop_active_worker(timeout: float = 0.5) -> None:
         movetime_timer = None
 
 
+def _emit_info(result: SearchResult, nps: int) -> None:
+    send_info_depth(
+        result.depth,
+        result.score,
+        result.nodes,
+        nps,
+        [move.uci() for move in result.pv],
+    )
+
+
 def _run_search(
     pos: Position,
-    depth: int,
+    max_depth: int,
     evaluator_: Evaluator,
     stop_flag_: threading.Event,
-    infinite: bool,
     timer: threading.Timer | None,
     my_generation: int,
+    deadline: float | None,
 ) -> None:
-    """Runs on the daemon worker thread. Calls `search_root` exactly once;
-    `go infinite` (D-16) additionally idles on `stop_flag_.wait()` *after*
-    the search completes, holding the result until `stop` arrives. The
-    `finally` block cancels `timer` on every exit path (normal completion,
-    an infinite wait woken by `stop`, or an exception) so a movetime
-    deadline can never outlive the search it belongs to. `send_bestmove` is
-    only reached if `my_generation` still equals the current
-    `search_generation` -- a superseded worker's result is dropped and
-    logged instead.
-    """
+    """Runs on the daemon worker thread. Iterative-deepening search until
+    stop, deadline, or max_depth. Emits one info line per completed depth."""
     global movetime_timer
     move = None
     try:
-        result = search_root(pos, max_depth=depth, evaluator=evaluator_, stop_flag=stop_flag_)
+        result = search_root(
+            pos,
+            max_depth=max_depth,
+            evaluator=evaluator_,
+            stop_flag=stop_flag_,
+            deadline=deadline,
+            info_callback=_emit_info,
+        )
         move = result.best_move
-        if infinite:
-            stop_flag_.wait()
     finally:
         if timer is not None:
             timer.cancel()
@@ -150,7 +160,14 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
     my_generation = search_generation
     _stop_active_worker()
 
-    depth = cmd.depth if cmd.depth is not None else DEFAULT_DEPTH
+    depth = cmd.depth if cmd.depth is not None else MAX_PLY
+    deadline: float | None = None
+    if cmd.infinite:
+        deadline = None
+    elif cmd.depth is None and cmd.movetime is None:
+        deadline = time.monotonic() + DEFAULT_BARE_GO_MOVETIME_MS / 1000
+    elif cmd.movetime is not None:
+        depth = MAX_PLY
 
     timer: threading.Timer | None = None
     if cmd.movetime is not None:
@@ -166,9 +183,9 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
             depth,
             evaluator,
             stop_flag,
-            cmd.infinite,
             timer,
             my_generation,
+            deadline,
         ),
         daemon=True,
     )

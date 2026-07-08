@@ -41,3 +41,27 @@ def send_bestmove(move_uci: str | None) -> None:
 
 def send_info_string(message: str) -> None:
     print(f"info string {message}", flush=True)
+
+
+def send_info_depth(
+    depth: int,
+    score: int,
+    nodes: int,
+    nps: int,
+    pv_uci: list[str],
+) -> None:
+    """Emit one completed-depth info line (D-11)."""
+    from ance.eval.base import MATE
+    from ance.search.types import MAX_PLY
+
+    if abs(score) >= MATE - MAX_PLY:
+        mate_distance = MATE - abs(score)
+        mate_score = mate_distance if score > 0 else -mate_distance
+        score_part = f"score mate {mate_score}"
+    else:
+        score_part = f"score cp {score}"
+    pv_part = " ".join(pv_uci)
+    print(
+        f"info depth {depth} {score_part} nodes {nodes} nps {nps} pv {pv_part}",
+        flush=True,
+    )

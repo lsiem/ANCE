@@ -282,7 +282,7 @@ def _search_at_depth(
         score=best_score,
         depth=depth,
         pv=[best_move] if best_move is not None else [],
-        nodes=counter[0] - nodes_at_start,
+        nodes=counter[0],
     )
     if info_callback is not None:
         elapsed_ms = max(int((time.monotonic() - start_time) * 1000), 1)

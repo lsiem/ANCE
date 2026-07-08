@@ -69,6 +69,35 @@ def _assert_bestmove(line: str) -> str:
     return line
 
 
+def _read_bestmove(engine: EngineProcess, timeout: float = 5.0) -> str:
+    """Read stdout until a bestmove line, skipping intervening info lines."""
+    deadline = time.perf_counter() + timeout
+    while True:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            pytest.fail(f"timed out waiting for bestmove within {timeout}s")
+        line = engine.read_line(timeout=remaining)
+        if line.startswith("bestmove "):
+            return _assert_bestmove(line)
+        if line.startswith("info "):
+            continue
+        pytest.fail(f"unexpected line while waiting for bestmove: {line!r}")
+
+
+def _read_readyok_skipping_info(engine: EngineProcess, timeout: float = 1.0) -> str:
+    deadline = time.perf_counter() + timeout
+    while True:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            pytest.fail(f"timed out waiting for readyok within {timeout}s")
+        line = engine.read_line(timeout=remaining)
+        if line == "readyok":
+            return line
+        if line.startswith("info "):
+            continue
+        pytest.fail(f"unexpected line while waiting for readyok: {line!r}")
+
+
 def _assert_no_further_output(engine: EngineProcess, timeout: float) -> None:
     """Proves *silence* on stdout for `timeout` seconds -- used to prove a
     superseded/stale search never emits a second, stray `bestmove` line.
@@ -82,8 +111,7 @@ def _assert_no_further_output(engine: EngineProcess, timeout: float) -> None:
 
 def test_go_depth_honored(engine):
     engine.send("go depth 2")
-    line = engine.read_line(timeout=5.0)
-    _assert_bestmove(line)
+    _read_bestmove(engine, timeout=5.0)
 
 
 def test_bare_go_uses_movetime_budget_and_completes_within_three_seconds(engine):
@@ -106,24 +134,21 @@ def test_bare_go_completes_within_three_seconds_with_handcrafted_eval(engine):
     """Bare `go` uses the ~2s movetime budget (D-09) with iterative deepening."""
     start = time.perf_counter()
     engine.send("go")
-    line = engine.read_line(timeout=4.0)
+    _read_bestmove(engine, timeout=4.0)
     elapsed = time.perf_counter() - start
-    _assert_bestmove(line)
     assert elapsed < 3.5, f"bare go took {elapsed:.3f}s, expected under 3.5s"
 
 
 def test_go_movetime_aborts_promptly(engine):
     engine.send("go movetime 200")
-    line = engine.read_line(timeout=1.0)
-    _assert_bestmove(line)
+    _read_bestmove(engine, timeout=1.0)
 
 
 def test_go_clock_params_parsed_without_crash(engine):
     engine.send("go wtime 300000 btime 300000 winc 0 binc 0")
-    line = engine.read_line(timeout=2.0)
-    _assert_bestmove(line)
+    _read_bestmove(engine, timeout=4.0)
     engine.send("isready")
-    assert engine.read_line(timeout=1.0) == "readyok"
+    _read_readyok_skipping_info(engine, timeout=1.0)
 
 
 def test_stop_is_prompt_during_go_infinite(engine):
@@ -131,9 +156,8 @@ def test_stop_is_prompt_during_go_infinite(engine):
     time.sleep(0.1)
     stop_sent_at = time.perf_counter()
     engine.send("stop")
-    line = engine.read_line(timeout=1.0)
+    _read_bestmove(engine, timeout=2.0)
     elapsed = time.perf_counter() - stop_sent_at
-    _assert_bestmove(line)
     assert elapsed < 1.0, f"bestmove took {elapsed:.3f}s after stop, expected under 1.0s"
 
 
@@ -147,20 +171,18 @@ def test_quit_never_deadlocks_during_go_infinite(engine):
 
 def test_zero_legal_move_position_returns_bestmove_none(engine):
     send_lines(engine, [f"position fen {FOOLS_MATE_FEN}", "go"])
-    line = engine.read_line(timeout=2.0)
+    line = _read_bestmove(engine, timeout=2.0)
     assert line == "bestmove (none)"
 
 
 def test_ucinewgame_produces_deterministic_bestmove(seeded_engine):
     engine = seeded_engine
     engine.send("go depth 1")
-    first = engine.read_line(timeout=2.0)
-    _assert_bestmove(first)
+    first = _read_bestmove(engine, timeout=2.0)
 
     engine.send("ucinewgame")
     engine.send("go depth 1")
-    second = engine.read_line(timeout=2.0)
-    _assert_bestmove(second)
+    second = _read_bestmove(engine, timeout=2.0)
 
     # D-10: root tie-break is deterministic (first-best-found), not RNG-driven.
     # After ucinewgame resets to startpos, the same depth-1 search picks the
@@ -183,11 +205,10 @@ def test_overlapping_go_yields_two_bestmoves_in_order(engine):
     """
     engine.send("go depth 5")
     engine.send("go depth 1")
-    line = engine.read_line(timeout=3.0)
-    _assert_bestmove(line)
+    _read_bestmove(engine, timeout=3.0)
     _assert_no_further_output(engine, timeout=0.4)
     engine.send("isready")
-    assert engine.read_line(timeout=1.0) == "readyok"
+    _read_readyok_skipping_info(engine, timeout=1.0)
 
 
 def test_position_during_active_search_yields_exactly_one_bestmove_and_stays_responsive(
@@ -196,33 +217,30 @@ def test_position_during_active_search_yields_exactly_one_bestmove_and_stays_res
     engine.send("go movetime 2000")
     time.sleep(0.1)
     engine.send("position startpos moves e2e4")
-    line = engine.read_line(timeout=2.5)
-    _assert_bestmove(line)
+    _read_bestmove(engine, timeout=2.5)
     _assert_no_further_output(engine, timeout=0.4)
     engine.send("isready")
-    assert engine.read_line(timeout=1.0) == "readyok"
+    _read_readyok_skipping_info(engine, timeout=1.0)
 
 
 def test_isready_returns_promptly_during_active_search(engine):
     engine.send("go infinite")
     engine.send("isready")
-    assert engine.read_line(timeout=1.0) == "readyok"
+    _read_readyok_skipping_info(engine, timeout=1.0)
 
 
 def test_ucinewgame_during_active_search(engine):
     engine.send("go movetime 2000")
     time.sleep(0.1)
     engine.send("ucinewgame")
-    line = engine.read_line(timeout=2.5)
-    _assert_bestmove(line)
+    _read_bestmove(engine, timeout=2.5)
     _assert_no_further_output(engine, timeout=0.4)
 
     send_lines(engine, ["position startpos", "go depth 1"])
-    followup = engine.read_line(timeout=2.0)
-    _assert_bestmove(followup)
+    _read_bestmove(engine, timeout=2.0)
 
     engine.send("isready")
-    assert engine.read_line(timeout=1.0) == "readyok"
+    _read_readyok_skipping_info(engine, timeout=1.0)
 
 
 def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
@@ -290,9 +308,8 @@ def test_go_movetime_timer_cancelled_on_preemption_does_not_stop_next_search(eng
     engine.send("go movetime 2000")
     engine.send("go depth 1")
     start = time.perf_counter()
-    line = engine.read_line(timeout=1.0)
+    _read_bestmove(engine, timeout=2.0)
     elapsed = time.perf_counter() - start
-    _assert_bestmove(line)
     assert elapsed < 1.0, f"second bestmove took {elapsed:.3f}s, expected well under 1.0s"
     # No further, unexpected bestmove line should follow later (e.g. around
     # the ~2s mark where the first search's stale timer would otherwise
@@ -302,11 +319,10 @@ def test_go_movetime_timer_cancelled_on_preemption_does_not_stop_next_search(eng
 
 def test_go_movetime_short_timer_cancelled_before_next_search_completes(engine):
     engine.send("go movetime 100")
-    start = time.perf_counter()
     engine.send("go depth 3")
-    line = engine.read_line(timeout=2.0)
+    start = time.perf_counter()
+    _read_bestmove(engine, timeout=2.0)
     elapsed = time.perf_counter() - start
-    _assert_bestmove(line)
     # If the first search's 100ms timer had bled its stop_flag.set() into
     # this second search, it would have aborted suspiciously close to the
     # 100ms mark instead of running depth 3 to its natural (noticeably
