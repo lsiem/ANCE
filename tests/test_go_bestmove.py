@@ -86,28 +86,30 @@ def test_go_depth_honored(engine):
     _assert_bestmove(line)
 
 
-def test_bare_go_uses_default_depth_and_completes_under_a_second(engine):
+def test_bare_go_uses_movetime_budget_and_completes_within_three_seconds(engine):
     start = time.perf_counter()
     engine.send("go")
-    line = engine.read_line(timeout=1.0)
+    lines = []
+    while True:
+        line = engine.read_line(timeout=4.0)
+        lines.append(line)
+        if line.startswith("bestmove "):
+            break
     elapsed = time.perf_counter() - start
-    _assert_bestmove(line)
-    assert elapsed < 1.0, f"bare go took {elapsed:.3f}s, expected under 1.0s"
+    _assert_bestmove(lines[-1])
+    assert elapsed < 3.5, f"bare go took {elapsed:.3f}s, expected under 3.5s"
+    info_lines = [line for line in lines if line.startswith("info depth ")]
+    assert len(info_lines) >= 1
 
 
-def test_bare_go_completes_under_a_second_with_handcrafted_eval(engine):
-    """Plan 01-04 Task 3 (cross-AI review's other HIGH-consensus finding):
-    re-runs the exact benchmark above now that `HandcraftedEval` -- with
-    its extra `legal_moves`/null-move mobility calls at every leaf -- is
-    wired in as the engine's real default evaluator, not the cheap
-    bootstrap `MaterialEval` the benchmark above originally ran against.
-    """
+def test_bare_go_completes_within_three_seconds_with_handcrafted_eval(engine):
+    """Bare `go` uses the ~2s movetime budget (D-09) with iterative deepening."""
     start = time.perf_counter()
     engine.send("go")
-    line = engine.read_line(timeout=1.0)
+    line = engine.read_line(timeout=4.0)
     elapsed = time.perf_counter() - start
     _assert_bestmove(line)
-    assert elapsed < 1.0, f"bare go took {elapsed:.3f}s, expected under 1.0s"
+    assert elapsed < 3.5, f"bare go took {elapsed:.3f}s, expected under 3.5s"
 
 
 def test_go_movetime_aborts_promptly(engine):
@@ -257,7 +259,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "search_generation", 1)
     runner = threading.Thread(
         target=loop_module._run_search,
-        args=(pos, 1, evaluator, threading.Event(), False, None, 1),
+        args=(pos, 1, evaluator, threading.Event(), None, 1, None),
     )
     runner.start()
     time.sleep(0.05)  # let the runner enter blocking_search_root first
@@ -274,7 +276,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "search_generation", 5)
     runner2 = threading.Thread(
         target=loop_module._run_search,
-        args=(pos, 1, evaluator, threading.Event(), False, None, 5),
+        args=(pos, 1, evaluator, threading.Event(), None, 5, None),
     )
     runner2.start()
     time.sleep(0.05)
