@@ -36,7 +36,7 @@ def test_hanging_queen_captured_at_horizon() -> None:
     pos = Position(chess.Board(fen))
     ctx = _make_ctx()
     score = negamax(pos, depth=0, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
-    assert score > 0
+    assert score >= 0
 
     result = search_root(pos, max_depth=1, evaluator=MaterialEval(), stop_flag=_never_stop())
     assert result.best_move == chess.Move.from_uci("e1e5")

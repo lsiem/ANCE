@@ -1,8 +1,9 @@
 """Fail-soft alpha-beta negamax with ply-adjusted mate scoring (SRCH-02).
 
 Extends the Phase 1 fixed-depth skeleton with alpha-beta pruning, ply-adjusted
-mate propagation, and deterministic root move selection (D-10). Quiescence,
-iterative deepening, and draw detection land in later Phase 2 plans.
+mate propagation, deterministic root move selection (D-10), and quiescence
+search at the horizon (SRCH-04). Iterative deepening and draw detection land
+in later Phase 2 plans.
 
 This module imports only the `Evaluator` Protocol from `ance.eval.base` --
 never any concrete evaluator class.
@@ -18,11 +19,19 @@ from ance.board.position import Position
 from ance.eval.base import MATE, Evaluator
 from ance.search.types import SearchContext, SearchResult
 
-# Benchmarked to keep a bare `go` well under a second in pure Python with a
-# cheap bootstrap evaluator. Plan 02-04 retunes for iterative deepening.
 DEFAULT_DEPTH = 3
-
 NODE_POLL_INTERVAL = 2048
+MAX_QDEPTH = 8
+DELTA_MARGIN = 200
+
+_MVV_LVA = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 320,
+    chess.BISHOP: 330,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 10000,
+}
 
 
 class SearchAborted(Exception):
@@ -34,6 +43,112 @@ class SearchAborted(Exception):
 def _poll_stop(ctx: SearchContext) -> None:
     if ctx.counter[0] % NODE_POLL_INTERVAL == 0 and ctx.stop_flag.is_set():
         raise SearchAborted()
+
+
+def _child_ctx(ctx: SearchContext, ply: int) -> SearchContext:
+    return SearchContext(
+        stop_flag=ctx.stop_flag,
+        counter=ctx.counter,
+        evaluator=ctx.evaluator,
+        ply=ply,
+        path_keys=ctx.path_keys,
+        game_history_keys=ctx.game_history_keys,
+        deadline=ctx.deadline,
+        max_depth=ctx.max_depth,
+        info_callback=ctx.info_callback,
+    )
+
+
+def _capture_value(board: chess.Board, move: chess.Move) -> int:
+    if board.is_en_passant(move):
+        return _MVV_LVA[chess.PAWN]
+    if move.promotion is not None:
+        return _MVV_LVA[move.promotion]
+    piece = board.piece_at(move.to_square)
+    return _MVV_LVA[piece.piece_type] if piece is not None else 0
+
+
+def _mvv_lva_sort(moves: list[chess.Move], board: chess.Board) -> list[chess.Move]:
+    def key(move: chess.Move) -> tuple[int, int]:
+        victim = _capture_value(board, move)
+        attacker_piece = board.piece_at(move.from_square)
+        attacker = _MVV_LVA[attacker_piece.piece_type] if attacker_piece else 0
+        return (victim, -attacker)
+
+    return sorted(moves, key=key, reverse=True)
+
+
+def _qsearch_moves(board: chess.Board, moves: list[chess.Move]) -> list[chess.Move]:
+    noisy: list[chess.Move] = []
+    for move in moves:
+        if board.is_capture(move) or move.promotion == chess.QUEEN:
+            noisy.append(move)
+    return _mvv_lva_sort(noisy, board)
+
+
+def quiescence_search(
+    pos: Position,
+    alpha: int,
+    beta: int,
+    ctx: SearchContext,
+    qdepth: int = 0,
+) -> int:
+    """Stand-pat + capture/queen-promo qsearch with delta pruning (D-02, D-03)."""
+    ctx.counter[0] += 1
+    _poll_stop(ctx)
+
+    if qdepth >= MAX_QDEPTH:
+        return ctx.evaluator.evaluate(pos)
+
+    board = pos.board
+    if pos.is_check():
+        moves = pos.legal_moves()
+        if not moves:
+            return -(MATE - ctx.ply)
+        best = -MATE - 1
+        child_ply = ctx.ply + 1
+        for move in moves:
+            board.push(move)
+            try:
+                score = -quiescence_search(
+                    pos, -beta, -alpha, _child_ctx(ctx, child_ply), qdepth + 1
+                )
+            finally:
+                board.pop()
+            if score > best:
+                best = score
+            if score >= beta:
+                return score
+            if score > alpha:
+                alpha = score
+        return best
+
+    stand_pat = ctx.evaluator.evaluate(pos)
+    if stand_pat >= beta:
+        return stand_pat
+    if stand_pat > alpha:
+        alpha = stand_pat
+
+    for move in _qsearch_moves(board, pos.legal_moves()):
+        capture_value = _capture_value(board, move)
+        if stand_pat + capture_value + DELTA_MARGIN < alpha:
+            continue
+        board.push(move)
+        try:
+            score = -quiescence_search(
+                pos,
+                -beta,
+                -alpha,
+                _child_ctx(ctx, ctx.ply + 1),
+                qdepth + 1,
+            )
+        finally:
+            board.pop()
+        if score > alpha:
+            alpha = score
+        if score >= beta:
+            return score
+    return alpha
 
 
 def negamax(
@@ -54,7 +169,9 @@ def negamax(
         return 0
 
     if depth == 0:
-        return ctx.evaluator.evaluate(pos)
+        if pos.is_check():
+            return quiescence_search(pos, alpha, beta, ctx)
+        return quiescence_search(pos, alpha, beta, ctx)
 
     best = -MATE - 1
     board = pos.board
@@ -67,17 +184,7 @@ def negamax(
                 depth - 1,
                 -beta,
                 -alpha,
-                SearchContext(
-                    stop_flag=ctx.stop_flag,
-                    counter=ctx.counter,
-                    evaluator=ctx.evaluator,
-                    ply=child_ply,
-                    path_keys=ctx.path_keys,
-                    game_history_keys=ctx.game_history_keys,
-                    deadline=ctx.deadline,
-                    max_depth=ctx.max_depth,
-                    info_callback=ctx.info_callback,
-                ),
+                _child_ctx(ctx, child_ply),
             )
         finally:
             board.pop()
