@@ -1,9 +1,4 @@
-"""Fail-soft alpha-beta negamax with ply-adjusted mate scoring (SRCH-02).
-
-Extends the Phase 1 fixed-depth skeleton with alpha-beta pruning, ply-adjusted
-mate propagation, deterministic root move selection (D-10), and quiescence
-search at the horizon (SRCH-04). Iterative deepening and draw detection land
-in later Phase 2 plans.
+"""Fail-soft alpha-beta negamax with quiescence, iterative deepening, and draw cuts.
 
 This module imports only the `Evaluator` Protocol from `ance.eval.base` --
 never any concrete evaluator class.
@@ -12,12 +7,19 @@ never any concrete evaluator class.
 from __future__ import annotations
 
 import threading
+import time
 
 import chess
+import chess.polyglot
 
 from ance.board.position import Position
 from ance.eval.base import MATE, Evaluator
-from ance.search.types import SearchContext, SearchResult
+from ance.search.types import (
+    DEFAULT_BARE_GO_MOVETIME_MS,
+    MAX_PLY,
+    SearchContext,
+    SearchResult,
+)
 
 DEFAULT_DEPTH = 3
 NODE_POLL_INTERVAL = 2048
@@ -35,9 +37,7 @@ _MVV_LVA = {
 
 
 class SearchAborted(Exception):
-    """Raised by `negamax` when a sampled node-count poll finds `stop_flag`
-    set. Caught by `search_root`, which returns the best root move found
-    before the abort."""
+    """Raised when stop_flag is set during search."""
 
 
 def _poll_stop(ctx: SearchContext) -> None:
@@ -57,6 +57,28 @@ def _child_ctx(ctx: SearchContext, ply: int) -> SearchContext:
         max_depth=ctx.max_depth,
         info_callback=ctx.info_callback,
     )
+
+
+def _build_game_history_keys(board: chess.Board) -> set[int]:
+    keys: set[int] = set()
+    temp = board.copy(stack=False)
+    keys.add(chess.polyglot.zobrist_hash(temp))
+    while temp.move_stack:
+        temp.pop()
+        keys.add(chess.polyglot.zobrist_hash(temp))
+    return keys
+
+
+def _is_draw_position(pos: Position, ctx: SearchContext) -> bool:
+    board = pos.board
+    key = chess.polyglot.zobrist_hash(board)
+    if key in ctx.path_keys or key in ctx.game_history_keys:
+        return True
+    if board.is_fifty_moves():
+        return True
+    if board.is_insufficient_material():
+        return True
+    return False
 
 
 def _capture_value(board: chess.Board, move: chess.Move) -> int:
@@ -93,7 +115,6 @@ def quiescence_search(
     ctx: SearchContext,
     qdepth: int = 0,
 ) -> int:
-    """Stand-pat + capture/queen-promo qsearch with delta pruning (D-02, D-03)."""
     ctx.counter[0] += 1
     _poll_stop(ctx)
 
@@ -158,66 +179,75 @@ def negamax(
     beta: int,
     ctx: SearchContext,
 ) -> int:
-    """Fail-soft alpha-beta negamax. Returns centipawns, side-to-move relative."""
     ctx.counter[0] += 1
     _poll_stop(ctx)
 
-    moves = pos.legal_moves()
-    if not moves:
-        if pos.is_check():
-            return -(MATE - ctx.ply)
+    board = pos.board
+    if _is_draw_position(pos, ctx):
         return 0
 
-    if depth == 0:
-        if pos.is_check():
+    ctx.path_keys.append(chess.polyglot.zobrist_hash(board))
+    try:
+        moves = pos.legal_moves()
+        if not moves:
+            if pos.is_check():
+                return -(MATE - ctx.ply)
+            return 0
+
+        if depth == 0:
             return quiescence_search(pos, alpha, beta, ctx)
-        return quiescence_search(pos, alpha, beta, ctx)
 
-    best = -MATE - 1
-    board = pos.board
-    child_ply = ctx.ply + 1
-    for move in moves:
-        board.push(move)
-        try:
-            score = -negamax(
-                pos,
-                depth - 1,
-                -beta,
-                -alpha,
-                _child_ctx(ctx, child_ply),
-            )
-        finally:
-            board.pop()
-        if score > best:
-            best = score
-        if score >= beta:
-            return score
-        if score > alpha:
-            alpha = score
-    return best
+        best = -MATE - 1
+        child_ply = ctx.ply + 1
+        for move in moves:
+            board.push(move)
+            try:
+                score = -negamax(
+                    pos,
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    _child_ctx(ctx, child_ply),
+                )
+            finally:
+                board.pop()
+            if score > best:
+                best = score
+            if score >= beta:
+                return score
+            if score > alpha:
+                alpha = score
+        return best
+    finally:
+        ctx.path_keys.pop()
 
 
-def search_root(
+def _search_at_depth(
     pos: Position,
-    max_depth: int,
+    depth: int,
     evaluator: Evaluator,
     stop_flag: threading.Event,
-    *,
-    deadline: float | None = None,
+    game_history_keys: set[int],
+    deadline: float | None,
+    prior_best: chess.Move | None,
+    info_callback,
+    nodes_at_start: int,
+    start_time: float,
 ) -> SearchResult:
-    """Fixed-depth root search. Returns SearchResult with deterministic ties (D-10)."""
-    if pos.has_no_legal_moves():
-        return SearchResult(best_move=None, score=0, depth=max_depth, pv=[], nodes=0)
-
     moves = pos.legal_moves()
+    if prior_best is not None and prior_best in moves:
+        moves = [prior_best] + [m for m in moves if m != prior_best]
+
     best_move: chess.Move | None = None
     best_score = -MATE - 1
-    counter = [0]
+    counter = [nodes_at_start]
     board = pos.board
 
     for move in moves:
         if stop_flag.is_set():
-            break
+            raise SearchAborted()
+        if deadline is not None and time.monotonic() >= deadline:
+            raise SearchAborted()
         board.push(move)
         try:
             ctx = SearchContext(
@@ -226,13 +256,14 @@ def search_root(
                 evaluator=evaluator,
                 ply=1,
                 path_keys=[],
-                game_history_keys=set(),
+                game_history_keys=game_history_keys,
                 deadline=deadline,
-                max_depth=max_depth,
+                max_depth=depth,
+                info_callback=info_callback,
             )
-            score = -negamax(pos, max_depth - 1, -MATE - 1, MATE + 1, ctx)
+            score = -negamax(pos, depth - 1, -MATE - 1, MATE + 1, ctx)
         except SearchAborted:
-            break
+            raise
         finally:
             if board.move_stack:
                 board.pop()
@@ -246,10 +277,73 @@ def search_root(
         if best_score == -MATE - 1:
             best_score = 0
 
-    return SearchResult(
+    result = SearchResult(
         best_move=best_move,
         score=best_score,
-        depth=max_depth,
+        depth=depth,
         pv=[best_move] if best_move is not None else [],
-        nodes=counter[0],
+        nodes=counter[0] - nodes_at_start,
+    )
+    if info_callback is not None:
+        elapsed_ms = max(int((time.monotonic() - start_time) * 1000), 1)
+        nps = result.nodes * 1000 // elapsed_ms
+        info_callback(result, nps)
+    return result
+
+
+def search_root(
+    pos: Position,
+    max_depth: int,
+    evaluator: Evaluator,
+    stop_flag: threading.Event,
+    *,
+    deadline: float | None = None,
+    info_callback=None,
+) -> SearchResult:
+    """Iterative-deepening root search with last-completed-depth retention."""
+    if pos.has_no_legal_moves():
+        return SearchResult(best_move=None, score=0, depth=0, pv=[], nodes=0)
+
+    game_history_keys = _build_game_history_keys(pos.board)
+    last_completed: SearchResult | None = None
+    prior_best: chess.Move | None = None
+    total_nodes = 0
+    start_time = time.monotonic()
+    target_depth = min(max_depth, MAX_PLY)
+
+    for depth in range(1, target_depth + 1):
+        if stop_flag.is_set():
+            break
+        if deadline is not None and time.monotonic() >= deadline:
+            break
+        try:
+            result = _search_at_depth(
+                pos,
+                depth,
+                evaluator,
+                stop_flag,
+                game_history_keys,
+                deadline,
+                prior_best,
+                info_callback,
+                total_nodes,
+                start_time,
+            )
+        except SearchAborted:
+            break
+        last_completed = result
+        prior_best = result.best_move
+        total_nodes += result.nodes
+
+    if last_completed is not None:
+        last_completed.nodes = total_nodes
+        return last_completed
+
+    moves = pos.legal_moves()
+    return SearchResult(
+        best_move=moves[0],
+        score=0,
+        depth=0,
+        pv=[moves[0]],
+        nodes=total_nodes,
     )

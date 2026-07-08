@@ -1,7 +1,4 @@
-"""Search context and result types (SRCH-02+).
-
-Minimal stubs for TDD RED; fully wired in Plan 02-01 Task 2.
-"""
+"""Search context and result types (SRCH-02+)."""
 
 from __future__ import annotations
 
@@ -12,6 +9,9 @@ from typing import Callable
 import chess
 
 from ance.eval.base import Evaluator
+
+DEFAULT_BARE_GO_MOVETIME_MS = 2000
+MAX_PLY = 64
 
 
 @dataclass
