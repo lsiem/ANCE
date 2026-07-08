@@ -9,7 +9,6 @@ Anti-Pattern 3) if search depends solely on the `Evaluator` Protocol.
 
 from __future__ import annotations
 
-import random
 import threading
 from pathlib import Path
 
@@ -58,46 +57,35 @@ def test_material_eval_reflects_material_difference_stm_relative() -> None:
 
 def test_search_root_finds_mate_in_one() -> None:
     pos = Position(chess.Board("6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1"))
-    move = search_root(
-        pos, depth=2, evaluator=MaterialEval(), stop_flag=_never_stop(), rng=random.Random(0)
+    result = search_root(
+        pos, max_depth=2, evaluator=MaterialEval(), stop_flag=_never_stop()
     )
-    assert move == chess.Move.from_uci("a1a8")
+    assert result.best_move == chess.Move.from_uci("a1a8")
 
 
 def test_search_root_zero_legal_moves_returns_none() -> None:
     # Fool's Mate FEN (from Plan 01-02's test_has_no_legal_moves_true_for_checkmate).
     fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"
     pos = Position(chess.Board(fen))
-    move = search_root(
-        pos, depth=2, evaluator=MaterialEval(), stop_flag=_never_stop(), rng=random.Random(0)
+    result = search_root(
+        pos, max_depth=2, evaluator=MaterialEval(), stop_flag=_never_stop()
     )
-    assert move is None
+    assert result.best_move is None
 
 
-def test_search_root_tie_break_uses_seeded_rng() -> None:
+def test_search_root_deterministic_tie_break_first_move() -> None:
     pos = Position()
-    evaluator = NaiveEval()  # scores everything 0 -> every root move ties
+    evaluator = NaiveEval()
+    expected = list(pos.board.legal_moves)[0]
 
     first = search_root(
-        pos.copy(), depth=1, evaluator=evaluator, stop_flag=_never_stop(), rng=random.Random(42)
+        pos.copy(), max_depth=1, evaluator=evaluator, stop_flag=_never_stop()
     )
     second = search_root(
-        pos.copy(), depth=1, evaluator=evaluator, stop_flag=_never_stop(), rng=random.Random(42)
+        pos.copy(), max_depth=1, evaluator=evaluator, stop_flag=_never_stop()
     )
-    assert first == second  # same seed, freshly re-seeded each time -> same draw
-
-    # A different seed CAN return a different move -- proven across a small
-    # deterministic sweep of fixed seeds rather than a single brittle pair,
-    # since random.Random's exact draw for any one seed isn't itself part
-    # of the contract we're testing (only that varying the seed varies the
-    # outcome for a tied field of candidates).
-    moves_across_seeds = {
-        search_root(
-            pos.copy(), depth=1, evaluator=evaluator, stop_flag=_never_stop(), rng=random.Random(seed)
-        )
-        for seed in range(10)
-    }
-    assert len(moves_across_seeds) > 1
+    assert first.best_move == expected
+    assert second.best_move == expected
 
 
 def test_negamax_module_never_imports_a_concrete_evaluator() -> None:
@@ -261,22 +249,20 @@ def test_mobility_term_no_crash_when_side_to_move_in_check() -> None:
 
 def test_evaluator_swap_handcrafted_vs_material_no_negamax_change() -> None:
     pos = Position()
-    material_move = search_root(
+    material_result = search_root(
         pos.copy(),
-        depth=2,
+        max_depth=2,
         evaluator=MaterialEval(),
         stop_flag=_never_stop(),
-        rng=random.Random(0),
     )
-    handcrafted_move = search_root(
+    handcrafted_result = search_root(
         pos.copy(),
-        depth=2,
+        max_depth=2,
         evaluator=HandcraftedEval(),
         stop_flag=_never_stop(),
-        rng=random.Random(0),
     )
-    assert material_move in pos.board.legal_moves
-    assert handcrafted_move in pos.board.legal_moves
+    assert material_result.best_move in pos.board.legal_moves
+    assert handcrafted_result.best_move in pos.board.legal_moves
 
     source = Path("ance/search/negamax.py").read_text()
     non_comment_source = "\n".join(
