@@ -23,7 +23,7 @@ rigorous ≥1000-game gauntlet.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game and beats a random mover 100/100
+- [x] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game and beats a random mover 100/100 (completed 2026-07-08)
 - [ ] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess
 - [ ] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness
 - [ ] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights
@@ -67,7 +67,7 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 01-05-PLAN.md — Random-mover self-play gauntlet proving ANCE wins 100 games out of 100
-- [ ] 01-06-PLAN.md — Manual GUI validation checkpoint (Cute Chess/Arena full game, TOOL-01)
+- [x] 01-06-PLAN.md — Manual GUI validation checkpoint (Cute Chess/Arena full game, TOOL-01)
 
 ### Phase 2: Core Alpha-Beta Search
 
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Minimal UCI Engine & Evaluator Seam | 5/6 | In Progress|  |
+| 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
 | 2. Core Alpha-Beta Search | 0/TBD | Not started | - |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |

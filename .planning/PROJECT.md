@@ -19,22 +19,29 @@ that loads and runs a trained network must work.
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Minimal UCI engine: handles `uci`, `isready`, `ucinewgame`, `position`
+  (startpos + fen, with moves), `go`, `stop`, `quit`; always returns a
+  `bestmove` — Phase 1
+- ✓ Swappable evaluation module with a stable `evaluate(position)->cp`
+  interface boundary (handcrafted material + PST + positional terms live as
+  default; structural proof search never references a concrete evaluator) — Phase 1
+- ✓ Validated in a GUI: full legal ANCE-vs-ANCE game watched live in
+  En Croissant (mac-native; Cute Chess ships no macOS binary) plus
+  python-chess external-arbiter games — Phase 1
+- ✓ Never loses to a random mover (losses==0 hard invariant, ≥70% wins,
+  all non-wins draws; replanned 2026-07-07 from the 100/100 target) — Phase 1
 
 ### Active
 
-- [ ] Minimal UCI engine: handles `uci`, `isready`, `ucinewgame`, `position`
-      (startpos + fen, with moves), `go`, `stop`, `quit`; always returns a `bestmove`
 - [ ] Iterative-deepening alpha-beta search with transposition table,
       quiescence search, and move ordering (MVV-LVA + hash move)
 - [ ] Basic time management (`movetime`, `depth`, `wtime/btime/winc/binc`)
-- [ ] Swappable evaluation module (handcrafted material + PST placeholder,
-      later replaced by NNUE) with a stable interface boundary
-- [ ] Supervised NNUE `(768→N)×2→1` trained in PyTorch (MPS) on
+- [ ] NNUE `(768→N)×2→1` replaces the handcrafted eval through the same
+      swappable interface, trained supervised in PyTorch (MPS) on
       Stockfish-labeled positions
 - [ ] NNUE wired in as the leaf evaluation, loadable by the running engine
 - [ ] Proper `info depth … score cp … nodes … nps … pv …` output during search
-- [ ] Validated in a GUI (Cute Chess / Arena) and playable via lichess-bot
+- [ ] Playable via lichess-bot
 - [ ] Measurable Elo gain (NNUE vs handcrafted eval) confirmed via self-play gauntlet
 
 ### Out of Scope
@@ -97,7 +104,8 @@ that loads and runs a trained network must work.
 | Python-first, defer Rust/C++ port | Fastest path to a working, understandable engine; port when strength pressure is real | — Pending |
 | PyTorch MPS over MLX for training | More mature for residual/NNUE nets on M4; evidence favors it | — Pending |
 | Plain `(768→N)×2→1` NNUE to start | Beginner-friendly, no buckets; scale later | — Pending |
-| Eval as a swappable module | Enables NNUE swap-in and a future compiled port without rewriting search | — Pending |
+| Eval as a swappable module | Enables NNUE swap-in and a future compiled port without rewriting search | ✓ Working — Phase 1: two real evaluators behind the seam, structural test proves search imports only the Protocol |
+| En Croissant as the macOS GUI (not Cute Chess) | Cute Chess ships no macOS binary (win64 + Linux only, no brew formula); En Croissant is mac-native, drives UCI engines, and supports engine-vs-engine board play | ✓ Working — Phase 1: TOOL-01 validated live; note ANCE must not be given "Unlimited" time (maps to `go infinite`, which waits for `stop` by design) |
 
 ## Evolution
 
@@ -117,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-05 after initialization*
+*Last updated: 2026-07-08 after Phase 1*
