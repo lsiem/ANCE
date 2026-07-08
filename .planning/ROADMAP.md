@@ -24,7 +24,7 @@ rigorous ≥1000-game gauntlet.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game (validated live in En Croissant) and never loses to a random mover (0 losses, ≥70% wins — replanned 2026-07-07) (completed 2026-07-08)
-- [ ] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess
+- [x] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess (completed 2026-07-08)
 - [ ] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness
 - [ ] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights
 - [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain
@@ -88,23 +88,23 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Fail-soft alpha-beta negamax, ply-adjusted mate scoring, SearchResult types, deterministic root (SRCH-02)
+- [x] 02-01-PLAN.md — Fail-soft alpha-beta negamax, ply-adjusted mate scoring, SearchResult types, deterministic root (SRCH-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Quiescence search: captures + queen promos, stand-pat + delta pruning, MVV-LVA in qsearch only (SRCH-04)
+- [x] 02-02-PLAN.md — Quiescence search: captures + queen promos, stand-pat + delta pruning, MVV-LVA in qsearch only (SRCH-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-03-PLAN.md — Iterative deepening, twofold/50-move/insufficient-material draw detection (SRCH-03, SRCH-07)
+- [x] 02-03-PLAN.md — Iterative deepening, twofold/50-move/insufficient-material draw detection (SRCH-03, SRCH-07)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-04-PLAN.md — UCI info lines per completed depth, bare-go movetime budget, go infinite until stop (UCI-11)
+- [x] 02-04-PLAN.md — UCI info lines per completed depth, bare-go movetime budget, go infinite until stop (UCI-11)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 02-05-PLAN.md — Tactical/mate-in-N tests, folded depth-4 gauntlet, depth-vs-depth strength proof (D-01, D-13, D-14)
+- [x] 02-05-PLAN.md — Tactical/mate-in-N tests, folded depth-4 gauntlet, depth-vs-depth strength proof (D-01, D-13, D-14)
 
 ### Phase 3: Search Acceleration & Time Management
 
@@ -161,7 +161,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
-| 2. Core Alpha-Beta Search | 0/5 | Planned | - |
+| 2. Core Alpha-Beta Search | 5/5 | Complete   | 2026-07-08 |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |

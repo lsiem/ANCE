@@ -19,18 +19,18 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 - [ ] **UCI-08**: Engine honors clock control `go wtime/btime/winc/binc` and computes a per-move time budget
 - [x] **UCI-09**: Engine honors `stop` by ending search promptly and emitting the current `bestmove`
 - [x] **UCI-10**: Engine handles `quit` with a clean exit that never deadlocks on a running search
-- [ ] **UCI-11**: Engine emits `info depth <d> score cp <x>|mate <y> nodes <n> nps <n> pv <moves>` during search
+- [x] **UCI-11**: Engine emits `info depth <d> score cp <x>|mate <y> nodes <n> nps <n> pv <moves>` during search
 - [x] **UCI-12**: The stdin/stdout loop stays readable during search so `stop`/`quit` are always honored (non-blocking)
 
 ### Search
 
 - [x] **SRCH-01**: Engine generates only legal moves and detects checkmate, stalemate, and draws via python-chess
-- [ ] **SRCH-02**: Engine searches with fail-soft negamax alpha-beta
-- [ ] **SRCH-03**: Engine uses iterative deepening and always keeps the best move from the last completed depth
-- [ ] **SRCH-04**: Engine runs a quiescence search over captures to avoid the horizon effect
+- [x] **SRCH-02**: Engine searches with fail-soft negamax alpha-beta
+- [x] **SRCH-03**: Engine uses iterative deepening and always keeps the best move from the last completed depth
+- [x] **SRCH-04**: Engine runs a quiescence search over captures to avoid the horizon effect
 - [ ] **SRCH-05**: Engine uses a Zobrist-keyed transposition table with correct exact/lower/upper bounds and ply-adjusted mate scores on store and probe
 - [ ] **SRCH-06**: Engine orders moves hash-move → MVV-LVA captures → killers → history
-- [ ] **SRCH-07**: Engine detects repetition and the 50-move rule to avoid losing drawn positions
+- [x] **SRCH-07**: Engine detects repetition and the 50-move rule to avoid losing drawn positions
 - [ ] **SRCH-08**: Engine manages its clock so it never loses on time under `wtime/btime/winc/binc`
 
 ### Evaluation
@@ -111,11 +111,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EVAL-02 | Phase 1 | Complete |
 | TOOL-01 | Phase 1 | Complete |
 | TOOL-02 | Phase 1 | Complete |
-| SRCH-02 | Phase 2 | Pending |
-| SRCH-03 | Phase 2 | Pending |
-| SRCH-04 | Phase 2 | Pending |
-| SRCH-07 | Phase 2 | Pending |
-| UCI-11 | Phase 2 | Pending |
+| SRCH-02 | Phase 2 | Complete |
+| SRCH-03 | Phase 2 | Complete |
+| SRCH-04 | Phase 2 | Complete |
+| SRCH-07 | Phase 2 | Complete |
+| UCI-11 | Phase 2 | Complete |
 | SRCH-05 | Phase 3 | Pending |
 | SRCH-06 | Phase 3 | Pending |
 | SRCH-08 | Phase 3 | Pending |
