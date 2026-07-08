@@ -90,8 +90,38 @@ Phase 3); NNUE eval and training (Phases 4–5). Main search stays **unordered**
 - Exact `MAX_PLY` cap for `go infinite`.
 - Default movetime constant tuning (~2s target).
 - Internal qsearch depth cap / extension policy details.
-- Mate score ply-adjustment implementation specifics (as long as UCI `score mate N`
-  and negamax sign conventions match ROADMAP success criteria).
+- ~~Mate score ply-adjustment implementation specifics~~ — superseded by D-18
+  below (round-2 addendum): the wire format is now a locked decision.
+
+### Round-2 decisions (post-planning addendum, 2026-07-08)
+
+> Captured in a second discussion round AFTER `docs(02): create phase 2 …
+> plans` was committed and execution began in a parallel session. D-16/D-17
+> match what was built; D-18/D-19 are gaps filed as pending todos
+> (`resolves_phase: 2`) that must close before the phase verifies.
+
+- **D-16:** **Evolve `ance/search/negamax.py` in place** — no parallel
+  alpha-beta module; the structural seam test keeps guarding the real search.
+  *(✅ already matches the executed implementation, incl. the `types.py` split.)*
+- **D-17:** **Time expiry aborts mid-iteration** via the existing
+  `NODE_POLL_INTERVAL` poll; answer from the last completed depth.
+  *(✅ already matches the executed implementation — `deadline` checks in
+  `negamax.py`.)*
+- **D-18:** **Mate scores on the wire are FULL MOVES, signed** —
+  `score mate y` with `y = ceil((MATE − |score|) / 2)`, negative when being
+  mated — per the UCI spec and Stockfish convention (gauntlet log
+  comparability). A mate window (`|score| ≥ MATE − MAX_PLY` is fine as the
+  classifier) separates mate from cp scores, and evaluator cp output must be
+  clamped below that window so no eval can masquerade as mate.
+  *(❌ gap: `ance/uci/protocol.py::send_info_depth` currently emits the raw
+  ply distance — mate-in-3-plies prints `mate 3` instead of `mate 2`. See
+  `.planning/todos/pending/2026-07-08-uci-mate-score-full-moves.md`.)*
+- **D-19:** **Phase 2 closes with a watched En Croissant validation game**
+  (like Phase 1's 01-06): live game with `info` depth/score/pv visible in the
+  GUI, fixed time-per-move preset (never "Unlimited" until D-12's fix is
+  confirmed working there).
+  *(❌ gap: no plan schedules this. See
+  `.planning/todos/pending/2026-07-08-phase2-encroissant-validation.md`.)*
 
 </decisions>
 

@@ -145,3 +145,58 @@
 
 - v1.1 local web-app GUI (existing backlog todo, not folded)
 - Strict 100/0 @ depth 4 may remain Phase 3 target if cap-draws persist
+
+---
+
+## Round 2 (post-planning addendum, 2026-07-08)
+
+> These four areas were discussed in a second round AFTER planning/execution
+> had already begun in a parallel session. Decisions recorded as D-16…D-19 in
+> CONTEXT.md's round-2 addendum.
+
+### Search code layout
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Evolve negamax.py in place (Recommended) | One search; structural seam test keeps guarding the real search | ✓ |
+| New module, keep old negamax | Parallel alphabeta.py, retain unpruned searcher | |
+| You decide | | |
+
+**User's choice:** Evolve in place — matches what execution built (incl. types.py split).
+
+### Time-budget interrupts
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Abort mid-iteration on expiry (Recommended) | Deadline check rides the ~2048-node stop poll; answer from last completed depth | ✓ |
+| Only decide between iterations | Never start what you can't finish; may overshoot budget | |
+| You decide | | |
+
+**User's choice:** Abort mid-iteration — matches what execution built.
+
+### GUI validation step
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Yes — watched GUI game (Recommended) | Live En Croissant game with info lines visible; fixed time-per-move preset | ✓ |
+| No — automated evidence suffices | | |
+| GUI check vs Stockfish-limited | | |
+
+**User's choice:** Watched En Croissant game — GAP: no plan schedules it; filed as pending todo.
+
+### Mate-score reporting
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Standard conversion + mate window (Recommended) | `score mate y` in FULL moves, signed; eval cp clamped below mate window | ✓ |
+| Report mate as big cp number | Violates UCI-11 | |
+| You decide | | |
+
+**User's choice:** Standard conversion — GAP: protocol.py emits plies, not moves; filed as pending todo.
+
+### Reconciliation
+
+Session raced with a parallel discuss→plan→execute pipeline (context committed
+e16b476 from round-1 decisions). Resolution chosen: amend CONTEXT.md with the
+round-2 addendum + file both gaps as `resolves_phase: 2` todos; executed plans
+untouched.
