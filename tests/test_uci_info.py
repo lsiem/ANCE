@@ -7,6 +7,8 @@ import time
 
 import pytest
 
+from ance.eval.base import MATE
+from ance.uci.protocol import send_info_depth
 from tests.conftest import EngineProcess, send_lines
 from tests.test_go_bestmove import BESTMOVE_RE, _assert_bestmove, _read_bestmove
 
@@ -94,3 +96,62 @@ def test_go_infinite_responds_to_stop_without_hang(engine: EngineProcess) -> Non
     stop_sent = time.perf_counter()
     engine.send("stop")
     _read_bestmove(engine, timeout=2.0)
+
+
+def _final_info_mate_score(lines: list[str]) -> int:
+    info_lines = [line for line in lines if line.startswith("info depth ")]
+    assert info_lines, f"expected info lines, got {lines!r}"
+    match = INFO_DEPTH_RE.match(info_lines[-1])
+    assert match is not None, info_lines[-1]
+    assert match.group(4) is not None, info_lines[-1]
+    return int(match.group(4))
+
+
+def test_send_info_depth_mate_in_one_ply_emits_full_move(capsys: pytest.CaptureFixture[str]) -> None:
+    send_info_depth(depth=1, score=MATE - 1, nodes=1, nps=1, pv_uci=["a1a8"])
+    assert "score mate 1" in capsys.readouterr().out
+
+
+def test_send_info_depth_mate_in_three_plies_emits_two_full_moves(capsys: pytest.CaptureFixture[str]) -> None:
+    send_info_depth(depth=4, score=MATE - 3, nodes=1, nps=1, pv_uci=["g6g7"])
+    assert "score mate 2" in capsys.readouterr().out
+
+
+def test_send_info_depth_being_mated_in_two_plies_emits_negative_one(capsys: pytest.CaptureFixture[str]) -> None:
+    send_info_depth(depth=2, score=-(MATE - 2), nodes=1, nps=1, pv_uci=["e1e2"])
+    assert "score mate -1" in capsys.readouterr().out
+
+
+def test_send_info_depth_being_mated_in_four_plies_emits_negative_two(capsys: pytest.CaptureFixture[str]) -> None:
+    send_info_depth(depth=4, score=-(MATE - 4), nodes=1, nps=1, pv_uci=["e1e2"])
+    assert "score mate -2" in capsys.readouterr().out
+
+
+def test_send_info_depth_plain_cp_unchanged(capsys: pytest.CaptureFixture[str]) -> None:
+    send_info_depth(depth=3, score=137, nodes=1, nps=1, pv_uci=["e2e4"])
+    assert "score cp 137" in capsys.readouterr().out
+
+
+def test_mate_in_one_position_reports_score_mate_one_on_wire(engine: EngineProcess) -> None:
+    fen = "6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1"
+    send_lines(engine, [f"position fen {fen}", "isready", "go depth 2"])
+    assert engine.read_line(timeout=1.0) == "readyok"
+    lines = _read_until_bestmove(engine, timeout=10.0)
+    assert _final_info_mate_score(lines) == 1
+    _assert_bestmove(lines[-1])
+    assert lines[-1].split()[1] == "a1a8"
+
+
+def test_queen_mate_position_reports_score_mate_one_on_wire(engine: EngineProcess) -> None:
+    """Queen+h1 delivers immediate mate — wire reports mate 1 (one full move).
+
+    Multi-ply plies-to-full-moves conversion (e.g. MATE-3 -> score mate 2) is
+    covered by the capsys unit tests above; this FEN is mate-in-1 at depth 4.
+    """
+    fen = "6k1/5ppp/8/8/8/8/8/6KQ w - - 0 1"
+    send_lines(engine, [f"position fen {fen}", "isready", "go depth 4"])
+    assert engine.read_line(timeout=1.0) == "readyok"
+    lines = _read_until_bestmove(engine, timeout=15.0)
+    assert _final_info_mate_score(lines) == 1
+    _assert_bestmove(lines[-1])
+    assert lines[-1].split()[1] == "h1a8"

@@ -7,10 +7,10 @@ import threading
 import chess
 
 from ance.board.position import Position
-from ance.eval.base import MATE
+from ance.eval.base import MATE, Evaluator
 from ance.eval.material import MaterialEval
-from ance.search.negamax import negamax, search_root
-from ance.search.types import SearchContext
+from ance.search.negamax import negamax, quiescence_search, search_root
+from ance.search.types import MATE_THRESHOLD, SearchContext
 
 
 def _never_stop() -> threading.Event:
@@ -77,3 +77,25 @@ def test_in_check_no_evasions_is_mate() -> None:
     ctx = _make_ctx(ply=0)
     score = negamax(pos, depth=0, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
     assert score <= -MATE + 100
+
+
+class _HugeEval:
+    def evaluate(self, pos: Position) -> int:
+        return 10**6
+
+
+def test_quiescence_clamps_pathological_evaluator_below_mate_window() -> None:
+    """Eval cp cannot masquerade as mate — seam clamps below MATE_THRESHOLD."""
+    pos = Position(chess.Board())
+    ctx = SearchContext(
+        stop_flag=_never_stop(),
+        counter=[0],
+        evaluator=_HugeEval(),  # type: ignore[arg-type]
+        ply=0,
+        path_keys=[],
+        game_history_keys=set(),
+        deadline=None,
+        max_depth=0,
+    )
+    score = quiescence_search(pos, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
+    assert abs(score) < MATE_THRESHOLD
