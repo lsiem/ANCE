@@ -6,28 +6,18 @@ Search work always happens on a separate daemon worker thread spawned by
 `go`, so `isready`/`quit` are answered immediately regardless of worker
 state (UCI-02/UCI-12).
 
-**Preemption policy (cross-AI review, HIGH consensus across both rounds).**
-A second `go` (or a `position`/`ucinewgame`) arriving while a worker is
-already running never spawns a concurrent worker: `_stop_active_worker()`
-signals `stop_flag`, joins the prior worker with a bounded timeout, and
-unconditionally clears `stop_flag` before proceeding. `position`/
-`ucinewgame` do not touch `search_generation`, so a worker they preempt is
-still the "current" generation when it finishes and its flushed best-so-far
-`bestmove` is legitimately emitted (D-13's "stale search always fully
-flushed before the position it was searching becomes outdated"). A *new*
-`go`, by contrast, bumps `search_generation` **before** calling
-`_stop_active_worker()`, so the worker it preempts is numerically stale
-the instant the new `go` begins -- once superseded, that worker's result is
-unconditionally dropped (logged, never sent to stdout) instead of racing
-the new worker's output onto stdout, independent of whether `join(timeout)`
-itself succeeds or times out (round-2 HIGH hardening: `search_generation`
-equality, not join timing, is the one correctness mechanism).
+**Per-generation preemption and output policy.** Every `go` owns a distinct
+`SearchJob`, cancellation Event, and optional movetime Timer. Events are only
+ever set, never cleared or reused, so a timed-out stale worker cannot resume
+when its replacement starts. A new `go` advances the generation before
+preempting the old job. Both completed-depth `info` and final `bestmove`
+output hold one generation lock across the current-generation check and
+stdout write, making replacement and stale output mutually exclusive.
 
-A `go movetime <ms>` search's `threading.Timer` deadline is held at module
-scope (`movetime_timer`) precisely so a *later*, unrelated preemption can
-reach and cancel it -- and the search-runner also cancels its own timer in
-a `finally` block on every exit path -- so a stale timer from an earlier
-`go` can never fire `stop_flag.set()` into a later, unrelated search.
+`stop` sets the current job's Event without invalidating its generation, so
+that worker may emit exactly one final bestmove. `position`, `ucinewgame`,
+and `quit` preserve the normal joined-worker flush; if their bounded join
+times out, they invalidate the surviving generation before changing state.
 """
 
 from __future__ import annotations
@@ -35,6 +25,7 @@ from __future__ import annotations
 import sys
 import threading
 import time
+from dataclasses import dataclass
 
 import ance.debug as debug
 from ance.board.position import Position
@@ -52,16 +43,17 @@ from ance.uci.protocol import (
     send_uciok,
 )
 
-stop_flag = threading.Event()
-worker: threading.Thread | None = None
+@dataclass
+class SearchJob:
+    generation: int
+    stop_event: threading.Event
+    thread: threading.Thread | None = None
+    timer: threading.Timer | None = None
 
-# Monotonic counter gating send_bestmove (round-2 HIGH hardening) -- see
-# module docstring. Bumped by handle_go only, never by position/ucinewgame.
+
+active_job: SearchJob | None = None
 search_generation = 0
-
-# Held at module scope (not local to handle_go) so _stop_active_worker() can
-# reach and cancel a leftover timer from a preempted `go movetime` search.
-movetime_timer: threading.Timer | None = None
+generation_lock = threading.Lock()
 
 # The engine's real default evaluator (EVAL-02): Simplified Evaluation
 # Function material+PST plus mobility/bishop-pair/tempo/pawn-structure
@@ -69,37 +61,44 @@ movetime_timer: threading.Timer | None = None
 evaluator: Evaluator = HandcraftedEval()
 
 
-def _stop_active_worker(timeout: float = 0.5) -> None:
-    """Stop -> join -> clear -> cancel-timer. The cross-AI review's HIGH-
-    consensus preemption policy: on a new `go` while a worker is alive, or
-    on `position`/`ucinewgame` arriving during an active search, always
-    stop and join the prior worker before proceeding. `stop_flag.clear()`
-    and the `movetime_timer` cancellation run unconditionally (even if no
-    worker was alive) so the next search always starts unpolluted.
-    """
-    global movetime_timer
-    if worker is not None and worker.is_alive():
-        stop_flag.set()
-        worker.join(timeout)
-        if worker.is_alive():
-            # Escalated visibility for a genuinely stuck worker -- proceeds
-            # to clear/cancel regardless; search_generation gating (not
-            # this join) is what keeps a stale worker from emitting later.
-            debug.log("ERROR: search worker did not stop within join timeout")
-    stop_flag.clear()
-    if movetime_timer is not None:
-        movetime_timer.cancel()
-        movetime_timer = None
+def _stop_active_worker(
+    timeout: float = 0.5,
+    *,
+    invalidate_on_timeout: bool = False,
+) -> None:
+    """Cancel and bounded-join the captured active job without reusing its token."""
+    global search_generation
+    job = active_job
+    if job is None:
+        return
+    job.stop_event.set()
+    if job.timer is not None:
+        job.timer.cancel()
+        job.timer = None
+    thread = job.thread
+    if thread is None or not thread.is_alive():
+        return
+    thread.join(timeout)
+    if not thread.is_alive():
+        return
+    debug.log("ERROR: search worker did not stop within join timeout")
+    if invalidate_on_timeout:
+        with generation_lock:
+            if search_generation == job.generation:
+                search_generation += 1
 
 
-def _emit_info(result: SearchResult, nps: int) -> None:
-    send_info_depth(
-        result.depth,
-        result.score,
-        result.nodes,
-        nps,
-        [move.uci() for move in result.pv],
-    )
+def _emit_info(result: SearchResult, nps: int, my_generation: int) -> None:
+    with generation_lock:
+        if my_generation != search_generation:
+            return
+        send_info_depth(
+            result.depth,
+            result.score,
+            result.nodes,
+            nps,
+            [move.uci() for move in result.pv],
+        )
 
 
 def _run_search(
@@ -113,7 +112,6 @@ def _run_search(
 ) -> None:
     """Runs on the daemon worker thread. Iterative-deepening search until
     stop, deadline, or max_depth. Emits one info line per completed depth."""
-    global movetime_timer
     move = None
     try:
         result = search_root(
@@ -122,23 +120,32 @@ def _run_search(
             evaluator=evaluator_,
             stop_flag=stop_flag_,
             deadline=deadline,
-            info_callback=_emit_info,
+            info_callback=lambda result, nps: _emit_info(
+                result, nps, my_generation
+            ),
         )
         move = result.best_move
     finally:
         if timer is not None:
             timer.cancel()
-        if movetime_timer is timer:
-            movetime_timer = None
+        job = active_job
+        if (
+            job is not None
+            and job.generation == my_generation
+            and job.stop_event is stop_flag_
+            and job.timer is timer
+        ):
+            job.timer = None
 
-    if my_generation == search_generation:
-        debug.log(f"worker (generation {my_generation}) sending bestmove")
-        send_bestmove(move.uci() if move is not None else None)
-    else:
-        debug.log(
-            f"dropped stale bestmove from generation {my_generation} "
-            f"(current generation {search_generation})"
-        )
+    with generation_lock:
+        if my_generation == search_generation:
+            debug.log(f"worker (generation {my_generation}) sending bestmove")
+            send_bestmove(move.uci() if move is not None else None)
+        else:
+            debug.log(
+                f"dropped stale bestmove from generation {my_generation} "
+                f"(current generation {search_generation})"
+            )
 
 
 def handle_uci() -> None:
@@ -152,14 +159,14 @@ def handle_isready() -> None:
 
 
 def handle_go(cmd: GoCommand, pos: Position) -> None:
-    global worker, search_generation, movetime_timer
-    # Bumped BEFORE preempting the prior worker (round-2 HIGH hardening):
-    # any prior worker is numerically stale the instant this go begins,
-    # independent of whether _stop_active_worker()'s join succeeds.
-    search_generation += 1
-    my_generation = search_generation
+    global active_job, search_generation
+    with generation_lock:
+        search_generation += 1
+        my_generation = search_generation
     _stop_active_worker()
 
+    stop_event = threading.Event()
+    job = SearchJob(generation=my_generation, stop_event=stop_event)
     depth = cmd.depth if cmd.depth is not None else MAX_PLY
     deadline: float | None = None
     if cmd.infinite:
@@ -169,32 +176,33 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
     elif cmd.movetime is not None:
         depth = MAX_PLY
 
-    timer: threading.Timer | None = None
     if cmd.movetime is not None:
-        timer = threading.Timer(cmd.movetime / 1000, stop_flag.set)
-        timer.daemon = True
-        movetime_timer = timer
-        timer.start()
+        job.timer = threading.Timer(cmd.movetime / 1000, stop_event.set)
+        job.timer.daemon = True
+        job.timer.start()
 
-    worker = threading.Thread(
+    job.thread = threading.Thread(
         target=_run_search,
         args=(
             pos.copy(),
             depth,
             evaluator,
-            stop_flag,
-            timer,
+            stop_event,
+            job.timer,
             my_generation,
             deadline,
         ),
         daemon=True,
     )
+    active_job = job
     debug.log(f"worker started (generation {my_generation}, depth {depth})")
-    worker.start()
+    job.thread.start()
 
 
 def handle_stop() -> None:
-    stop_flag.set()
+    job = active_job
+    if job is not None:
+        job.stop_event.set()
 
 
 def handle_position(pos: Position, tokens: list[str]) -> None:
@@ -208,12 +216,11 @@ def handle_position(pos: Position, tokens: list[str]) -> None:
     Task 1), so the whole command's net effect on `pos` is always either
     "fully applied" or "the last-known-good state", never a partial one.
 
-    Stops and joins any active search worker first (D-13) -- a stale
-    search's flushed best-so-far bestmove is always emitted before the
-    position it was searching becomes outdated (this doesn't bump
-    search_generation, so that flush is not dropped as stale).
+    Stops and joins any active search worker first (D-13). A worker that
+    joins normally flushes its best-so-far before the position changes; a
+    worker that survives the bounded join is generation-invalidated.
     """
-    _stop_active_worker()
+    _stop_active_worker(invalidate_on_timeout=True)
     cmd = parse_position(tokens[1:])
     if cmd is None:
         send_info_string("invalid position command, board unchanged")
@@ -233,9 +240,9 @@ def handle_position(pos: Position, tokens: list[str]) -> None:
 
 def handle_ucinewgame(pos: Position) -> None:
     # No-op reset of per-game state in M1 (D-17) -- no TT/history exists
-    # yet. Stops/joins any active worker first (same D-13 flush contract as
-    # handle_position), resets the board.
-    _stop_active_worker()
+    # yet. Stop/join with the same joined-flush / timed-out-invalidation
+    # contract as handle_position, then reset the board.
+    _stop_active_worker(invalidate_on_timeout=True)
     pos.try_set_startpos()
 
 
@@ -280,7 +287,7 @@ def handle_quit() -> None:
     # Same shared _stop_active_worker() helper at a longer timeout, in
     # place of a separate ad hoc join -- lets the worker unwind, then exits
     # cleanly (UCI-10/D-13: never deadlocks on a running search).
-    _stop_active_worker(timeout=2.0)
+    _stop_active_worker(timeout=2.0, invalidate_on_timeout=True)
     sys.exit(0)
 
 
