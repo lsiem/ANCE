@@ -14,6 +14,13 @@ preempting the old job. Both completed-depth `info` and final `bestmove`
 output hold one generation lock across the current-generation check and
 stdout write, making replacement and stale output mutually exclusive.
 
+**Worker exception fallback.** Unexpected failures in `search_root` or its
+info callback still emit exactly one generation-gated `bestmove`: the first
+legal root move when legal moves exist, or `bestmove (none)` when the worker's
+position copy has zero legal moves. Failures are logged via `debug.log`
+before fallback emission; intentional `SearchAborted` propagation is not
+swallowed.
+
 `stop` sets the current job's Event without invalidating its generation, so
 that worker may emit exactly one final bestmove. `position`, `ucinewgame`,
 and `quit` preserve the normal joined-worker flush; if their bounded join
@@ -27,11 +34,13 @@ import threading
 import time
 from dataclasses import dataclass
 
+import chess
+
 import ance.debug as debug
 from ance.board.position import Position
 from ance.eval.base import Evaluator
 from ance.eval.handcrafted import HandcraftedEval
-from ance.search.negamax import search_root
+from ance.search.negamax import SearchAborted, search_root
 from ance.search.types import DEFAULT_BARE_GO_MOVETIME_MS, MAX_PLY, SearchResult
 from ance.uci.parser import GoCommand, parse_go, parse_position, tokenize
 from ance.uci.protocol import (
@@ -101,6 +110,13 @@ def _emit_info(result: SearchResult, nps: int, my_generation: int) -> None:
         )
 
 
+def _fallback_root_move(pos: Position) -> chess.Move | None:
+    """Deterministic fallback when search fails unexpectedly (D-10 spirit)."""
+    if pos.has_no_legal_moves():
+        return None
+    return pos.legal_moves()[0]
+
+
 def _run_search(
     pos: Position,
     max_depth: int,
@@ -125,6 +141,11 @@ def _run_search(
             ),
         )
         move = result.best_move
+    except SearchAborted:
+        raise
+    except Exception as exc:
+        debug.log(f"ERROR: search worker failed: {exc}")
+        move = _fallback_root_move(pos)
     finally:
         if timer is not None:
             timer.cancel()
