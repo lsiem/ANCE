@@ -42,7 +42,8 @@ from __future__ import annotations
 
 import random
 import threading
-from typing import NamedTuple
+import time
+from typing import Callable, NamedTuple
 
 import chess
 
@@ -51,6 +52,47 @@ from ance.eval.base import Evaluator
 from ance.search.negamax import search_root
 
 GAUNTLET_SEARCH_DEPTH = 4
+
+
+class HarnessTimeout(Exception):
+    """Raised when a game harness hits its shared deadline or the shared
+    cancellation event is set. Shared by the random-mover gauntlet, the
+    depth-vs-depth match, and the Phase 2 evidence runner (Plan 02-10)."""
+
+
+def check_harness_expiry(
+    stop_event: threading.Event | None, deadline: float | None
+) -> None:
+    """Raise `HarnessTimeout` when the shared cancellation event is set or
+    the shared absolute monotonic `deadline` has been reached/passed.
+
+    No-op (and no clock read) when neither bound is supplied, preserving
+    the pre-02-10 unbounded behavior for legacy callers.
+    """
+    if stop_event is not None and stop_event.is_set():
+        raise HarnessTimeout("cancelled: shared stop event is set")
+    if deadline is not None and time.monotonic() >= deadline:
+        raise HarnessTimeout(f"deadline expired (deadline={deadline})")
+
+
+def _validate_prior_records(
+    game_records: list[dict] | None, start_game: int, n_games: int
+) -> list[dict]:
+    """Validate resume inputs: `game_records` must cover exactly the
+    contiguous indices `[0, start_game)` and `start_game` must be a valid
+    offset into `[0, n_games]`."""
+    if start_game < 0 or start_game > n_games:
+        raise ValueError(
+            f"start_game must be within [0, {n_games}], got {start_game}"
+        )
+    records = list(game_records or [])
+    indices = [record["index"] for record in records]
+    if indices != list(range(start_game)):
+        raise ValueError(
+            "game_records must cover contiguous indices "
+            f"[0, {start_game}), got {indices}"
+        )
+    return records
 
 
 class RandomMover:
@@ -78,6 +120,9 @@ def play_game(
     ance_plays_white: bool,
     seed: int,
     max_halfmoves: int = 300,
+    *,
+    deadline: float | None = None,
+    stop_event: threading.Event | None = None,
 ) -> GameResult:
     """Plays one game between ANCE (`search_root` + `ance_evaluator`) and a
     seeded `RandomMover`, alternating turns until `pos.board.is_game_over()`
@@ -86,22 +131,31 @@ def play_game(
     non-terminating line; a cap-hit is treated as `"1/2-1/2"` to keep this
     function total).
 
-    Each ANCE move gets a fresh, un-set `threading.Event()` since this
-    harness never needs to interrupt a search.
+    When the caller supplies the shared `stop_event`/`deadline` pair
+    (Plan 02-10 evidence runs), both bounds are checked before every ply
+    and again immediately after every `search_root` return, so an expired
+    search result is never pushed, and the same pair is forwarded into
+    every `search_root` call for in-tree polling (Plan 02-07). When
+    omitted, each ANCE move gets a fresh, un-set `threading.Event()` and
+    no deadline, preserving the original unbounded harness behavior.
     """
     pos = Position()
     halfmoves = 0
     ance_color = chess.WHITE if ance_plays_white else chess.BLACK
+    event = stop_event if stop_event is not None else threading.Event()
 
     while not pos.board.is_game_over() and halfmoves < max_halfmoves:
+        check_harness_expiry(event, deadline)
         if pos.board.turn == ance_color:
             move = search_root(
-                pos, ance_depth, ance_evaluator, threading.Event()
+                pos, ance_depth, ance_evaluator, event, deadline=deadline
             ).best_move
+            check_harness_expiry(event, deadline)
         else:
             move = RandomMover(seed).choose(pos.board)
         if move is None:
             break
+        check_harness_expiry(event, deadline)
         pos.board.push(move)
         halfmoves += 1
 
@@ -109,10 +163,34 @@ def play_game(
     return GameResult(result=result, terminal_fen=pos.board.fen())
 
 
-def run_gauntlet(n_games: int, ance_depth: int, evaluator: Evaluator) -> dict:
+def run_gauntlet(
+    n_games: int,
+    ance_depth: int,
+    evaluator: Evaluator,
+    seed: int = 0,
+    max_halfmoves: int = 300,
+    start_game: int = 0,
+    game_records: list[dict] | None = None,
+    deadline: float | None = None,
+    stop_event: threading.Event | None = None,
+    on_game_complete: Callable[[int, dict, dict], None] | None = None,
+) -> dict:
     """Plays `n_games` games of ANCE vs. a seeded `RandomMover`, alternating
     which color ANCE plays each game for fairness, and tallies the result
     from ANCE's perspective.
+
+    Plan 02-10 controls (all backward-compatible keywords):
+    - `seed`: game `i` uses RNG seed `seed + i` (default 0 preserves the
+      historical `seed=game_index` behavior).
+    - `max_halfmoves`: forwarded to every `play_game` call.
+    - `start_game`/`game_records`: resume support — prior ordered records
+      for contiguous indices `[0, start_game)` are tallied without replay
+      and only `range(start_game, n_games)` is played.
+    - `deadline`/`stop_event`: one shared absolute monotonic deadline and
+      cancellation event, checked before every game and forwarded into
+      every game/search; expiry raises `HarnessTimeout`.
+    - `on_game_complete(index, record, aggregate)`: invoked exactly once
+      per fully classified game, in order, for per-game checkpointing.
 
     Returns a dict with `wins`, `losses`, `draws`, and `non_win_games` --
     the last a list of `{"seed", "result", "terminal_fen"}` for every game
@@ -164,36 +242,85 @@ def run_gauntlet(n_games: int, ance_depth: int, evaluator: Evaluator) -> dict:
     non-pruned negamax at `GAUNTLET_SEARCH_DEPTH = 2` (measured ~31s at
     authoring) -- a run taking well under a minute is expected, not a hang.
     """
-    wins = 0
-    losses = 0
-    draws = 0
-    non_win_games: list[dict] = []
+    if n_games <= 0:
+        raise ValueError("n_games must be positive")
+    records = _validate_prior_records(game_records, start_game, n_games)
 
-    for game_index in range(n_games):
+    wins = sum(record["outcome"] == "win" for record in records)
+    losses = sum(record["outcome"] == "loss" for record in records)
+    draws = sum(record["outcome"] == "draw" for record in records)
+    non_win_games: list[dict] = [
+        {
+            "seed": record["seed"],
+            "result": record.get("result", "*"),
+            "terminal_fen": record.get("terminal_fen", ""),
+        }
+        for record in records
+        if record["outcome"] != "win"
+    ]
+
+    extra_bounds: dict = {}
+    if deadline is not None:
+        extra_bounds["deadline"] = deadline
+    if stop_event is not None:
+        extra_bounds["stop_event"] = stop_event
+
+    for game_index in range(start_game, n_games):
+        check_harness_expiry(stop_event, deadline)
         ance_plays_white = game_index % 2 == 0
-        game_result = play_game(ance_depth, evaluator, ance_plays_white, seed=game_index)
+        game_seed = seed + game_index
+        game_result = play_game(
+            ance_depth,
+            evaluator,
+            ance_plays_white,
+            seed=game_seed,
+            max_halfmoves=max_halfmoves,
+            **extra_bounds,
+        )
 
         if game_result.result == "1/2-1/2":
+            outcome = "draw"
             draws += 1
-            is_win = False
-        elif game_result.result == "1-0":
-            is_win = ance_plays_white
-        else:  # "0-1"
-            is_win = not ance_plays_white
+        elif (game_result.result == "1-0") == ance_plays_white:
+            outcome = "win"
+            wins += 1
+        else:
+            outcome = "loss"
+            losses += 1
 
-        if game_result.result != "1/2-1/2":
-            if is_win:
-                wins += 1
-            else:
-                losses += 1
-
-        if not is_win:
+        record = {
+            "index": game_index,
+            "seed": game_seed,
+            "outcome": outcome,
+            "result": game_result.result,
+            "terminal_fen": game_result.terminal_fen,
+        }
+        if outcome != "win":
             non_win_games.append(
                 {
-                    "seed": game_index,
+                    "seed": game_seed,
                     "result": game_result.result,
                     "terminal_fen": game_result.terminal_fen,
                 }
             )
+        records.append(record)
+        if on_game_complete is not None:
+            on_game_complete(
+                game_index,
+                record,
+                {
+                    "wins": wins,
+                    "losses": losses,
+                    "draws": draws,
+                    "non_win_games": list(non_win_games),
+                    "n_games": game_index + 1,
+                },
+            )
 
-    return {"wins": wins, "losses": losses, "draws": draws, "non_win_games": non_win_games}
+    return {
+        "wins": wins,
+        "losses": losses,
+        "draws": draws,
+        "non_win_games": non_win_games,
+        "n_games": n_games,
+    }

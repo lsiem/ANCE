@@ -145,6 +145,10 @@ def test_match_runner_forwards_shared_bounds_and_checkpoints(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     deadline = 456.0
+    # Pin the clock below the deadline: the run-level pre-game expiry check
+    # reads time.monotonic(), and the real clock (seconds since boot) would
+    # otherwise already exceed this absolute test deadline.
+    monkeypatch.setattr(depth_match.time, "monotonic", lambda: 100.0)
     stop_event = threading.Event()
     calls: list[dict[str, object]] = []
     callbacks: list[tuple[int, dict, dict]] = []

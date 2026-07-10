@@ -42,13 +42,22 @@ def test_random_mover_is_deterministic_per_seed() -> None:
     assert move_a != move_c
 
 
-def test_play_game_terminates_with_a_valid_result() -> None:
+def test_play_game_terminates_with_a_valid_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        gauntlet,
+        "search_root",
+        lambda *args, **kwargs: SimpleNamespace(
+            best_move=chess.Move.from_uci("e2e4")
+        ),
+    )
     result = play_game(
         ance_depth=2,
         ance_evaluator=MaterialEval(),
         ance_plays_white=True,
         seed=0,
-        max_halfmoves=300,
+        max_halfmoves=1,
     )
     assert result.result in {"1-0", "0-1", "1/2-1/2"}
     assert result.terminal_fen != ""
@@ -58,6 +67,10 @@ def test_run_gauntlet_forwards_bounds_identity_and_checkpoints(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     deadline = 1234.5
+    # Pin the clock below the deadline: the run-level pre-game expiry check
+    # reads time.monotonic(), and the real clock (seconds since boot) would
+    # otherwise already exceed this absolute test deadline.
+    monkeypatch.setattr(gauntlet.time, "monotonic", lambda: 100.0)
     stop_event = threading.Event()
     calls: list[dict[str, object]] = []
     callbacks: list[tuple[int, dict, dict]] = []
