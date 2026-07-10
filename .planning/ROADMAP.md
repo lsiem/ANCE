@@ -108,7 +108,7 @@ Plans:
 
 **Wave 6** *(gap closure — UAT test 4)*
 
-- [ ] 02-06-PLAN.md — Mate scores on the wire in signed full moves + eval cp clamp below mate window (D-18, UCI-11 gap closure)
+- [x] 02-06-PLAN.md — Mate scores on the wire in signed full moves + eval cp clamp below mate window (D-18, UCI-11 gap closure)
 
 ### Phase 3: Search Acceleration & Time Management
 
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
-| 2. Core Alpha-Beta Search | 5/6 | Gap closure (02-06 pending) | - |
+| 2. Core Alpha-Beta Search | 6/6 | Complete | 2026-07-10 |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |
