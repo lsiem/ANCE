@@ -83,13 +83,13 @@ Plans:
   4. The engine detects threefold repetition and the 50-move rule inside search and does not repeat or draw a won position.
   5. Terminal nodes score correctly (checkmate = −(MATE−ply), stalemate = 0, negamax sign correct) and deeper search never plays measurably worse.
 
-**Plans**: 8/10 plans executed
+**Plans**: 9/10 plans executed
 
 Plans:
 
 - [x] 02-07-PLAN.md
 - [x] 02-08-PLAN.md
-- [ ] 02-09-PLAN.md
+- [x] 02-09-PLAN.md
 - [ ] 02-10-PLAN.md
 
 **Wave 1**
@@ -171,7 +171,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
-| 2. Core Alpha-Beta Search | 8/10 | In Progress|  |
+| 2. Core Alpha-Beta Search | 9/10 | In Progress|  |
 | 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |
