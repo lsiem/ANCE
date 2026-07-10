@@ -161,6 +161,50 @@ def test_stop_is_prompt_during_go_infinite(engine):
     assert elapsed < 1.0, f"bestmove took {elapsed:.3f}s after stop, expected under 1.0s"
 
 
+def test_stop_signals_current_search_and_emits_exactly_one_legal_bestmove(
+    monkeypatch,
+):
+    import ance.uci.loop as loop_module
+    from ance.search.types import SearchResult
+    from ance.uci.parser import GoCommand
+
+    entered = threading.Event()
+    captured_events: list[threading.Event] = []
+    sent: list[str | None] = []
+
+    def search_until_stopped(pos, max_depth, evaluator, stop_flag, **kwargs):
+        captured_events.append(stop_flag)
+        entered.set()
+        assert stop_flag.wait(timeout=1.0)
+        move = chess.Move.from_uci("e2e4")
+        return SearchResult(best_move=move, score=0, depth=1, pv=[move], nodes=1)
+
+    monkeypatch.setattr(loop_module, "search_root", search_until_stopped)
+    monkeypatch.setattr(loop_module, "send_bestmove", lambda move: sent.append(move))
+    monkeypatch.setattr(loop_module, "search_generation", 0)
+    if hasattr(loop_module, "active_job"):
+        monkeypatch.setattr(loop_module, "active_job", None)
+    if hasattr(loop_module, "worker"):
+        monkeypatch.setattr(loop_module, "worker", None)
+    if hasattr(loop_module, "stop_flag"):
+        loop_module.stop_flag.clear()
+
+    loop_module.handle_go(GoCommand(infinite=True), Position())
+    assert entered.wait(timeout=0.5)
+    loop_module.handle_stop()
+
+    active_thread = (
+        loop_module.active_job.thread
+        if hasattr(loop_module, "active_job")
+        else loop_module.worker
+    )
+    assert active_thread is not None
+    active_thread.join(timeout=0.5)
+    assert not active_thread.is_alive()
+    assert captured_events[0].is_set()
+    assert sent == ["e2e4"]
+
+
 def test_quit_never_deadlocks_during_go_infinite(engine):
     engine.send("go infinite")
     time.sleep(0.1)
