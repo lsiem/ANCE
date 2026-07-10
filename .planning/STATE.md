@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: core-alpha-beta-search
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-07-10T16:27:35.883Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-07-10T16:43:45.188Z"
 last_activity: 2026-07-10
-last_activity_desc: Completed 02-07-PLAN.md
+last_activity_desc: Completed 02-08-PLAN.md
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 14
+  percent: 88
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 02 (core-alpha-beta-search) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
-Last activity: 2026-07-10 -- Completed 02-07-PLAN.md
+Last activity: 2026-07-10 -- Completed 02-08-PLAN.md
 
-Progress: [████████░░] 81%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [████████░░] 81%
 | Phase 01 P04 | 20 min | 3 tasks | 5 files |
 | Phase 01-minimal-uci-engine-evaluator-seam P05 | 35min | 2 tasks | 5 files |
 | Phase 02 P07 | 8 min | 2 tasks | 4 files |
+| Phase 02 P08 | 11min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Positional terms computed white-relative internally, single sign flip by board.turn at the end of evaluate() (D-07) — Matches material+PST subtotal convention; tempo is added after the flip since it is inherently side-to-move relative
 - [Phase 01]: Pawn-structure file counts use int.bit_count() over bitboard masks — Avoids a bin(...).count() string round-trip since this runs per leaf at every search node (round-2 cross-AI review LOW finding)
 - [Phase 01]: 01-05 acceptance replanned — losses==0 + >=70% wins @ depth2; 100/0@depth4 deferred to pruning
+- [Phase 02]: A new go advances generation before bounded preemption and always allocates a fresh cancellation Event — Prevents stale worker token reuse and establishes replacement before old-worker shutdown.
+- [Phase 02]: stop preserves the active generation, while state-changing commands invalidate only workers that survive their bounded join — Preserves one current bestmove while preventing timed-out workers from emitting after state changes.
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T16:27:17.465Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-07-10T16:43:45.180Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
