@@ -7,7 +7,7 @@ import threading
 import chess
 
 from ance.board.position import Position
-from ance.eval.base import MATE, Evaluator
+from ance.eval.base import MATE
 from ance.eval.material import MaterialEval
 from ance.search.negamax import negamax, quiescence_search, search_root
 from ance.search.types import MATE_THRESHOLD, SearchContext

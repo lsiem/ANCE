@@ -17,6 +17,7 @@ from ance.eval.base import MATE, Evaluator
 from ance.search.types import (
     DEFAULT_BARE_GO_MOVETIME_MS,
     MAX_PLY,
+    MATE_THRESHOLD,
     SearchContext,
     SearchResult,
 )
@@ -108,6 +109,12 @@ def _qsearch_moves(board: chess.Board, moves: list[chess.Move]) -> list[chess.Mo
     return _mvv_lva_sort(noisy, board)
 
 
+def _clamped_eval(ctx: SearchContext, pos: Position) -> int:
+    raw = ctx.evaluator.evaluate(pos)
+    bound = MATE_THRESHOLD - 1
+    return max(-bound, min(bound, raw))
+
+
 def quiescence_search(
     pos: Position,
     alpha: int,
@@ -119,7 +126,7 @@ def quiescence_search(
     _poll_stop(ctx)
 
     if qdepth >= MAX_QDEPTH:
-        return ctx.evaluator.evaluate(pos)
+        return _clamped_eval(ctx, pos)
 
     board = pos.board
     if pos.is_check():
@@ -144,7 +151,7 @@ def quiescence_search(
                 alpha = score
         return best
 
-    stand_pat = ctx.evaluator.evaluate(pos)
+    stand_pat = _clamped_eval(ctx, pos)
     if stand_pat >= beta:
         return stand_pat
     if stand_pat > alpha:

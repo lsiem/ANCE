@@ -8,10 +8,12 @@ from typing import Callable
 
 import chess
 
-from ance.eval.base import Evaluator
+from ance.eval.base import Evaluator, MATE
 
 DEFAULT_BARE_GO_MOVETIME_MS = 2000
 MAX_PLY = 64
+# Mate-window classifier shared by wire formatter and eval-seam clamp (D-18).
+MATE_THRESHOLD = MATE - MAX_PLY
 
 
 @dataclass

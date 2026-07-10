@@ -52,11 +52,12 @@ def send_info_depth(
 ) -> None:
     """Emit one completed-depth info line (D-11)."""
     from ance.eval.base import MATE
-    from ance.search.types import MAX_PLY
+    from ance.search.types import MATE_THRESHOLD
 
-    if abs(score) >= MATE - MAX_PLY:
+    if abs(score) >= MATE_THRESHOLD:
         mate_distance = MATE - abs(score)
-        mate_score = mate_distance if score > 0 else -mate_distance
+        mate_moves = (mate_distance + 1) // 2
+        mate_score = mate_moves if score > 0 else -mate_moves
         score_part = f"score mate {mate_score}"
     else:
         score_part = f"score cp {score}"
