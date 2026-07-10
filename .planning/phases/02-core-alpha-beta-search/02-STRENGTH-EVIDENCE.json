@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "evidence_contract": "deterministic_correctness_not_statistical_strength",
+  "created_utc": "2026-07-10T20:08:08.434816+00:00",
+  "collector_commit": "c915011a7a5354997ef0073f595b27e1db96cc52",
+  "collector_command": ".venv/bin/python -m ance.tools.phase2_deterministic_evidence --output .planning/phases/02-core-alpha-beta-search/02-STRENGTH-EVIDENCE.json --summary .planning/phases/02-core-alpha-beta-search/02-10-SUMMARY.md --hard-wall-seconds 870 --reporting-margin-seconds 60",
+  "runtime_bound": {
+    "hard_wall_seconds": 870,
+    "reporting_margin_seconds": 60,
+    "graceful_wait_seconds": 15,
+    "forced_reap_seconds": 5,
+    "work_seconds": 810
+  },
+  "timings": {
+    "supervisor_start_monotonic": 302464.060617083,
+    "hard_deadline_monotonic": 303334.060617083,
+    "work_deadline_monotonic": 303274.060617083,
+    "supervisor_elapsed_seconds": 30.49815475003561,
+    "child_elapsed_seconds": 30.34616533399094
+  },
+  "runtime_calibration": {
+    "source": "interrupted 30+30 runner; retained as calibration only",
+    "completed_depth_games": 2,
+    "games": [
+      {
+        "index": 0,
+        "seed": 20260710,
+        "outcome": "draw"
+      },
+      {
+        "index": 1,
+        "seed": 20260711,
+        "outcome": "win"
+      }
+    ],
+    "elapsed_seconds": 1205.6582282920135,
+    "seconds_per_game_approx": 602.829,
+    "projected_30_depth_games_seconds": 18084.8734243802,
+    "projected_hours_approx": 5.02,
+    "random_games_started": 0,
+    "received_signal": "SIGTERM",
+    "conclusion": "The depth suite alone cannot fit the old 7200-second combined budget.",
+    "sample_classification": "non-statistical smoke/calibration sample",
+    "statistical_claim": false
+  },
+  "commands": {
+    "collector_tests": {
+      "command": ".venv/bin/python -m pytest tests/test_phase2_deterministic_evidence.py -m \"not slow\" -q",
+      "returncode": 0,
+      "passed": 6,
+      "deselected": 0,
+      "expected_passed": 6,
+      "expected_deselected": 0,
+      "started_monotonic": 302464.197092125,
+      "ended_monotonic": 302464.535730625,
+      "elapsed_seconds": 0.33863849996123463,
+      "stdout": "......                                                                   [100%]\n6 passed in 0.05s\n",
+      "stderr": ""
+    },
+    "focused": {
+      "command": ".venv/bin/python -m pytest tests/test_phase2_strength_evidence.py tests/test_depth_vs_depth.py tests/test_random_mover_gauntlet.py tests/test_search_deadline.py tests/test_search_telemetry.py tests/test_iterative_deepening.py tests/test_uci_generation.py tests/test_go_bestmove.py -m \"not slow\" -q",
+      "returncode": 0,
+      "passed": 73,
+      "deselected": 2,
+      "expected_passed": 73,
+      "expected_deselected": 2,
+      "started_monotonic": 302464.535897125,
+      "ended_monotonic": 302474.969484791,
+      "elapsed_seconds": 10.433587665960658,
+      "stdout": "........................................................................ [ 98%]\n.                                                                        [100%]\n73 passed, 2 deselected in 10.14s\n",
+      "stderr": ""
+    },
+    "full_fast": {
+      "command": ".venv/bin/python -m pytest -m \"not slow\" -q",
+      "returncode": 0,
+      "passed": 139,
+      "deselected": 2,
+      "expected_passed": 139,
+      "expected_deselected": 2,
+      "started_monotonic": 302474.969580708,
+      "ended_monotonic": 302494.211713791,
+      "elapsed_seconds": 19.242133082996588,
+      "stdout": "........................................................................ [ 51%]\n...................................................................      [100%]\n139 passed, 2 deselected in 18.52s\n",
+      "stderr": ""
+    }
+  },
+  "deterministic_cases": [
+    {
+      "id": "rook_mate",
+      "fen": "6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 1,
+      "expected_move": "a1a8",
+      "expected_score": 29999,
+      "expected_nodes": 29,
+      "observed_depth": 1,
+      "observed_move": "a1a8",
+      "observed_score": 29999,
+      "observed_nodes": 29,
+      "started_monotonic": 302494.211890416,
+      "ended_monotonic": 302494.212894583,
+      "elapsed_seconds": 0.0010041670175269246,
+      "passed": true
+    },
+    {
+      "id": "rook_mate",
+      "fen": "6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 2,
+      "expected_move": "a1a8",
+      "expected_score": 29999,
+      "expected_nodes": 273,
+      "observed_depth": 2,
+      "observed_move": "a1a8",
+      "observed_score": 29999,
+      "observed_nodes": 273,
+      "started_monotonic": 302494.212938,
+      "ended_monotonic": 302494.216964833,
+      "elapsed_seconds": 0.004026832990348339,
+      "passed": true
+    },
+    {
+      "id": "queen_mate",
+      "fen": "6k1/5ppp/8/8/8/8/8/6KQ w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 1,
+      "expected_move": "h1a8",
+      "expected_score": 29999,
+      "expected_nodes": 42,
+      "observed_depth": 1,
+      "observed_move": "h1a8",
+      "observed_score": 29999,
+      "observed_nodes": 42,
+      "started_monotonic": 302494.216977791,
+      "ended_monotonic": 302494.217671833,
+      "elapsed_seconds": 0.0006940420134924352,
+      "passed": true
+    },
+    {
+      "id": "queen_mate",
+      "fen": "6k1/5ppp/8/8/8/8/8/6KQ w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 4,
+      "expected_move": "h1a8",
+      "expected_score": 29999,
+      "expected_nodes": 8249,
+      "observed_depth": 4,
+      "observed_move": "h1a8",
+      "observed_score": 29999,
+      "observed_nodes": 8249,
+      "started_monotonic": 302494.217677083,
+      "ended_monotonic": 302494.33750375,
+      "elapsed_seconds": 0.11982666701078415,
+      "passed": true
+    },
+    {
+      "id": "hanging_queen",
+      "fen": "4k3/8/8/4q3/8/8/8/4R3 w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 1,
+      "expected_move": "e1e5",
+      "expected_score": 500,
+      "expected_nodes": 30,
+      "observed_depth": 1,
+      "observed_move": "e1e5",
+      "observed_score": 500,
+      "observed_nodes": 30,
+      "started_monotonic": 302494.33751525,
+      "ended_monotonic": 302494.33806225,
+      "elapsed_seconds": 0.0005469999741762877,
+      "passed": true
+    },
+    {
+      "id": "hanging_queen",
+      "fen": "4k3/8/8/4q3/8/8/8/4R3 w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 3,
+      "expected_move": "e1e5",
+      "expected_score": 500,
+      "expected_nodes": 2890,
+      "observed_depth": 3,
+      "observed_move": "e1e5",
+      "observed_score": 500,
+      "observed_nodes": 2890,
+      "started_monotonic": 302494.338066791,
+      "ended_monotonic": 302494.367213791,
+      "elapsed_seconds": 0.029146999993827194,
+      "passed": true
+    },
+    {
+      "id": "knight_fork",
+      "fen": "6k1/5q2/8/4N3/8/8/8/4K3 w - - 0 1",
+      "evaluator": "handcrafted",
+      "requested_depth": 1,
+      "expected_move": "e5f7",
+      "expected_score": 0,
+      "expected_nodes": 25,
+      "observed_depth": 1,
+      "observed_move": "e5f7",
+      "observed_score": 0,
+      "observed_nodes": 25,
+      "started_monotonic": 302494.367226958,
+      "ended_monotonic": 302494.3682685,
+      "elapsed_seconds": 0.0010415420401841402,
+      "passed": true
+    },
+    {
+      "id": "knight_fork",
+      "fen": "6k1/5q2/8/4N3/8/8/8/4K3 w - - 0 1",
+      "evaluator": "handcrafted",
+      "requested_depth": 3,
+      "expected_move": "e5f7",
+      "expected_score": 0,
+      "expected_nodes": 4729,
+      "observed_depth": 3,
+      "observed_move": "e5f7",
+      "observed_score": 0,
+      "observed_nodes": 4729,
+      "started_monotonic": 302494.368274958,
+      "ended_monotonic": 302494.5147535,
+      "elapsed_seconds": 0.14647854201029986,
+      "passed": true
+    },
+    {
+      "id": "horizon_rook",
+      "fen": "4k3/8/8/8/4r3/8/8/4R2K w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 1,
+      "expected_move": "e1e4",
+      "expected_score": 500,
+      "expected_nodes": 36,
+      "observed_depth": 1,
+      "observed_move": "e1e4",
+      "observed_score": 500,
+      "observed_nodes": 36,
+      "started_monotonic": 302494.514763666,
+      "ended_monotonic": 302494.5153395,
+      "elapsed_seconds": 0.0005758339539170265,
+      "passed": true
+    },
+    {
+      "id": "horizon_rook",
+      "fen": "4k3/8/8/8/4r3/8/8/4R2K w - - 0 1",
+      "evaluator": "material",
+      "requested_depth": 3,
+      "expected_move": "e1e4",
+      "expected_score": 500,
+      "expected_nodes": 2209,
+      "observed_depth": 3,
+      "observed_move": "e1e4",
+      "observed_score": 500,
+      "observed_nodes": 2209,
+      "started_monotonic": 302494.5153435,
+      "ended_monotonic": 302494.543242791,
+      "elapsed_seconds": 0.027899291017092764,
+      "passed": true
+    }
+  ],
+  "node_accounting": {
+    "callback_nodes": [
+      10,
+      20,
+      30
+    ],
+    "callback_nps": [
+      10,
+      6,
+      5
+    ],
+    "completed_depths": [
+      1,
+      2,
+      3
+    ],
+    "final_depth": 3,
+    "final_nodes": 30
+  },
+  "deadline_retention": {
+    "final_depth": 1,
+    "completed_callbacks": [
+      1
+    ]
+  },
+  "requirement_evidence": {
+    "SRCH-02": {
+      "status": "passed",
+      "evidence_ids": [
+        "rook_mate:d1",
+        "rook_mate:d2",
+        "queen_mate:d1",
+        "queen_mate:d4",
+        "full_fast:alpha_beta"
+      ]
+    },
+    "SRCH-03": {
+      "status": "passed",
+      "evidence_ids": [
+        "all_fixed_depth_pairs",
+        "focused:test_deadline_during_iteration_retains_last_completed_depth"
+      ]
+    },
+    "SRCH-04": {
+      "status": "passed",
+      "evidence_ids": [
+        "hanging_queen:d1",
+        "hanging_queen:d3",
+        "horizon_rook:d1",
+        "horizon_rook:d3",
+        "full_fast:quiescence"
+      ]
+    },
+    "SRCH-07": {
+      "status": "passed",
+      "evidence_ids": [
+        "focused:test_build_game_history_keys_reconstructs_every_prior_position",
+        "focused:test_real_game_history_repetition_from_root_child_scores_draw"
+      ]
+    },
+    "UCI-11": {
+      "status": "passed",
+      "evidence_ids": [
+        "focused:test_completed_iterations_report_exact_cumulative_nodes_and_nps",
+        "focused:test_timed_out_worker_keeps_unique_cancel_token_and_cannot_emit_after_replacement",
+        "focused:test_info_gate_rechecks_generation_after_waiting_for_lock",
+        "focused:test_stop_signals_current_search_and_emits_exactly_one_legal_bestmove",
+        "focused:test_stale_generation_worker_never_emits_bestmove_after_being_superseded"
+      ]
+    }
+  },
+  "supporting_contracts": {
+    "plan_02_09": {
+      "status": "passed",
+      "tests": [
+        "tests/test_depth_vs_depth.py::test_game_outcome_is_from_deeper_side_perspective",
+        "tests/test_depth_vs_depth.py::test_halfmove_cap_is_a_deeper_perspective_draw",
+        "tests/test_depth_vs_depth.py::test_two_deeper_side_wins_tally_as_two_wins",
+        "tests/test_depth_vs_depth.py::test_opening_selection_is_reproducible_and_varies_by_seed",
+        "tests/test_depth_vs_depth.py::test_every_configured_opening_is_legal_and_four_plies"
+      ]
+    }
+  },
+  "supervisor_tests": {
+    "timeout_process_group_terminated": true,
+    "interrupt_process_group_terminated": true,
+    "atomic_failure_output": true
+  },
+  "deferred_statistical_evidence": {
+    "phase": 3,
+    "scope": "depth-vs-depth Elo and random-mover gauntlet",
+    "optimization": "optimized search",
+    "harness": "cutechess"
+  },
+  "status": "passed",
+  "completion": "complete",
+  "reasons": [],
+  "completed_utc": "2026-07-10T20:08:38.796964+00:00"
+}
