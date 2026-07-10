@@ -1,9 +1,9 @@
 ---
 status: complete
 phase: 02-core-alpha-beta-search
-source: 02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md
+source: 02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md
 started: 2026-07-08T19:50:00Z
-updated: 2026-07-10T00:00:00Z
+updated: 2026-07-10T15:15:00Z
 ---
 
 ## Current Test
@@ -28,9 +28,9 @@ note: Claude-run — 5/5 passed in 0.32s
 
 ### 4. Mate score wire format (full moves)
 expected: A mate-in-2 position reports `score mate 2` (full moves per UCI spec / D-18) — NOT `mate 3` (plies). Being mated shows a negative mate score. (Known filed gap: protocol.py currently emits plies)
-result: issue
-reported: "Claude-verified: send_info_depth(score=MATE-3) emits 'score mate 3' (should be 'mate 2'); score=-(MATE-4) emits 'mate -4' (should be 'mate -2'). Plies not converted to full moves; no evaluator cp clamp below mate window."
-severity: major
+result: pass
+source: automated
+verification: ".venv/bin/python -m pytest tests/test_uci_info.py tests/test_quiescence.py -q — 18 passed"
 
 ### 5. Draw handling in search
 expected: ID/draw-detection tests pass — engine scores twofold repetition / 50-move / insufficient material as 0 inside search and does not repeat a won position (takes the winning line instead of shuffling)
@@ -55,25 +55,12 @@ note: User-confirmed 2026-07-10
 ## Summary
 
 total: 8
-passed: 7
-issues: 1
+passed: 8
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "Mate scores on the wire are reported in full moves per UCI spec (D-18): score mate 2 for mate-in-3-plies, negative when being mated"
-  status: failed
-  reason: "User reported: Claude-verified — send_info_depth emits raw ply distance (mate 3 for MATE-3, mate -4 for -(MATE-4)) instead of signed ceil(plies/2) full moves; evaluator cp also not clamped below the mate window"
-  severity: major
-  test: 4
-  root_cause: "ance/uci/protocol.py send_info_depth lines 57-60: mate_distance = MATE - abs(score) printed directly without (mate_distance + 1) // 2 full-move conversion; no MATE_THRESHOLD clamp on cp scores"
-  artifacts:
-    - path: "ance/uci/protocol.py"
-      issue: "plies printed as mate distance; missing full-move conversion and cp clamp"
-  missing:
-    - "Convert plies to signed full moves: mate_moves = (mate_distance + 1) // 2 with sign preserved"
-    - "Clamp non-mate cp scores below the mate window before formatting"
-    - "Extend tests/test_uci_info.py: mate-in-1 -> mate 1, mate-in-2 (3 plies) -> mate 2, being mated -> negative"
-  debug_session: ".planning/todos/pending/2026-07-08-uci-mate-score-full-moves.md"
+[none]
