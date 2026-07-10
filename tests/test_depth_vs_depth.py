@@ -141,16 +141,16 @@ def test_non_positive_game_count_is_rejected() -> None:
 
 @pytest.mark.slow
 def test_deeper_search_scores_at_least_fifty_percent() -> None:
-    """Depth 4 vs depth 2 over 5 games — deeper side must score >= 50%.
+    """Depth 3 vs depth 2 over 30 games — deeper side must score >= 50%.
 
-    Measured 2026-07-08: depth-4 games ~8-10 min each; n_games=5 keeps
-    the proof under ~25 min while demonstrating monotonic depth gain.
+    Plan 02-10 owns this standalone evidence run with a 45-minute budget.
     """
     result = depth_match.run_depth_match(
         shallow_depth=2,
-        deep_depth=4,
-        n_games=5,
+        deep_depth=3,
+        n_games=30,
         evaluator=HandcraftedEval(),
+        max_halfmoves=80,
     )
     assert result["score_rate"] >= 0.5, (
         f"deeper side scored {result['score_rate']:.1%} "
