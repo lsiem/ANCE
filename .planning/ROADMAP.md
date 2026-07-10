@@ -133,7 +133,28 @@ Plans:
   4. `ucinewgame` clears the transposition table so state never leaks across games.
   5. A `cutechess-cli` gauntlet harness runs two identical-search builds from a fixed opening book and reports a score with error bars (validated handcrafted-vs-handcrafted ≈ 50%).
 
-**Plans**: TBD
+**Plans**: 0/6 plans executed
+
+**Wave 1** *(parallel — baseline + harness before search changes)*
+
+- [ ] 03-01-PLAN.md — Phase 2 baseline snapshot (D-20/D-21 yardstick before TT/ordering)
+- [ ] 03-02-PLAN.md — Self-play gauntlet harness: arbiter clocks, openings, Wilson CI (TOOL-03)
+
+**Wave 2**
+
+- [ ] 03-03-PLAN.md — Zobrist transposition table, mate ply, ucinewgame clear (SRCH-05)
+
+**Wave 3**
+
+- [ ] 03-04-PLAN.md — Full move ordering + D-21 baseline comparison (SRCH-06)
+
+**Wave 4**
+
+- [ ] 03-05-PLAN.md — Clock budgeting wtime/btime/winc/binc (SRCH-08, UCI-08)
+
+**Wave 5**
+
+- [ ] 03-06-PLAN.md — 100-game blitz evidence: zero forfeits + 50% sanity (D-14, D-17)
 
 ### Phase 4: Offline NNUE Training Pipeline
 
@@ -175,6 +196,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 |-------|----------------|--------|-----------|
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
 | 2. Core Alpha-Beta Search | 12/12 | Complete    | 2026-07-10 |
-| 3. Search Acceleration & Time Management | 0/TBD | Not started | - |
+| 3. Search Acceleration & Time Management | 0/6 | Planned | - |
 | 4. Offline NNUE Training Pipeline | 0/TBD | Not started | - |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |
