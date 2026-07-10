@@ -42,7 +42,11 @@ class SearchAborted(Exception):
 
 
 def _poll_stop(ctx: SearchContext) -> None:
-    if ctx.counter[0] % NODE_POLL_INTERVAL == 0 and ctx.stop_flag.is_set():
+    if ctx.counter[0] % NODE_POLL_INTERVAL != 0:
+        return
+    if ctx.stop_flag.is_set() or (
+        ctx.deadline is not None and time.monotonic() >= ctx.deadline
+    ):
         raise SearchAborted()
 
 
@@ -62,7 +66,7 @@ def _child_ctx(ctx: SearchContext, ply: int) -> SearchContext:
 
 def _build_game_history_keys(board: chess.Board) -> set[int]:
     keys: set[int] = set()
-    temp = board.copy(stack=False)
+    temp = board.copy(stack=True)
     keys.add(chess.polyglot.zobrist_hash(temp))
     while temp.move_stack:
         temp.pop()
@@ -237,9 +241,6 @@ def _search_at_depth(
     game_history_keys: set[int],
     deadline: float | None,
     prior_best: chess.Move | None,
-    info_callback,
-    nodes_at_start: int,
-    start_time: float,
 ) -> SearchResult:
     moves = pos.legal_moves()
     if prior_best is not None and prior_best in moves:
@@ -247,7 +248,7 @@ def _search_at_depth(
 
     best_move: chess.Move | None = None
     best_score = -MATE - 1
-    counter = [nodes_at_start]
+    counter = [0]
     board = pos.board
 
     for move in moves:
@@ -266,7 +267,6 @@ def _search_at_depth(
                 game_history_keys=game_history_keys,
                 deadline=deadline,
                 max_depth=depth,
-                info_callback=info_callback,
             )
             score = -negamax(pos, depth - 1, -MATE - 1, MATE + 1, ctx)
         except SearchAborted:
@@ -284,18 +284,13 @@ def _search_at_depth(
         if best_score == -MATE - 1:
             best_score = 0
 
-    result = SearchResult(
+    return SearchResult(
         best_move=best_move,
         score=best_score,
         depth=depth,
         pv=[best_move] if best_move is not None else [],
         nodes=counter[0],
     )
-    if info_callback is not None:
-        elapsed_ms = max(int((time.monotonic() - start_time) * 1000), 1)
-        nps = result.nodes * 1000 // elapsed_ms
-        info_callback(result, nps)
-    return result
 
 
 def search_root(
@@ -332,18 +327,19 @@ def search_root(
                 game_history_keys,
                 deadline,
                 prior_best,
-                info_callback,
-                total_nodes,
-                start_time,
             )
         except SearchAborted:
             break
+        total_nodes += result.nodes
+        result.nodes = total_nodes
         last_completed = result
         prior_best = result.best_move
-        total_nodes += result.nodes
+        if info_callback is not None:
+            elapsed_ms = max(int((time.monotonic() - start_time) * 1000), 1)
+            nps = total_nodes * 1000 // elapsed_ms
+            info_callback(result, nps)
 
     if last_completed is not None:
-        last_completed.nodes = total_nodes
         return last_completed
 
     moves = pos.legal_moves()
