@@ -11,12 +11,62 @@ import chess.polyglot
 from ance.board.position import Position
 from ance.eval.base import MATE
 from ance.eval.material import MaterialEval
-from ance.search.negamax import negamax, search_root
+from ance.search.negamax import _build_game_history_keys, negamax, search_root
 from ance.search.types import SearchContext
 
 
 def _never_stop() -> threading.Event:
     return threading.Event()
+
+
+def _real_history_board() -> chess.Board:
+    board = chess.Board()
+    for move_uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3"):
+        board.push(chess.Move.from_uci(move_uci))
+    return board
+
+
+class _ConstantEval:
+    def evaluate(self, pos: Position) -> int:
+        return 123
+
+
+def test_build_game_history_keys_reconstructs_every_prior_position() -> None:
+    board = _real_history_board()
+    fen_before = board.fen()
+    stack_length_before = len(board.move_stack)
+    expected_keys: set[int] = set()
+    temp = board.copy(stack=True)
+    while True:
+        expected_keys.add(chess.polyglot.zobrist_hash(temp))
+        if not temp.move_stack:
+            break
+        temp.pop()
+
+    assert _build_game_history_keys(board) == expected_keys
+    assert board.fen() == fen_before
+    assert len(board.move_stack) == stack_length_before
+
+
+def test_real_game_history_repetition_from_root_child_scores_draw() -> None:
+    board = _real_history_board()
+    history_keys = _build_game_history_keys(board)
+    board.push(chess.Move.from_uci("g8f6"))
+    pos = Position(board)
+    ctx = SearchContext(
+        stop_flag=_never_stop(),
+        counter=[0],
+        evaluator=_ConstantEval(),
+        ply=1,
+        path_keys=[],
+        game_history_keys=history_keys,
+        deadline=None,
+        max_depth=1,
+    )
+
+    score = negamax(pos, depth=1, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
+
+    assert score == 0
 
 
 def test_id_returns_last_completed_depth_on_abort() -> None:
