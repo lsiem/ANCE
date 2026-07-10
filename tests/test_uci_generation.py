@@ -120,3 +120,116 @@ def test_info_gate_rechecks_generation_after_waiting_for_lock(
     emitter.join(timeout=0.5)
     assert not emitter.is_alive()
     assert records == []
+
+
+FOOLS_MATE_FEN = (
+    "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"
+)
+
+
+def test_worker_exception_emits_generation_gated_fallback_bestmove(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    records: list[tuple[str, str]] = []
+    logs: list[str] = []
+
+    def raising_search(*args, **kwargs):
+        raise RuntimeError("probe")
+
+    monkeypatch.setattr(loop_module, "search_root", raising_search)
+    monkeypatch.setattr(
+        loop_module,
+        "send_bestmove",
+        lambda move: records.append(("bestmove", move or "(none)")),
+    )
+    monkeypatch.setattr(loop_module.debug, "log", lambda msg: logs.append(msg))
+
+    position = Position()
+    expected_move = position.legal_moves()[0].uci()
+
+    loop_module.handle_go(GoCommand(depth=1), position)
+    thread = loop_module.active_job.thread
+    assert thread is not None
+    thread.join(timeout=1.0)
+    assert not thread.is_alive()
+
+    assert len(records) == 1
+    assert records[0][0] == "bestmove"
+    assert records[0][1] == expected_move
+    assert any("ERROR: search worker failed" in entry for entry in logs)
+
+
+def test_worker_exception_fallback_none_on_mate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    records: list[str] = []
+
+    def raising_search(*args, **kwargs):
+        raise RuntimeError("probe")
+
+    monkeypatch.setattr(loop_module, "search_root", raising_search)
+    monkeypatch.setattr(
+        loop_module,
+        "send_bestmove",
+        lambda move: records.append(move or "(none)"),
+    )
+    monkeypatch.setattr(loop_module.debug, "log", lambda _msg: None)
+
+    position = Position()
+    assert position.try_set_fen(FOOLS_MATE_FEN) is True
+
+    loop_module.handle_go(GoCommand(depth=1), position)
+    thread = loop_module.active_job.thread
+    assert thread is not None
+    thread.join(timeout=1.0)
+    assert not thread.is_alive()
+
+    assert records == ["(none)"]
+
+
+def test_stale_worker_exception_emits_no_fallback_bestmove(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    records: list[str] = []
+
+    def blocking_raise(*args, **kwargs):
+        entered.set()
+        assert release.wait(timeout=1.0)
+        raise RuntimeError("probe")
+
+    monkeypatch.setattr(loop_module, "search_root", blocking_raise)
+    monkeypatch.setattr(
+        loop_module,
+        "send_bestmove",
+        lambda move: records.append(move or "(none)"),
+    )
+    monkeypatch.setattr(loop_module.debug, "log", lambda _msg: None)
+
+    position = Position()
+    stop_event = threading.Event()
+    my_generation = 1
+    monkeypatch.setattr(loop_module, "search_generation", my_generation)
+
+    thread = threading.Thread(
+        target=loop_module._run_search,
+        args=(
+            position.copy(),
+            1,
+            loop_module.evaluator,
+            stop_event,
+            None,
+            my_generation,
+            None,
+        ),
+        daemon=True,
+    )
+    thread.start()
+    assert entered.wait(timeout=0.5)
+
+    loop_module.search_generation = 2
+    release.set()
+    thread.join(timeout=1.0)
+    assert not thread.is_alive()
+    assert records == []
