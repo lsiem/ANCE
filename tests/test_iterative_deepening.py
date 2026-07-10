@@ -180,23 +180,21 @@ def test_insufficient_material_scores_draw() -> None:
 
 
 def test_qsearch_path_repetition_scores_draw() -> None:
-    """Capture e1e5 revisits a zobrist key already on path_keys — must score draw (0).
+    """Qsearch descendant with zobrist already on path_keys scores draw (0), not static eval.
 
     FEN: 4k3/8/8/4q3/8/8/4R3/4K3 w - - 0 1
-    Sequence: root (quiet) -> Re1xe5 lands on child key pre-seeded on the search path.
+    Sequence: Re1xe5 reaches child; child zobrist was already recorded on path_keys.
     """
     fen = "4k3/8/8/4q3/8/8/4R3/4K3 w - - 0 1"
     board = chess.Board(fen)
-    capture = chess.Move.from_uci("e1e5")
-    board.push(capture)
+    board.push(chess.Move.from_uci("e1e5"))
     child_key = chess.polyglot.zobrist_hash(board)
-    board.pop()
-    pos = Position(chess.Board(fen))
+    pos = Position(board)
     ctx = SearchContext(
         stop_flag=_never_stop(),
         counter=[0],
         evaluator=_ConstantEval(),
-        ply=0,
+        ply=1,
         path_keys=[child_key],
         game_history_keys=set(),
         deadline=None,

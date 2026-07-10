@@ -129,58 +129,72 @@ def quiescence_search(
     ctx.counter[0] += 1
     _poll_stop(ctx)
 
-    if qdepth >= MAX_QDEPTH:
-        return _clamped_eval(ctx, pos)
+    if _is_draw_position(pos, ctx):
+        return 0
 
     board = pos.board
-    if pos.is_check():
+    ctx.path_keys.append(chess.polyglot.zobrist_hash(board))
+    try:
         moves = pos.legal_moves()
         if not moves:
-            return -(MATE - ctx.ply)
-        best = -MATE - 1
-        child_ply = ctx.ply + 1
-        for move in moves:
+            if pos.is_check():
+                return -(MATE - ctx.ply)
+            return 0
+
+        if pos.is_check():
+            best = -MATE - 1
+            child_ply = ctx.ply + 1
+            for move in moves:
+                board.push(move)
+                try:
+                    score = -quiescence_search(
+                        pos,
+                        -beta,
+                        -alpha,
+                        _child_ctx(ctx, child_ply),
+                        qdepth + 1,
+                    )
+                finally:
+                    board.pop()
+                if score > best:
+                    best = score
+                if score >= beta:
+                    return score
+                if score > alpha:
+                    alpha = score
+            return best
+
+        if qdepth >= MAX_QDEPTH:
+            return _clamped_eval(ctx, pos)
+
+        stand_pat = _clamped_eval(ctx, pos)
+        if stand_pat >= beta:
+            return stand_pat
+        if stand_pat > alpha:
+            alpha = stand_pat
+
+        for move in _qsearch_moves(board, moves):
+            capture_value = _capture_value(board, move)
+            if stand_pat + capture_value + DELTA_MARGIN < alpha:
+                continue
             board.push(move)
             try:
                 score = -quiescence_search(
-                    pos, -beta, -alpha, _child_ctx(ctx, child_ply), qdepth + 1
+                    pos,
+                    -beta,
+                    -alpha,
+                    _child_ctx(ctx, ctx.ply + 1),
+                    qdepth + 1,
                 )
             finally:
                 board.pop()
-            if score > best:
-                best = score
-            if score >= beta:
-                return score
             if score > alpha:
                 alpha = score
-        return best
-
-    stand_pat = _clamped_eval(ctx, pos)
-    if stand_pat >= beta:
-        return stand_pat
-    if stand_pat > alpha:
-        alpha = stand_pat
-
-    for move in _qsearch_moves(board, pos.legal_moves()):
-        capture_value = _capture_value(board, move)
-        if stand_pat + capture_value + DELTA_MARGIN < alpha:
-            continue
-        board.push(move)
-        try:
-            score = -quiescence_search(
-                pos,
-                -beta,
-                -alpha,
-                _child_ctx(ctx, ctx.ply + 1),
-                qdepth + 1,
-            )
-        finally:
-            board.pop()
-        if score > alpha:
-            alpha = score
-        if score >= beta:
-            return score
-    return alpha
+            if score >= beta:
+                return score
+        return alpha
+    finally:
+        ctx.path_keys.pop()
 
 
 def negamax(
@@ -197,6 +211,10 @@ def negamax(
     if _is_draw_position(pos, ctx):
         return 0
 
+    # depth-0 handoff: quiescence_search owns path_keys for the qsearch subtree.
+    if depth == 0:
+        return quiescence_search(pos, alpha, beta, ctx)
+
     ctx.path_keys.append(chess.polyglot.zobrist_hash(board))
     try:
         moves = pos.legal_moves()
@@ -204,9 +222,6 @@ def negamax(
             if pos.is_check():
                 return -(MATE - ctx.ply)
             return 0
-
-        if depth == 0:
-            return quiescence_search(pos, alpha, beta, ctx)
 
         best = -MATE - 1
         child_ply = ctx.ply + 1
