@@ -11,7 +11,12 @@ import chess.polyglot
 from ance.board.position import Position
 from ance.eval.base import MATE
 from ance.eval.material import MaterialEval
-from ance.search.negamax import _build_game_history_keys, negamax, search_root
+from ance.search.negamax import (
+    _build_game_history_keys,
+    negamax,
+    quiescence_search,
+    search_root,
+)
 from ance.search.types import SearchContext
 
 
@@ -171,6 +176,33 @@ def test_insufficient_material_scores_draw() -> None:
         max_depth=0,
     )
     score = negamax(pos, depth=1, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
+    assert score == 0
+
+
+def test_qsearch_path_repetition_scores_draw() -> None:
+    """Capture e1e5 revisits a zobrist key already on path_keys — must score draw (0).
+
+    FEN: 4k3/8/8/4q3/8/8/4R3/4K3 w - - 0 1
+    Sequence: root (quiet) -> Re1xe5 lands on child key pre-seeded on the search path.
+    """
+    fen = "4k3/8/8/4q3/8/8/4R3/4K3 w - - 0 1"
+    board = chess.Board(fen)
+    capture = chess.Move.from_uci("e1e5")
+    board.push(capture)
+    child_key = chess.polyglot.zobrist_hash(board)
+    board.pop()
+    pos = Position(chess.Board(fen))
+    ctx = SearchContext(
+        stop_flag=_never_stop(),
+        counter=[0],
+        evaluator=_ConstantEval(),
+        ply=0,
+        path_keys=[child_key],
+        game_history_keys=set(),
+        deadline=None,
+        max_depth=0,
+    )
+    score = quiescence_search(pos, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
     assert score == 0
 
 
