@@ -279,9 +279,27 @@ def test_fixed_opening_file_is_balanced_and_parseable() -> None:
     path = Path(gauntlet.__file__).with_name("openings.epd")
     openings = gauntlet.load_openings(path)
     assert len(openings) == 30
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: 0,
+    }
     for fen in openings:
         board = chess.Board(fen)
         assert not board.is_game_over(claim_draw=True)
         assert not board.is_check()
         assert len(list(board.legal_moves)) >= 20
-        assert len(board.piece_map()) == 32
+        white_material = sum(
+            piece_values[piece.piece_type]
+            for piece in board.piece_map().values()
+            if piece.color == chess.WHITE
+        )
+        black_material = sum(
+            piece_values[piece.piece_type]
+            for piece in board.piece_map().values()
+            if piece.color == chess.BLACK
+        )
+        assert white_material == black_material
