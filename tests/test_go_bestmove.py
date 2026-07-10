@@ -296,13 +296,15 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "send_bestmove", lambda move: sent.append(move))
 
     release = threading.Event()
+    entered = threading.Event()
 
     from ance.search.types import SearchResult
 
     def blocking_search_root(pos, max_depth, evaluator, stop_flag, **kwargs):
         # Simulates a worker still finishing (blocked) when a new `go` has
         # already arrived and moved search_generation on.
-        release.wait(timeout=2.0)
+        entered.set()
+        assert release.wait(timeout=2.0)
         return SearchResult(
             best_move=chess.Move.from_uci("e2e4"),
             score=0,
@@ -324,7 +326,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
         args=(pos, 1, evaluator, threading.Event(), None, 1, None),
     )
     runner.start()
-    time.sleep(0.05)  # let the runner enter blocking_search_root first
+    assert entered.wait(timeout=0.5)
     monkeypatch.setattr(loop_module, "search_generation", 2)
     release.set()
     runner.join(timeout=2.0)
@@ -335,13 +337,14 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     # proving the gate isn't just permanently closed.
     sent.clear()
     release.clear()
+    entered.clear()
     monkeypatch.setattr(loop_module, "search_generation", 5)
     runner2 = threading.Thread(
         target=loop_module._run_search,
         args=(pos, 1, evaluator, threading.Event(), None, 5, None),
     )
     runner2.start()
-    time.sleep(0.05)
+    assert entered.wait(timeout=0.5)
     release.set()
     runner2.join(timeout=2.0)
     assert not runner2.is_alive()
