@@ -303,3 +303,47 @@ def test_fixed_opening_file_is_balanced_and_parseable() -> None:
             if piece.color == chess.BLACK
         )
         assert white_material == black_material
+
+
+@pytest.mark.slow
+def test_two_game_arbiter_smoke_completes(tmp_path: Path) -> None:
+    output = tmp_path / "real-engine-smoke.json"
+    engine_argv = [sys.executable, "-m", "ance"]
+    report = gauntlet.run_gauntlet(
+        gauntlet.EngineSpec("ance-a", engine_argv),
+        gauntlet.EngineSpec("ance-b", engine_argv),
+        gauntlet.load_openings(Path(gauntlet.__file__).with_name("openings.epd")),
+        n_games=2,
+        tc_base_s=60.0,
+        tc_inc_s=1.0,
+        max_halfmoves=20,
+        output_path=output,
+        openings_path=Path(gauntlet.__file__).with_name("openings.epd"),
+        command_line=(
+            f"{sys.executable} -m ance.tools.gauntlet "
+            "--games 2 --tc 60+1 --max-halfmoves 20"
+        ),
+    )
+    persisted = json.loads(output.read_text(encoding="utf-8"))
+
+    assert report["status"] == persisted["status"] == "completed"
+    assert report["completion"] == "complete"
+    assert report["aggregate"]["time_forfeits"] == {
+        "ance-a": 0,
+        "ance-b": 0,
+    }
+    assert {
+        "wins",
+        "losses",
+        "draws",
+        "score_rate",
+        "draw_rate",
+        "wilson_low",
+        "wilson_high",
+        "time_forfeits",
+        "n_games",
+        "elapsed_s",
+    } <= report["aggregate"].keys()
+    assert [game["index"] for game in report["games"]] == [0, 1]
+    assert [game["a_is_white"] for game in report["games"]] == [True, False]
+    assert [game["opening_index"] for game in report["games"]] == [0, 0]
