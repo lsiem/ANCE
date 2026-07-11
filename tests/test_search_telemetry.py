@@ -29,7 +29,9 @@ def test_completed_iterations_report_exact_cumulative_nodes_and_nps(
         game_history_keys,
         deadline,
         prior_best,
+        tt,
     ) -> SearchResult:
+        assert tt is None
         if depth == 4:
             raise SearchAborted()
         return SearchResult(

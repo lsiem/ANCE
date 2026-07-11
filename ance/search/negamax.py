@@ -14,6 +14,14 @@ import chess.polyglot
 
 from ance.board.position import Position
 from ance.eval.base import MATE, Evaluator
+from ance.search.transposition import (
+    EXACT,
+    LOWER,
+    UPPER,
+    TranspositionTable,
+    score_from_tt,
+    score_to_tt,
+)
 from ance.search.types import (
     DEFAULT_BARE_GO_MOVETIME_MS,
     MAX_PLY,
@@ -61,6 +69,7 @@ def _child_ctx(ctx: SearchContext, ply: int) -> SearchContext:
         deadline=ctx.deadline,
         max_depth=ctx.max_depth,
         info_callback=ctx.info_callback,
+        tt=ctx.tt,
     )
 
 
@@ -74,9 +83,8 @@ def _build_game_history_keys(board: chess.Board) -> set[int]:
     return keys
 
 
-def _is_draw_position(pos: Position, ctx: SearchContext) -> bool:
+def _is_draw_position(pos: Position, ctx: SearchContext, key: int) -> bool:
     board = pos.board
-    key = chess.polyglot.zobrist_hash(board)
     if key in ctx.path_keys or key in ctx.game_history_keys:
         return True
     if board.is_fifty_moves():
@@ -129,11 +137,12 @@ def quiescence_search(
     ctx.counter[0] += 1
     _poll_stop(ctx)
 
-    if _is_draw_position(pos, ctx):
+    board = pos.board
+    key = chess.polyglot.zobrist_hash(board)
+    if _is_draw_position(pos, ctx, key):
         return 0
 
-    board = pos.board
-    ctx.path_keys.append(chess.polyglot.zobrist_hash(board))
+    ctx.path_keys.append(key)
     try:
         moves = pos.legal_moves()
         if not moves:
@@ -208,14 +217,29 @@ def negamax(
     _poll_stop(ctx)
 
     board = pos.board
-    if _is_draw_position(pos, ctx):
+    key = chess.polyglot.zobrist_hash(board)
+    if _is_draw_position(pos, ctx, key):
         return 0
 
     # depth-0 handoff: quiescence_search owns path_keys for the qsearch subtree.
     if depth == 0:
         return quiescence_search(pos, alpha, beta, ctx)
 
-    ctx.path_keys.append(chess.polyglot.zobrist_hash(board))
+    alpha_orig = alpha
+    if ctx.tt is not None:
+        hit = ctx.tt.probe(key)
+        if hit is not None:
+            tt_depth, tt_score, tt_flag, _tt_move = hit
+            if tt_depth >= depth:
+                score = score_from_tt(tt_score, ctx.ply)
+                if tt_flag == EXACT:
+                    return score
+                if tt_flag == LOWER and score >= beta:
+                    return score
+                if tt_flag == UPPER and score <= alpha:
+                    return score
+
+    ctx.path_keys.append(key)
     try:
         moves = pos.legal_moves()
         if not moves:
@@ -224,6 +248,7 @@ def negamax(
             return 0
 
         best = -MATE - 1
+        best_move: chess.Move | None = None
         child_ply = ctx.ply + 1
         for move in moves:
             board.push(move)
@@ -239,10 +264,20 @@ def negamax(
                 board.pop()
             if score > best:
                 best = score
+                best_move = move
             if score >= beta:
-                return score
+                break
             if score > alpha:
                 alpha = score
+        if ctx.tt is not None:
+            flag = LOWER if best >= beta else UPPER if best <= alpha_orig else EXACT
+            ctx.tt.store(
+                key,
+                depth,
+                score_to_tt(best, ctx.ply),
+                flag,
+                best_move,
+            )
         return best
     finally:
         ctx.path_keys.pop()
@@ -256,6 +291,7 @@ def _search_at_depth(
     game_history_keys: set[int],
     deadline: float | None,
     prior_best: chess.Move | None,
+    tt: TranspositionTable | None,
 ) -> SearchResult:
     moves = pos.legal_moves()
     if prior_best is not None and prior_best in moves:
@@ -282,6 +318,7 @@ def _search_at_depth(
                 game_history_keys=game_history_keys,
                 deadline=deadline,
                 max_depth=depth,
+                tt=tt,
             )
             score = -negamax(pos, depth - 1, -MATE - 1, MATE + 1, ctx)
         except SearchAborted:
@@ -316,6 +353,7 @@ def search_root(
     *,
     deadline: float | None = None,
     info_callback=None,
+    tt: TranspositionTable | None = None,
 ) -> SearchResult:
     """Iterative-deepening root search with last-completed-depth retention."""
     if pos.has_no_legal_moves():
@@ -342,6 +380,7 @@ def search_root(
                 game_history_keys,
                 deadline,
                 prior_best,
+                tt,
             )
         except SearchAborted:
             break

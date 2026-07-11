@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import chess
 
 from ance.eval.base import Evaluator, MATE
+
+if TYPE_CHECKING:
+    from ance.search.transposition import TranspositionTable
 
 DEFAULT_BARE_GO_MOVETIME_MS = 2000
 MAX_PLY = 64
@@ -27,6 +30,7 @@ class SearchContext:
     deadline: float | None = None
     max_depth: int = 0
     info_callback: Callable[..., None] | None = None
+    tt: TranspositionTable | None = None
 
 
 @dataclass

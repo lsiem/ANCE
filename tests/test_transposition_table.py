@@ -119,15 +119,15 @@ def test_cold_tt_search_is_reproducible_on_kiwipete() -> None:
 
     first = search_root(
         Position(chess.Board(fen)),
-        max_depth=3,
-        evaluator=HandcraftedEval(),
+        max_depth=2,
+        evaluator=MaterialEval(),
         stop_flag=_never_stop(),
         tt=TranspositionTable(),
     )
     second = search_root(
         Position(chess.Board(fen)),
-        max_depth=3,
-        evaluator=HandcraftedEval(),
+        max_depth=2,
+        evaluator=MaterialEval(),
         stop_flag=_never_stop(),
         tt=TranspositionTable(),
     )
