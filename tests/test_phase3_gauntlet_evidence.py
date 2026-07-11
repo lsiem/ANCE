@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+import shlex
+import subprocess
 import sys
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -102,5 +107,99 @@ def test_hundred_game_evidence_gate_is_slow_marked() -> None:
 
 @pytest.mark.slow
 def test_phase3_hundred_game_blitz_evidence_d14_d17(tmp_path: Path) -> None:
-    del tmp_path
-    raise NotImplementedError("Task 2 supplies the real 100-game evidence gate")
+    checkpoint = Path(
+        os.environ.get(
+            "ANCE_PHASE3_GAUNTLET_CHECKPOINT",
+            tmp_path / "phase3-100-game-checkpoint.json",
+        )
+    )
+    evidence_path = Path(
+        os.environ.get(
+            "ANCE_PHASE3_GAUNTLET_EVIDENCE",
+            ".planning/phases/03-search-acceleration-time-management/"
+            "03-GAUNTLET-EVIDENCE.json",
+        )
+    )
+    openings_path = gauntlet.DEFAULT_OPENINGS
+    spec_a = gauntlet.EngineSpec("ance-a", list(ENGINE_ARGV))
+    spec_b = gauntlet.EngineSpec("ance-b", list(ENGINE_ARGV))
+    command = [
+        sys.executable,
+        "-m",
+        "ance.tools.gauntlet",
+        "--games",
+        str(D14_GAMES),
+        "--tc",
+        D14_TC,
+        "--openings",
+        str(openings_path),
+        "--output",
+        str(checkpoint),
+        "--max-halfmoves",
+        str(MAX_HALFMOVES),
+        "--engine-a",
+        shlex.join(ENGINE_ARGV),
+        "--engine-b",
+        shlex.join(ENGINE_ARGV),
+        "--engine-a-name",
+        spec_a.name,
+        "--engine-b-name",
+        spec_b.name,
+        "--runner",
+        "arbiter",
+        "--budget-seconds",
+        "18000",
+    ]
+    started = time.monotonic()
+    report = gauntlet.run_gauntlet(
+        spec_a,
+        spec_b,
+        gauntlet.load_openings(openings_path),
+        n_games=D14_GAMES,
+        tc_base_s=30.0,
+        tc_inc_s=0.3,
+        max_halfmoves=MAX_HALFMOVES,
+        output_path=checkpoint,
+        deadline=time.monotonic() + 18_000,
+        openings_path=openings_path,
+        command_line=shlex.join(command),
+    )
+    wall_clock_elapsed_s = time.monotonic() - started
+
+    assert_zero_forfeits(report)
+    assert_sanity_ci_contains_half(report)
+    assert report["status"] == "completed"
+    assert report["aggregate"]["n_games"] == D17_GAMES
+
+    aggregate = report["aggregate"]
+    git_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+    evidence = {
+        "schema_version": 1,
+        "git_commit": git_commit,
+        "captured_utc": datetime.now(UTC).isoformat(),
+        "gauntlet": {
+            "games": aggregate["n_games"],
+            "tc": D14_TC,
+            "wins": aggregate["wins"],
+            "losses": aggregate["losses"],
+            "draws": aggregate["draws"],
+            "score_rate": aggregate["score_rate"],
+            "draw_rate": aggregate["draw_rate"],
+            "wilson_low": aggregate["wilson_low"],
+            "wilson_high": aggregate["wilson_high"],
+            "time_forfeits": aggregate["time_forfeits"],
+            "command_line": report["command_line"],
+            "elapsed_s": aggregate["elapsed_s"],
+            "wall_clock_elapsed_s": wall_clock_elapsed_s,
+            "status": report["status"],
+        },
+        "gates_passed": ["D-14", "D-17"],
+    }
+    evidence_path.parent.mkdir(parents=True, exist_ok=True)
+    evidence_path.write_text(
+        json.dumps(evidence, indent=2) + "\n",
+        encoding="utf-8",
+    )
