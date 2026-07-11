@@ -66,6 +66,13 @@ def test_arbiter_referees_wall_clock_and_credits_increment_after_move(
     assert record["forfeited_by"] == "black"
     assert record["moves"] == 1
     assert black.limits[0].white_clock == pytest.approx(0.75)
+    assert record["move_timings"] == [
+        {"color": "white", "clock_before_s": 1.0, "elapsed_s": 0.75},
+        {"color": "black", "clock_before_s": 1.0, "elapsed_s": 1.1},
+    ]
+    assert record["max_move_elapsed_s"] == pytest.approx(
+        {"white": 0.75, "black": 1.1}
+    )
 
 
 def test_game_index_controls_opening_and_color_parity(
