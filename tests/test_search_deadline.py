@@ -23,6 +23,10 @@ def _expired_context() -> SearchContext:
     )
 
 
+def test_node_poll_interval_stays_inside_clock_safety_margin() -> None:
+    assert search_module.NODE_POLL_INTERVAL == 512
+
+
 def test_negamax_aborts_at_poll_boundary_for_expired_deadline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

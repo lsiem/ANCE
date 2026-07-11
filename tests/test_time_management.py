@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import threading
+import time
+
 import chess
 import pytest
 
+from ance.board.position import Position
+from ance.eval.material import MaterialEval
+import ance.search.negamax as search_module
+from ance.search.types import MAX_PLY, SearchResult
+import ance.uci.loop as loop_module
 from ance.uci.clock import compute_clock_budget
 from ance.uci.parser import GoCommand
+from tests.conftest import EngineProcess
 
 
 def test_nominal_clock_budget_uses_remaining_time_and_increment() -> None:
@@ -69,3 +78,148 @@ def test_clock_budget_selects_movers_clock_and_falls_back_to_opponent() -> None:
 )
 def test_non_clock_go_commands_have_no_clock_budget(command: GoCommand) -> None:
     assert compute_clock_budget(command, chess.WHITE) is None
+
+
+class _DormantThread:
+    def __init__(self, *, target: object, args: tuple[object, ...], daemon: bool) -> None:
+        self.target = target
+        self.args = args
+        self.daemon = daemon
+
+    def start(self) -> None:
+        return
+
+
+class _DormantTimer:
+    def __init__(self, interval: float, function: object) -> None:
+        self.interval = interval
+        self.function = function
+        self.daemon = False
+
+    def start(self) -> None:
+        return
+
+    def cancel(self) -> None:
+        return
+
+
+def test_go_limit_precedence_and_clock_budget_threading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    threads: list[_DormantThread] = []
+    timers: list[_DormantTimer] = []
+    monkeypatch.setattr(loop_module, "_stop_active_worker", lambda: None)
+    monkeypatch.setattr(loop_module.time, "monotonic", lambda: 100.0)
+    monkeypatch.setattr(
+        loop_module.threading,
+        "Thread",
+        lambda **kwargs: threads.append(_DormantThread(**kwargs)) or threads[-1],
+    )
+    monkeypatch.setattr(
+        loop_module.threading,
+        "Timer",
+        lambda interval, function: (
+            timers.append(_DormantTimer(interval, function)) or timers[-1]
+        ),
+    )
+    position = Position()
+
+    loop_module.handle_go(GoCommand(depth=3, wtime=5_000), position)
+    loop_module.handle_go(GoCommand(movetime=300, wtime=5_000), position)
+    loop_module.handle_go(GoCommand(infinite=True, wtime=5_000), position)
+    loop_module.handle_go(
+        GoCommand(wtime=5_000, btime=5_000, winc=100, binc=100),
+        position,
+    )
+
+    depth_args, movetime_args, infinite_args, clock_args = [
+        thread.args for thread in threads
+    ]
+    assert depth_args[1] == 3
+    assert depth_args[6:8] == (None, None)
+    assert movetime_args[1] == MAX_PLY
+    assert movetime_args[4] is timers[0]
+    assert movetime_args[6:8] == (None, None)
+    assert infinite_args[6:8] == (None, None)
+    assert clock_args[6] == pytest.approx(101.04)
+    assert clock_args[7] == pytest.approx(0.26)
+
+
+def test_soft_budget_skips_doomed_next_iteration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    searched_depths: list[int] = []
+    clock = iter([0.0, 0.1, 0.6])
+    monkeypatch.setattr(search_module.time, "monotonic", lambda: next(clock))
+
+    def fake_search(
+        pos: Position,
+        depth: int,
+        *args: object,
+    ) -> SearchResult:
+        searched_depths.append(depth)
+        move = pos.legal_moves()[0]
+        return SearchResult(best_move=move, score=depth, depth=depth, pv=[move], nodes=1)
+
+    monkeypatch.setattr(search_module, "_search_at_depth", fake_search)
+
+    result = search_module.search_root(
+        Position(),
+        max_depth=3,
+        evaluator=MaterialEval(),
+        stop_flag=threading.Event(),
+        soft_budget=1.0,
+    )
+
+    assert result.depth == 2
+    assert searched_depths == [1, 2]
+
+
+def test_none_soft_budget_preserves_iterative_deepening(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    searched_depths: list[int] = []
+    monkeypatch.setattr(search_module.time, "monotonic", lambda: 0.0)
+
+    def fake_search(
+        pos: Position,
+        depth: int,
+        *args: object,
+    ) -> SearchResult:
+        searched_depths.append(depth)
+        move = pos.legal_moves()[0]
+        return SearchResult(best_move=move, score=depth, depth=depth, pv=[move], nodes=1)
+
+    monkeypatch.setattr(search_module, "_search_at_depth", fake_search)
+
+    result = search_module.search_root(
+        Position(),
+        max_depth=3,
+        evaluator=MaterialEval(),
+        stop_flag=threading.Event(),
+        soft_budget=None,
+    )
+
+    assert result.depth == 3
+    assert searched_depths == [1, 2, 3]
+
+
+def test_clocked_uci_go_returns_one_legal_bestmove_quickly(
+    engine: EngineProcess,
+) -> None:
+    board = chess.Board()
+    engine.send("position startpos")
+    started = time.perf_counter()
+    engine.send("go wtime 1000 btime 1000 winc 100 binc 100")
+    lines: list[str] = []
+    while time.perf_counter() - started < 2.0:
+        line = engine.read_line(timeout=2.0 - (time.perf_counter() - started))
+        lines.append(line)
+        if line.startswith("bestmove "):
+            break
+
+    bestmoves = [line for line in lines if line.startswith("bestmove ")]
+    assert len(bestmoves) == 1
+    move = chess.Move.from_uci(bestmoves[0].split()[1])
+    assert move in board.legal_moves
+    assert time.perf_counter() - started < 2.0
