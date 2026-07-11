@@ -30,8 +30,12 @@ def test_completed_iterations_report_exact_cumulative_nodes_and_nps(
         deadline,
         prior_best,
         tt,
+        killers,
+        history,
     ) -> SearchResult:
         assert tt is None
+        assert killers is not None
+        assert history is not None
         if depth == 4:
             raise SearchAborted()
         return SearchResult(

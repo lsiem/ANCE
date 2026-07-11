@@ -41,6 +41,7 @@ from ance.board.position import Position
 from ance.eval.base import Evaluator
 from ance.eval.handcrafted import HandcraftedEval
 from ance.search.negamax import SearchAborted, search_root
+from ance.search.ordering import new_history, new_killers
 from ance.search.transposition import TranspositionTable
 from ance.search.types import DEFAULT_BARE_GO_MOVETIME_MS, MAX_PLY, SearchResult
 from ance.uci.parser import GoCommand, parse_go, parse_position, tokenize
@@ -70,6 +71,8 @@ generation_lock = threading.Lock()
 # terms (D-05/D-06), replacing Plan 01-03's bootstrap MaterialEval.
 evaluator: Evaluator = HandcraftedEval()
 transposition_table = TranspositionTable()
+killer_moves = new_killers()
+history_table = new_history()
 
 
 def _stop_active_worker(
@@ -128,6 +131,8 @@ def _run_search(
     my_generation: int,
     deadline: float | None,
     tt: TranspositionTable,
+    killers: list[list[chess.Move | None]],
+    history: list[list[list[int]]],
 ) -> None:
     """Runs on the daemon worker thread. Iterative-deepening search until
     stop, deadline, or max_depth. Emits one info line per completed depth."""
@@ -140,6 +145,8 @@ def _run_search(
             stop_flag=stop_flag_,
             deadline=deadline,
             tt=tt,
+            killers=killers,
+            history=history,
             info_callback=lambda result, nps: _emit_info(
                 result, nps, my_generation
             ),
@@ -217,6 +224,8 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
             my_generation,
             deadline,
             transposition_table,
+            killer_moves,
+            history_table,
         ),
         daemon=True,
     )
@@ -265,11 +274,14 @@ def handle_position(pos: Position, tokens: list[str]) -> None:
 
 
 def handle_ucinewgame(pos: Position) -> None:
+    global killer_moves, history_table
     # Phase 3 clears per-game search state here (D-06); Plan 03-04 extends
     # this site with killers/history. Preserve the joined-flush /
     # timed-out-invalidation contract before resetting shared state.
     _stop_active_worker(invalidate_on_timeout=True)
     transposition_table.clear()
+    killer_moves = new_killers()
+    history_table = new_history()
     pos.try_set_startpos()
 
 

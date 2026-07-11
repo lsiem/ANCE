@@ -223,6 +223,8 @@ def test_stale_worker_exception_emits_no_fallback_bestmove(
             my_generation,
             None,
             loop_module.transposition_table,
+            loop_module.killer_moves,
+            loop_module.history_table,
         ),
         daemon=True,
     )

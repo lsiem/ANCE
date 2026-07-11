@@ -332,6 +332,8 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
             1,
             None,
             loop_module.transposition_table,
+            loop_module.killer_moves,
+            loop_module.history_table,
         ),
     )
     runner.start()
@@ -359,6 +361,8 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
             5,
             None,
             loop_module.transposition_table,
+            loop_module.killer_moves,
+            loop_module.history_table,
         ),
     )
     runner2.start()

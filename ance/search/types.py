@@ -31,6 +31,8 @@ class SearchContext:
     max_depth: int = 0
     info_callback: Callable[..., None] | None = None
     tt: TranspositionTable | None = None
+    killers: list[list[chess.Move | None]] | None = None
+    history: list[list[list[int]]] | None = None
 
 
 @dataclass

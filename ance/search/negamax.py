@@ -14,7 +14,15 @@ import chess.polyglot
 
 from ance.board.position import Position
 from ance.eval.base import MATE, Evaluator
-from ance.search.ordering import _capture_value, _mvv_lva_sort
+from ance.search.ordering import (
+    _capture_value,
+    _mvv_lva_sort,
+    new_history,
+    new_killers,
+    order_moves,
+    update_history,
+    update_killers,
+)
 from ance.search.transposition import (
     EXACT,
     LOWER,
@@ -62,6 +70,8 @@ def _child_ctx(ctx: SearchContext, ply: int) -> SearchContext:
         max_depth=ctx.max_depth,
         info_callback=ctx.info_callback,
         tt=ctx.tt,
+        killers=ctx.killers,
+        history=ctx.history,
     )
 
 
@@ -199,10 +209,11 @@ def negamax(
         return quiescence_search(pos, alpha, beta, ctx)
 
     alpha_orig = alpha
+    hash_move: chess.Move | None = None
     if ctx.tt is not None:
         hit = ctx.tt.probe(key)
         if hit is not None:
-            tt_depth, tt_score, tt_flag, _tt_move = hit
+            tt_depth, tt_score, tt_flag, hash_move = hit
             if tt_depth >= depth:
                 score = score_from_tt(tt_score, ctx.ply)
                 if tt_flag == EXACT:
@@ -223,7 +234,18 @@ def negamax(
         best = -MATE - 1
         best_move: chess.Move | None = None
         child_ply = ctx.ply + 1
-        for move in moves:
+        killers_at_ply = (
+            ctx.killers[ctx.ply]
+            if ctx.killers is not None and ctx.ply <= MAX_PLY
+            else (None, None)
+        )
+        for move in order_moves(
+            moves,
+            board,
+            hash_move,
+            killers_at_ply,
+            ctx.history,
+        ):
             board.push(move)
             try:
                 score = -negamax(
@@ -239,6 +261,16 @@ def negamax(
                 best = score
                 best_move = move
             if score >= beta:
+                if not board.is_capture(move) and move.promotion is None:
+                    if ctx.killers is not None and ctx.ply <= MAX_PLY:
+                        update_killers(ctx.killers[ctx.ply], move)
+                    if ctx.history is not None:
+                        update_history(
+                            ctx.history,
+                            int(board.turn),
+                            move,
+                            depth,
+                        )
                 break
             if score > alpha:
                 alpha = score
@@ -265,6 +297,8 @@ def _search_at_depth(
     deadline: float | None,
     prior_best: chess.Move | None,
     tt: TranspositionTable | None,
+    killers: list[list[chess.Move | None]],
+    history: list[list[list[int]]],
 ) -> SearchResult:
     moves = pos.legal_moves()
     if prior_best is not None and prior_best in moves:
@@ -292,6 +326,8 @@ def _search_at_depth(
                 deadline=deadline,
                 max_depth=depth,
                 tt=tt,
+                killers=killers,
+                history=history,
             )
             score = -negamax(pos, depth - 1, -MATE - 1, MATE + 1, ctx)
         except SearchAborted:
@@ -327,10 +363,17 @@ def search_root(
     deadline: float | None = None,
     info_callback=None,
     tt: TranspositionTable | None = None,
+    killers: list[list[chess.Move | None]] | None = None,
+    history: list[list[list[int]]] | None = None,
 ) -> SearchResult:
     """Iterative-deepening root search with last-completed-depth retention."""
     if pos.has_no_legal_moves():
         return SearchResult(best_move=None, score=0, depth=0, pv=[], nodes=0)
+
+    if killers is None:
+        killers = new_killers()
+    if history is None:
+        history = new_history()
 
     game_history_keys = _build_game_history_keys(pos.board)
     last_completed: SearchResult | None = None
@@ -354,6 +397,8 @@ def search_root(
                 deadline,
                 prior_best,
                 tt,
+                killers,
+                history,
             )
         except SearchAborted:
             break
