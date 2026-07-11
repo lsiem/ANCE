@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
-import chess
+import importlib
+import threading
 
-from ance.search.negamax import _qsearch_moves
+import chess
+import chess.polyglot
+
+from ance.board.position import Position
+from ance.eval.base import MATE
+from ance.eval.handcrafted import HandcraftedEval
+from ance.eval.material import MaterialEval
+from ance.search.negamax import _qsearch_moves, search_root
 from ance.search.ordering import (
     HISTORY_CAP,
     KILLER_1_SCORE,
@@ -15,6 +23,8 @@ from ance.search.ordering import (
     update_history,
     update_killers,
 )
+from ance.search.transposition import EXACT, TranspositionTable
+from ance.search.types import SearchContext
 
 
 def _ordering_board() -> chess.Board:
@@ -135,4 +145,164 @@ def test_quiet_queen_promotion_uses_capture_band() -> None:
         None,
         [killer, None],
         new_history(),
+    )
+
+
+def _never_stop() -> threading.Event:
+    return threading.Event()
+
+
+def test_tt_hash_move_is_searched_first_at_matching_node(
+    monkeypatch,
+) -> None:
+    negamax_module = importlib.import_module("ance.search.negamax")
+    original_negamax = negamax_module.negamax
+    pos = Position()
+    hash_move = chess.Move.from_uci("d2d4")
+    table = TranspositionTable(16)
+    table.store(
+        chess.polyglot.zobrist_hash(pos.board),
+        depth=0,
+        score=0,
+        flag=EXACT,
+        best_move=hash_move,
+    )
+    searched: list[chess.Move] = []
+
+    def child_spy(pos, depth, alpha, beta, ctx):
+        del depth, alpha, beta, ctx
+        searched.append(pos.board.peek())
+        return 0
+
+    monkeypatch.setattr(negamax_module, "negamax", child_spy)
+    ctx = SearchContext(
+        stop_flag=_never_stop(),
+        counter=[0],
+        evaluator=MaterialEval(),
+        tt=table,
+        killers=new_killers(),
+        history=new_history(),
+    )
+
+    original_negamax(pos, depth=1, alpha=-MATE - 1, beta=MATE + 1, ctx=ctx)
+
+    assert searched[0] == hash_move
+
+
+def test_quiet_beta_cutoff_updates_killer_and_history_but_capture_does_not(
+    monkeypatch,
+) -> None:
+    negamax_module = importlib.import_module("ance.search.negamax")
+    original_negamax = negamax_module.negamax
+    monkeypatch.setattr(negamax_module, "negamax", lambda *args, **kwargs: -10)
+
+    quiet_pos = Position()
+    quiet_killers = new_killers()
+    quiet_history = new_history()
+    expected_quiet = order_moves(
+        quiet_pos.legal_moves(),
+        quiet_pos.board,
+        None,
+        quiet_killers[0],
+        quiet_history,
+    )[0]
+    quiet_ctx = SearchContext(
+        stop_flag=_never_stop(),
+        counter=[0],
+        evaluator=MaterialEval(),
+        killers=quiet_killers,
+        history=quiet_history,
+    )
+
+    original_negamax(quiet_pos, depth=3, alpha=-MATE - 1, beta=0, ctx=quiet_ctx)
+
+    assert quiet_killers[0][0] == expected_quiet
+    assert (
+        quiet_history[int(chess.WHITE)][expected_quiet.from_square][
+            expected_quiet.to_square
+        ]
+        == 9
+    )
+
+    capture_pos = Position(chess.Board("4k3/8/8/4q3/8/8/8/4R2K w - - 0 1"))
+    capture_killers = new_killers()
+    capture_history = new_history()
+    capture_ctx = SearchContext(
+        stop_flag=_never_stop(),
+        counter=[0],
+        evaluator=MaterialEval(),
+        killers=capture_killers,
+        history=capture_history,
+    )
+
+    original_negamax(capture_pos, depth=3, alpha=-MATE - 1, beta=0, ctx=capture_ctx)
+
+    assert all(slots == [None, None] for slots in capture_killers)
+    assert not any(value for colors in capture_history for origins in colors for value in origins)
+
+
+def test_search_shares_killer_and_history_tables_across_all_contexts(
+    monkeypatch,
+) -> None:
+    negamax_module = importlib.import_module("ance.search.negamax")
+    original_negamax = negamax_module.negamax
+    killers = new_killers()
+    history = new_history()
+    observed: list[SearchContext] = []
+
+    def context_spy(pos, depth, alpha, beta, ctx):
+        observed.append(ctx)
+        return original_negamax(pos, depth, alpha, beta, ctx)
+
+    monkeypatch.setattr(negamax_module, "negamax", context_spy)
+
+    search_root(
+        Position(),
+        max_depth=2,
+        evaluator=MaterialEval(),
+        stop_flag=_never_stop(),
+        killers=killers,
+        history=history,
+    )
+
+    assert observed
+    assert {ctx.ply for ctx in observed}.issuperset({1, 2})
+    assert all(ctx.killers is killers for ctx in observed)
+    assert all(ctx.history is history for ctx in observed)
+
+
+def test_ordering_without_tt_beats_phase2_italian_node_count() -> None:
+    fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 3"
+
+    result = search_root(
+        Position(chess.Board(fen)),
+        max_depth=4,
+        evaluator=HandcraftedEval(),
+        stop_flag=_never_stop(),
+        tt=None,
+        killers=new_killers(),
+        history=new_history(),
+    )
+
+    assert result.nodes < 501_208
+
+
+def test_ucinewgame_resets_killers_and_history() -> None:
+    import ance.uci.loop as loop
+
+    old_killers = loop.killer_moves
+    old_history = loop.history_table
+    old_killers[2][0] = chess.Move.from_uci("e2e4")
+    old_history[int(chess.WHITE)][chess.E2][chess.E4] = 99
+
+    loop.handle_ucinewgame(Position())
+
+    assert loop.killer_moves is not old_killers
+    assert loop.history_table is not old_history
+    assert all(slots == [None, None] for slots in loop.killer_moves)
+    assert not any(
+        value
+        for colors in loop.history_table
+        for origins in colors
+        for value in origins
     )
