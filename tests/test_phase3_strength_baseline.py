@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,6 +14,8 @@ import pytest
 from ance.board.position import Position
 from ance.eval.handcrafted import HandcraftedEval
 from ance.search.negamax import search_root
+from ance.search.ordering import new_history, new_killers
+from ance.search.transposition import TranspositionTable
 from ance.search.types import MAX_PLY
 from ance.tools import phase3_baseline
 
@@ -177,3 +180,75 @@ def test_queen_mate_depth_two_keeps_tactical_oracle() -> None:
         stop_flag=_never_stop(),
     )
     assert result.best_move == chess.Move.from_uci("h1a8")
+
+
+def test_phase3_fixed_depth_nodes_beat_baseline() -> None:
+    """D-21 deterministic evidence at each D-20 captured depth."""
+    baseline = load_baseline()
+    actual_nodes: dict[str, int] = {}
+
+    for case_id, record in baseline["positions"].items():
+        captured = record["fixed_depth"]
+        result = search_root(
+            Position(chess.Board(record["fen"])),
+            max_depth=captured["depth"],
+            evaluator=HandcraftedEval(),
+            stop_flag=_never_stop(),
+            tt=TranspositionTable(),
+            killers=new_killers(),
+            history=new_history(),
+        )
+        actual_nodes[case_id] = result.nodes
+        assert result.nodes < captured["nodes"], (
+            f"{case_id}: phase3={result.nodes}, baseline={captured['nodes']}, "
+            f"depth={captured['depth']}"
+        )
+
+    actual_total = sum(actual_nodes.values())
+    baseline_total = sum(
+        record["fixed_depth"]["nodes"]
+        for record in baseline["positions"].values()
+    )
+    print(f"D-21 fixed-depth nodes: {actual_nodes}; total={actual_total}/{baseline_total}")
+    assert actual_total <= 0.70 * baseline_total, (
+        f"phase3 total={actual_total}, baseline total={baseline_total}, "
+        f"ratio={actual_total / baseline_total:.3f}"
+    )
+
+
+@pytest.mark.slow
+def test_phase3_depth_at_2s_meets_baseline() -> None:
+    """D-21 wall-clock evidence at the D-20 two-second budget."""
+    baseline = load_baseline()
+    actual_depths: dict[str, int] = {}
+
+    for case_id, record in baseline["positions"].items():
+        result = search_root(
+            Position(chess.Board(record["fen"])),
+            max_depth=MAX_PLY,
+            evaluator=HandcraftedEval(),
+            stop_flag=_never_stop(),
+            deadline=time.monotonic() + 2.0,
+            tt=TranspositionTable(),
+            killers=new_killers(),
+            history=new_history(),
+        )
+        actual_depths[case_id] = result.depth
+        assert result.depth >= record["timed"]["completed_depth"], (
+            f"{case_id}: phase3={result.depth}, "
+            f"baseline={record['timed']['completed_depth']}; "
+            f"all phase3 depths={actual_depths}"
+        )
+
+    non_mate_ids = ("startpos", "kiwipete", "italian", "rook_endgame")
+    improved = [
+        case_id
+        for case_id in non_mate_ids
+        if actual_depths[case_id]
+        > baseline["positions"][case_id]["timed"]["completed_depth"]
+    ]
+    print(f"D-21 2s depths: {actual_depths}; improved non-mates={improved}")
+    assert len(improved) >= 2, (
+        f"phase3 depths={actual_depths}; improved non-mates={improved}; "
+        "expected at least two"
+    )
