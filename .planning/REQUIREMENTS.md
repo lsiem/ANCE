@@ -16,7 +16,7 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 - [x] **UCI-05**: Engine sets its board from `position fen <fen> [moves ...]` and rejects malformed FEN without crashing
 - [x] **UCI-06**: Every `go` command yields exactly one legal `bestmove <uci>` and never hangs
 - [x] **UCI-07**: Engine honors `go movetime <ms>` and `go depth <n>`
-- [ ] **UCI-08**: Engine honors clock control `go wtime/btime/winc/binc` and computes a per-move time budget
+- [x] **UCI-08**: Engine honors clock control `go wtime/btime/winc/binc` and computes a per-move time budget
 - [x] **UCI-09**: Engine honors `stop` by ending search promptly and emitting the current `bestmove`
 - [x] **UCI-10**: Engine handles `quit` with a clean exit that never deadlocks on a running search
 - [x] **UCI-11**: Engine emits `info depth <d> score cp <x>|mate <y> nodes <n> nps <n> pv <moves>` during search
@@ -28,10 +28,10 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 - [x] **SRCH-02**: Engine searches with fail-soft negamax alpha-beta
 - [x] **SRCH-03**: Engine uses iterative deepening and always keeps the best move from the last completed depth
 - [x] **SRCH-04**: Engine runs a quiescence search over captures to avoid the horizon effect
-- [ ] **SRCH-05**: Engine uses a Zobrist-keyed transposition table with correct exact/lower/upper bounds and ply-adjusted mate scores on store and probe
-- [ ] **SRCH-06**: Engine orders moves hash-move → MVV-LVA captures → killers → history
+- [x] **SRCH-05**: Engine uses a Zobrist-keyed transposition table with correct exact/lower/upper bounds and ply-adjusted mate scores on store and probe
+- [x] **SRCH-06**: Engine orders moves hash-move → MVV-LVA captures → killers → history
 - [x] **SRCH-07**: Engine detects repetition and the 50-move rule to avoid losing drawn positions
-- [ ] **SRCH-08**: Engine manages its clock so it never loses on time under `wtime/btime/winc/binc`
+- [x] **SRCH-08**: Engine manages its clock so it never loses on time under `wtime/btime/winc/binc`
 
 ### Evaluation
 
@@ -51,7 +51,7 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 
 - [x] **TOOL-01**: The engine loads and plays a full legal game in a GUI (Cute Chess / Arena)
 - [x] **TOOL-02**: The engine never loses to a random-mover opponent (losses==0) and wins at least 70% of games, with every non-win a draw (REPLANNED 2026-07-07 from the original 100/100 target, which proved impractical/unproven at depth 4 unpruned; 100/0-at-depth-4 deferred to a future pruning phase, see pending todo)
-- [ ] **TOOL-03**: A `cutechess-cli` self-play gauntlet harness runs two identical-search builds (differing only in eval) from a fixed opening book
+- [x] **TOOL-03**: A `cutechess-cli` self-play gauntlet harness runs two identical-search builds (differing only in eval) from a fixed opening book
 - [ ] **TOOL-04**: The NNUE build shows a measurable Elo gain over the handcrafted build across a ≥1000-game gauntlet reported with error bars
 
 ## v2 Requirements
@@ -116,11 +116,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SRCH-04 | Phase 2 | Complete |
 | SRCH-07 | Phase 2 | Complete |
 | UCI-11 | Phase 2 | Complete |
-| SRCH-05 | Phase 3 | Pending |
-| SRCH-06 | Phase 3 | Pending |
-| SRCH-08 | Phase 3 | Pending |
-| UCI-08 | Phase 3 | Pending |
-| TOOL-03 | Phase 3 | Pending |
+| SRCH-05 | Phase 3 | Complete |
+| SRCH-06 | Phase 3 | Complete |
+| SRCH-08 | Phase 3 | Complete |
+| UCI-08 | Phase 3 | Complete |
+| TOOL-03 | Phase 3 | Complete |
 | TRN-01 | Phase 4 | Pending |
 | TRN-02 | Phase 4 | Pending |
 | TRN-03 | Phase 4 | Pending |
