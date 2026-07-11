@@ -14,6 +14,7 @@ import chess.polyglot
 
 from ance.board.position import Position
 from ance.eval.base import MATE, Evaluator
+from ance.search.ordering import _capture_value, _mvv_lva_sort
 from ance.search.transposition import (
     EXACT,
     LOWER,
@@ -34,15 +35,6 @@ DEFAULT_DEPTH = 3
 NODE_POLL_INTERVAL = 2048
 MAX_QDEPTH = 8
 DELTA_MARGIN = 200
-
-_MVV_LVA = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 320,
-    chess.BISHOP: 330,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-    chess.KING: 10000,
-}
 
 
 class SearchAborted(Exception):
@@ -92,25 +84,6 @@ def _is_draw_position(pos: Position, ctx: SearchContext, key: int) -> bool:
     if board.is_insufficient_material():
         return True
     return False
-
-
-def _capture_value(board: chess.Board, move: chess.Move) -> int:
-    if board.is_en_passant(move):
-        return _MVV_LVA[chess.PAWN]
-    if move.promotion is not None:
-        return _MVV_LVA[move.promotion]
-    piece = board.piece_at(move.to_square)
-    return _MVV_LVA[piece.piece_type] if piece is not None else 0
-
-
-def _mvv_lva_sort(moves: list[chess.Move], board: chess.Board) -> list[chess.Move]:
-    def key(move: chess.Move) -> tuple[int, int]:
-        victim = _capture_value(board, move)
-        attacker_piece = board.piece_at(move.from_square)
-        attacker = _MVV_LVA[attacker_piece.piece_type] if attacker_piece else 0
-        return (victim, -attacker)
-
-    return sorted(moves, key=key, reverse=True)
 
 
 def _qsearch_moves(board: chess.Board, moves: list[chess.Move]) -> list[chess.Move]:
