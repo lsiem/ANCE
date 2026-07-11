@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "git_commit": "035af126c12d91542d3e57ec3062ddf19b3c1415",
+  "captured_utc": "2026-07-11T01:31:17.792936+00:00",
+  "parameters": {
+    "movetime_ms": 2000,
+    "fixed_depth": 4,
+    "fixed_depth_overrides": {
+      "kiwipete": 2
+    },
+    "evaluator": "handcrafted",
+    "python": "3.13.14"
+  },
+  "positions": {
+    "startpos": {
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "timed": {
+        "completed_depth": 3,
+        "nodes": 6067,
+        "elapsed_seconds": 2.0365129169658758
+      },
+      "fixed_depth": {
+        "nodes": 50207,
+        "best_move": "e2e4",
+        "depth": 4,
+        "elapsed_seconds": 2.3065068330033682
+      }
+    },
+    "kiwipete": {
+      "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+      "timed": {
+        "completed_depth": 0,
+        "nodes": 0,
+        "elapsed_seconds": 2.013739791989792
+      },
+      "fixed_depth": {
+        "nodes": 204531,
+        "best_move": "e2a6",
+        "depth": 2,
+        "elapsed_seconds": 19.547724209027365
+      }
+    },
+    "italian": {
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 3",
+      "timed": {
+        "completed_depth": 2,
+        "nodes": 3591,
+        "elapsed_seconds": 2.0356765830074437
+      },
+      "fixed_depth": {
+        "nodes": 501208,
+        "best_move": "g8f6",
+        "depth": 4,
+        "elapsed_seconds": 33.14261470804922
+      }
+    },
+    "rook_endgame": {
+      "fen": "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+      "timed": {
+        "completed_depth": 4,
+        "nodes": 47665,
+        "elapsed_seconds": 2.0187790420022793
+      },
+      "fixed_depth": {
+        "nodes": 47665,
+        "best_move": "b4f4",
+        "depth": 4,
+        "elapsed_seconds": 1.7964105000137351
+      }
+    },
+    "hanging_queen": {
+      "fen": "4k3/8/8/4q3/8/8/8/4R3 w - - 0 1",
+      "timed": {
+        "completed_depth": 4,
+        "nodes": 17598,
+        "elapsed_seconds": 2.014410040981602
+      },
+      "fixed_depth": {
+        "nodes": 17598,
+        "best_move": "e1e5",
+        "depth": 4,
+        "elapsed_seconds": 0.34789687499869615
+      }
+    },
+    "queen_mate": {
+      "fen": "6k1/5ppp/8/8/8/8/8/6KQ w - - 0 1",
+      "timed": {
+        "completed_depth": 4,
+        "nodes": 17095,
+        "elapsed_seconds": 2.0095582919893786
+      },
+      "fixed_depth": {
+        "nodes": 17095,
+        "best_move": "h1a8",
+        "depth": 4,
+        "elapsed_seconds": 0.48934125003870577
+      }
+    }
+  }
+}
