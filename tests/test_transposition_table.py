@@ -213,3 +213,37 @@ def test_aborted_search_does_not_store_partial_node() -> None:
 
     assert result.depth == 0
     assert table.store_calls == []
+
+
+def test_ucinewgame_clears_persistent_engine_table() -> None:
+    import ance.uci.loop as loop
+
+    loop.transposition_table.clear()
+    cold = search_root(
+        Position(),
+        max_depth=4,
+        evaluator=loop.evaluator,
+        stop_flag=_never_stop(),
+        tt=loop.transposition_table,
+    )
+    warm = search_root(
+        Position(),
+        max_depth=4,
+        evaluator=loop.evaluator,
+        stop_flag=_never_stop(),
+        tt=loop.transposition_table,
+    )
+
+    position = Position(chess.Board("4k3/8/8/8/8/8/8/4K3 w - - 0 1"))
+    loop.handle_ucinewgame(position)
+    after_new_game = search_root(
+        Position(),
+        max_depth=4,
+        evaluator=loop.evaluator,
+        stop_flag=_never_stop(),
+        tt=loop.transposition_table,
+    )
+
+    assert warm.nodes < cold.nodes
+    assert after_new_game.nodes == cold.nodes
+    assert position.board.fen() == chess.STARTING_FEN

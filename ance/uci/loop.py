@@ -41,6 +41,7 @@ from ance.board.position import Position
 from ance.eval.base import Evaluator
 from ance.eval.handcrafted import HandcraftedEval
 from ance.search.negamax import SearchAborted, search_root
+from ance.search.transposition import TranspositionTable
 from ance.search.types import DEFAULT_BARE_GO_MOVETIME_MS, MAX_PLY, SearchResult
 from ance.uci.parser import GoCommand, parse_go, parse_position, tokenize
 from ance.uci.protocol import (
@@ -68,6 +69,7 @@ generation_lock = threading.Lock()
 # Function material+PST plus mobility/bishop-pair/tempo/pawn-structure
 # terms (D-05/D-06), replacing Plan 01-03's bootstrap MaterialEval.
 evaluator: Evaluator = HandcraftedEval()
+transposition_table = TranspositionTable()
 
 
 def _stop_active_worker(
@@ -125,6 +127,7 @@ def _run_search(
     timer: threading.Timer | None,
     my_generation: int,
     deadline: float | None,
+    tt: TranspositionTable,
 ) -> None:
     """Runs on the daemon worker thread. Iterative-deepening search until
     stop, deadline, or max_depth. Emits one info line per completed depth."""
@@ -136,6 +139,7 @@ def _run_search(
             evaluator=evaluator_,
             stop_flag=stop_flag_,
             deadline=deadline,
+            tt=tt,
             info_callback=lambda result, nps: _emit_info(
                 result, nps, my_generation
             ),
@@ -212,6 +216,7 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
             job.timer,
             my_generation,
             deadline,
+            transposition_table,
         ),
         daemon=True,
     )
@@ -260,10 +265,11 @@ def handle_position(pos: Position, tokens: list[str]) -> None:
 
 
 def handle_ucinewgame(pos: Position) -> None:
-    # No-op reset of per-game state in M1 (D-17) -- no TT/history exists
-    # yet. Stop/join with the same joined-flush / timed-out-invalidation
-    # contract as handle_position, then reset the board.
+    # Phase 3 clears per-game search state here (D-06); Plan 03-04 extends
+    # this site with killers/history. Preserve the joined-flush /
+    # timed-out-invalidation contract before resetting shared state.
     _stop_active_worker(invalidate_on_timeout=True)
+    transposition_table.clear()
     pos.try_set_startpos()
 
 

@@ -323,7 +323,16 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "search_generation", 1)
     runner = threading.Thread(
         target=loop_module._run_search,
-        args=(pos, 1, evaluator, threading.Event(), None, 1, None),
+        args=(
+            pos,
+            1,
+            evaluator,
+            threading.Event(),
+            None,
+            1,
+            None,
+            loop_module.transposition_table,
+        ),
     )
     runner.start()
     assert entered.wait(timeout=0.5)
@@ -341,7 +350,16 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
     monkeypatch.setattr(loop_module, "search_generation", 5)
     runner2 = threading.Thread(
         target=loop_module._run_search,
-        args=(pos, 1, evaluator, threading.Event(), None, 5, None),
+        args=(
+            pos,
+            1,
+            evaluator,
+            threading.Event(),
+            None,
+            5,
+            None,
+            loop_module.transposition_table,
+        ),
     )
     runner2.start()
     assert entered.wait(timeout=0.5)
