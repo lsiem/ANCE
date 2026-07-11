@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "git_commit": "29bf2ec48011f5cbce74f0f7563be2950420d7a8",
+  "captured_utc": "2026-07-11T09:16:03.444689+00:00",
+  "gauntlet": {
+    "games": 100,
+    "tc": "30+0.3",
+    "wins": 36,
+    "losses": 37,
+    "draws": 27,
+    "score_rate": 0.495,
+    "draw_rate": 0.27,
+    "wilson_low": 0.39901943335773693,
+    "wilson_high": 0.591350514717023,
+    "time_forfeits": {
+      "ance-a": 0,
+      "ance-b": 0
+    },
+    "command_line": "/Users/lasse/Development/Projects/ANCE/.venv/bin/python -m ance.tools.gauntlet --games 100 --tc 30+0.3 --openings /Users/lasse/Development/Projects/ANCE/ance/tools/openings.epd --output /tmp/ance-03-06-gauntlet-checkpoint.json --max-halfmoves 160 --engine-a '/Users/lasse/Development/Projects/ANCE/.venv/bin/python -m ance' --engine-b '/Users/lasse/Development/Projects/ANCE/.venv/bin/python -m ance' --engine-a-name ance-a --engine-b-name ance-b --runner arbiter --budget-seconds 18000",
+    "elapsed_s": 8675.374162313587,
+    "wall_clock_elapsed_s": 3512.76632254204,
+    "status": "completed"
+  },
+  "gates_passed": [
+    "D-14",
+    "D-17"
+  ]
+}
