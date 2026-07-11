@@ -40,7 +40,8 @@ from ance.search.types import (
 )
 
 DEFAULT_DEPTH = 3
-NODE_POLL_INTERVAL = 2048
+NODE_POLL_INTERVAL = 512
+SOFT_GATE_FRACTION = 0.5
 MAX_QDEPTH = 8
 DELTA_MARGIN = 200
 
@@ -361,6 +362,7 @@ def search_root(
     stop_flag: threading.Event,
     *,
     deadline: float | None = None,
+    soft_budget: float | None = None,
     info_callback=None,
     tt: TranspositionTable | None = None,
     killers: list[list[chess.Move | None]] | None = None,
@@ -386,6 +388,12 @@ def search_root(
         if stop_flag.is_set():
             break
         if deadline is not None and time.monotonic() >= deadline:
+            break
+        if (
+            soft_budget is not None
+            and last_completed is not None
+            and time.monotonic() - start_time >= SOFT_GATE_FRACTION * soft_budget
+        ):
             break
         try:
             result = _search_at_depth(

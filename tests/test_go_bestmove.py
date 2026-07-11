@@ -145,7 +145,7 @@ def test_go_movetime_aborts_promptly(engine):
 
 
 def test_go_clock_params_parsed_without_crash(engine):
-    engine.send("go wtime 300000 btime 300000 winc 0 binc 0")
+    engine.send("go wtime 1000 btime 1000 winc 0 binc 0")
     _read_bestmove(engine, timeout=4.0)
     engine.send("isready")
     _read_readyok_skipping_info(engine, timeout=1.0)
@@ -331,6 +331,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
             None,
             1,
             None,
+            None,
             loop_module.transposition_table,
             loop_module.killer_moves,
             loop_module.history_table,
@@ -359,6 +360,7 @@ def test_stale_generation_worker_never_emits_bestmove_after_being_superseded(
             threading.Event(),
             None,
             5,
+            None,
             None,
             loop_module.transposition_table,
             loop_module.killer_moves,

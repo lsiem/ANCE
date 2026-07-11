@@ -108,6 +108,7 @@ def test_go_limit_precedence_and_clock_budget_threading(
 ) -> None:
     threads: list[_DormantThread] = []
     timers: list[_DormantTimer] = []
+    monkeypatch.setattr(loop_module, "active_job", None)
     monkeypatch.setattr(loop_module, "_stop_active_worker", lambda: None)
     monkeypatch.setattr(loop_module.time, "monotonic", lambda: 100.0)
     monkeypatch.setattr(

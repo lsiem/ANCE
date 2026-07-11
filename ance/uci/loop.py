@@ -44,6 +44,7 @@ from ance.search.negamax import SearchAborted, search_root
 from ance.search.ordering import new_history, new_killers
 from ance.search.transposition import TranspositionTable
 from ance.search.types import DEFAULT_BARE_GO_MOVETIME_MS, MAX_PLY, SearchResult
+from ance.uci.clock import compute_clock_budget
 from ance.uci.parser import GoCommand, parse_go, parse_position, tokenize
 from ance.uci.protocol import (
     send_bestmove,
@@ -130,6 +131,7 @@ def _run_search(
     timer: threading.Timer | None,
     my_generation: int,
     deadline: float | None,
+    soft_budget: float | None,
     tt: TranspositionTable,
     killers: list[list[chess.Move | None]],
     history: list[list[list[int]]],
@@ -144,6 +146,7 @@ def _run_search(
             evaluator=evaluator_,
             stop_flag=stop_flag_,
             deadline=deadline,
+            soft_budget=soft_budget,
             tt=tt,
             killers=killers,
             history=history,
@@ -200,11 +203,19 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
     stop_event = threading.Event()
     job = SearchJob(generation=my_generation, stop_event=stop_event)
     depth = cmd.depth if cmd.depth is not None else MAX_PLY
+    turn = pos.board.turn
     deadline: float | None = None
+    soft_budget: float | None = None
     if cmd.infinite:
         deadline = None
     elif cmd.depth is None and cmd.movetime is None:
-        deadline = time.monotonic() + DEFAULT_BARE_GO_MOVETIME_MS / 1000
+        clock_budget = compute_clock_budget(cmd, turn)
+        if clock_budget is None:
+            deadline = time.monotonic() + DEFAULT_BARE_GO_MOVETIME_MS / 1000
+        else:
+            soft_ms, hard_ms = clock_budget
+            deadline = time.monotonic() + hard_ms / 1000
+            soft_budget = soft_ms / 1000
     elif cmd.movetime is not None:
         depth = MAX_PLY
 
@@ -223,6 +234,7 @@ def handle_go(cmd: GoCommand, pos: Position) -> None:
             job.timer,
             my_generation,
             deadline,
+            soft_budget,
             transposition_table,
             killer_moves,
             history_table,
