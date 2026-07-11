@@ -113,10 +113,19 @@ def play_gauntlet_game(
     clocks = {chess.WHITE: tc_base_s, chess.BLACK: tc_base_s}
     halfmoves = 0
     elapsed_total = 0.0
+    move_timings: list[dict[str, Any]] = []
+    max_move_elapsed_s = {"white": 0.0, "black": 0.0}
+
+    def timing_evidence() -> dict[str, Any]:
+        return {
+            "move_timings": list(move_timings),
+            "max_move_elapsed_s": dict(max_move_elapsed_s),
+        }
 
     while not board.is_game_over(claim_draw=True) and halfmoves < max_halfmoves:
         check_harness_expiry(stop_event, deadline)
         mover = board.turn
+        clock_before = clocks[mover]
         limit = chess.engine.Limit(
             white_clock=clocks[chess.WHITE],
             black_clock=clocks[chess.BLACK],
@@ -127,16 +136,28 @@ def play_gauntlet_game(
         play_result = engines[mover].play(board, limit, game=game_key)
         elapsed = max(0.0, time.monotonic() - started)
         elapsed_total += elapsed
+        color_name = _color_name(mover)
+        move_timings.append(
+            {
+                "color": color_name,
+                "clock_before_s": clock_before,
+                "elapsed_s": elapsed,
+            }
+        )
+        max_move_elapsed_s[color_name] = max(
+            max_move_elapsed_s[color_name],
+            elapsed,
+        )
         clocks[mover] -= elapsed
         if clocks[mover] < 0:
-            forfeited_by = _color_name(mover)
             return {
                 "outcome": "time_forfeit",
                 "result": "0-1" if mover == chess.WHITE else "1-0",
                 "reason": "time_forfeit",
                 "moves": halfmoves,
-                "forfeited_by": forfeited_by,
+                "forfeited_by": color_name,
                 "elapsed_s": elapsed_total,
+                **timing_evidence(),
             }
 
         # Increment is earned only after a move finishes within the clock.
@@ -157,6 +178,7 @@ def play_gauntlet_game(
             "moves": halfmoves,
             "forfeited_by": None,
             "elapsed_s": elapsed_total,
+            **timing_evidence(),
         }
 
     outcome = board.outcome(claim_draw=True)
@@ -173,6 +195,7 @@ def play_gauntlet_game(
         "moves": halfmoves,
         "forfeited_by": None,
         "elapsed_s": elapsed_total,
+        **timing_evidence(),
     }
 
 

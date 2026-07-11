@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 
@@ -12,6 +13,7 @@ from ance.board.position import Position
 from ance.eval.material import MaterialEval
 import ance.search.negamax as search_module
 from ance.search.types import MAX_PLY, SearchResult
+from ance.tools import gauntlet
 import ance.uci.loop as loop_module
 from ance.uci.clock import compute_clock_budget
 from ance.uci.parser import GoCommand
@@ -224,3 +226,53 @@ def test_clocked_uci_go_returns_one_legal_bestmove_quickly(
     move = chess.Move.from_uci(bestmoves[0].split()[1])
     assert move in board.legal_moves
     assert time.perf_counter() - started < 2.0
+
+
+@pytest.mark.slow
+def test_clocked_game_never_flags(tmp_path) -> None:
+    engine_argv = [sys.executable, "-m", "ance"]
+    report = gauntlet.run_gauntlet(
+        gauntlet.EngineSpec("ance-a", engine_argv),
+        gauntlet.EngineSpec("ance-b", engine_argv),
+        gauntlet.load_openings(gauntlet.DEFAULT_OPENINGS),
+        n_games=1,
+        tc_base_s=5.0,
+        tc_inc_s=0.1,
+        max_halfmoves=60,
+        output_path=tmp_path / "clock-smoke.json",
+        openings_path=gauntlet.DEFAULT_OPENINGS,
+        command_line=(
+            f"{sys.executable} -m ance.tools.gauntlet "
+            "--games 1 --tc 5+0.1 --max-halfmoves 60 --runner arbiter"
+        ),
+    )
+
+    assert report["status"] == "completed"
+    assert report["completion"] == "complete"
+    assert report["aggregate"]["time_forfeits"] == {"ance-a": 0, "ance-b": 0}
+    assert len(report["games"]) == 1
+    game = report["games"][0]
+    assert game["reason"] != "time_forfeit"
+    assert game["move_timings"]
+
+    maxima = {"white": 0.0, "black": 0.0}
+    overshoots = {"white": [], "black": []}
+    for timing in game["move_timings"]:
+        color = timing["color"]
+        remaining_ms = round(timing["clock_before_s"] * 1_000)
+        command = (
+            GoCommand(wtime=remaining_ms, winc=100)
+            if color == "white"
+            else GoCommand(btime=remaining_ms, binc=100)
+        )
+        turn = chess.WHITE if color == "white" else chess.BLACK
+        budget = compute_clock_budget(command, turn)
+        assert budget is not None
+        hard_ms = budget[1]
+        elapsed = timing["elapsed_s"]
+        maxima[color] = max(maxima[color], elapsed)
+        overshoots[color].append(elapsed - hard_ms / 1_000)
+
+    assert game["max_move_elapsed_s"] == pytest.approx(maxima)
+    assert max(overshoots["white"], default=0.0) <= 0.3
+    assert max(overshoots["black"], default=0.0) <= 0.3
