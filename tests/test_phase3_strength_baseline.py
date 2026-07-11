@@ -71,13 +71,13 @@ def test_collector_searches_every_baseline_fen_twice_with_fresh_state(
     )
 
     assert len(calls) == 2 * len(phase3_baseline.BASELINE_FENS)
-    for index, (_, fen) in enumerate(phase3_baseline.BASELINE_FENS):
+    for index, (case_id, fen) in enumerate(phase3_baseline.BASELINE_FENS):
         timed, fixed = calls[index * 2 : index * 2 + 2]
         assert timed[0] == fen
         assert timed[1] == MAX_PLY
         assert timed[3] is not None
         assert fixed[0] == fen
-        assert fixed[1] == 4
+        assert fixed[1] == phase3_baseline.FIXED_DEPTH_OVERRIDES.get(case_id, 4)
         assert fixed[3] is None
         assert timed[2] is not fixed[2]
 
@@ -110,19 +110,22 @@ def test_report_schema_records_parameters_and_measurements(
     assert report["captured_utc"]
     assert report["parameters"]["movetime_ms"] == 17
     assert report["parameters"]["fixed_depth"] == 2
+    assert report["parameters"]["fixed_depth_overrides"] == {"kiwipete": 2}
     assert report["parameters"]["evaluator"] == "handcrafted"
     assert report["parameters"]["python"]
     assert set(report["positions"]) == {
         case_id for case_id, _ in phase3_baseline.BASELINE_FENS
     }
-    for record in report["positions"].values():
+    for case_id, record in report["positions"].items():
         assert set(record) == {"fen", "timed", "fixed_depth"}
         assert record["timed"]["completed_depth"] == 3
         assert record["timed"]["nodes"] == 456
         assert record["timed"]["elapsed_seconds"] >= 0
         assert record["fixed_depth"]["nodes"] == 456
         assert record["fixed_depth"]["best_move"] == "e2e4"
-        assert record["fixed_depth"]["depth"] == 2
+        assert record["fixed_depth"]["depth"] == (
+            phase3_baseline.FIXED_DEPTH_OVERRIDES.get(case_id, 2)
+        )
         assert record["fixed_depth"]["elapsed_seconds"] >= 0
 
 

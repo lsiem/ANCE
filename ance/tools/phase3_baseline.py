@@ -44,6 +44,11 @@ BASELINE_FENS: list[tuple[str, str]] = [
     ("queen_mate", "6k1/5ppp/8/8/8/8/8/6KQ w - - 0 1"),
 ]
 
+# Kiwipete's Phase 2 search does not finish depth 3 within the 900-second
+# evidence watchdog with HandcraftedEval. Keep it as the timed branching
+# stress case, but use depth 2 for its reproducible node-count comparison.
+FIXED_DEPTH_OVERRIDES: dict[str, int] = {"kiwipete": 2}
+
 
 class BaselineBudgetExceeded(TimeoutError):
     """Raised when the collector exceeds its overall watchdog budget."""
@@ -112,6 +117,7 @@ def collect_baseline(
         for case_id, fen in BASELINE_FENS:
             _ensure_budget(budget_deadline)
             pos = Position(chess.Board(fen))
+            case_fixed_depth = FIXED_DEPTH_OVERRIDES.get(case_id, fixed_depth)
 
             timed_stop = threading.Event()
             active_stop[0] = timed_stop
@@ -134,7 +140,7 @@ def collect_baseline(
             fixed_started = time.monotonic()
             fixed_result = search_root(
                 Position(chess.Board(fen)),
-                max_depth=fixed_depth,
+                max_depth=case_fixed_depth,
                 evaluator=evaluator,
                 stop_flag=fixed_stop,
             )
@@ -170,6 +176,7 @@ def collect_baseline(
         "parameters": {
             "movetime_ms": movetime_ms,
             "fixed_depth": fixed_depth,
+            "fixed_depth_overrides": FIXED_DEPTH_OVERRIDES,
             "evaluator": "handcrafted",
             "python": platform.python_version(),
         },
