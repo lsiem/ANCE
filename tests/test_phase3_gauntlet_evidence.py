@@ -3,9 +3,53 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+from ance.tools import gauntlet
+
+
+D14_GAMES = 100
+D14_TC = "30+0.3"
+D17_GAMES = 100
+D17_TC = "30+0.3"
+ENGINE_ARGV = [sys.executable, "-m", "ance"]
+MAX_HALFMOVES = 160
+
+
+def assert_zero_forfeits(report: dict) -> None:
+    """Assert D-14's zero-time-forfeit acceptance gate."""
+    forfeits = report["aggregate"]["time_forfeits"]
+    offenders = {name: count for name, count in forfeits.items() if count}
+    assert not offenders, f"D-14 time forfeits detected: {offenders}"
+
+
+def assert_sanity_ci_contains_half(report: dict) -> None:
+    """Assert D-17's identical-engine Wilson interval contains 50%."""
+    aggregate = report["aggregate"]
+    low = aggregate["wilson_low"]
+    high = aggregate["wilson_high"]
+    assert low <= 0.50 <= high, (
+        "D-17 Wilson 95% score interval does not contain 0.50: "
+        f"[{low}, {high}]"
+    )
+
+
+def load_evidence(path: str | Path) -> dict:
+    """Load the committed D-14/D-17 evidence artifact."""
+    evidence_path = Path(path)
+    if not evidence_path.exists():
+        raise FileNotFoundError(
+            f"{evidence_path} is missing; run Phase 3 Plan 03-06 to generate it"
+        )
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    required = {"schema_version", "git_commit", "gauntlet", "gates_passed"}
+    missing = required - evidence.keys()
+    if missing:
+        raise ValueError(f"evidence is missing required fields: {sorted(missing)}")
+    return evidence
 
 
 def test_d17_sanity_ci_helper_accepts_half_and_names_failed_gate() -> None:
