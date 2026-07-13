@@ -594,22 +594,25 @@ def test_roundtrip_zero_torch(tmp_path):
 
 **If this table is empty:** N/A — see entries above. Everything else in this document (MPS regression on macOS 26, Lichess `[%eval]` sign convention, safetensors numpy API, K~400 prior, python-chess `PovScore` semantics, package registry versions) was verified this session via WebFetch/WebSearch against primary sources or via direct tool invocation (`pip index versions`, `sw_vers`, local `.venv` introspection) — see Sources.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Actual Stockfish labeling throughput on this M4 (depth/nodes value to pin, D-02)**
    - What we know: Stockfish is not currently installed on this machine (`brew install stockfish` returns "not found"); PROJECT.md/STACK.md recommend Stockfish 17.1/18 via Homebrew. Modern single-threaded Stockfish at depth ~12-16 typically labels on the order of low-hundreds to a few thousand positions/minute on comparable Apple Silicon hardware, but this project has no verified figure yet [ASSUMED — training-knowledge estimate, not measured on this machine].
    - What's unclear: The exact positions/second this specific M4 achieves at a candidate depth, which determines how large a "targeted position set" (D-01) is achievable within the D-08 wall-clock budget.
    - Recommendation: The plan's first data-pipeline task should be "install Stockfish, run a 200-position timed benchmark at 2-3 candidate depths (e.g. 10, 14, 18), pick the depth/nodes value that fits the time budget for the intended fresh-labeling volume, and record the result plus the exact command" — turning this open question into a concrete, cheap, five-minute calibration task rather than a guess locked into the plan text.
+   - **Resolved by:** Plan 04-03's `run_depth_benchmark` task — measures actual positions/second at each candidate depth on this machine rather than relying on the assumed estimate above.
 
 2. **Which Lichess dump(s) and filtering (Claude's discretion per CONTEXT.md, but sizing matters for D-08)**
    - What we know: `database.lichess.org` publishes monthly `.pgn.zst` dumps; roughly 6% of games carry `[%eval]` annotations [CITED via WebSearch]. A recent single month is on the order of tens of GB compressed and tens of millions of games; 6% eval coverage still yields a very large raw sample count before any filtering.
    - What's unclear: The exact filesize/game-count for any specific month (not queried this session — would require fetching `database.lichess.org/standard/list.txt` at plan time), and whether rating/time-control filtering is needed to keep ingestion time inside the wall-clock budget once the actual per-game parse rate is measured.
    - Recommendation: Pick one recent month; stream-parse with an early-exit sample cap (e.g., stop after N eval-tagged positions extracted) rather than committing to processing the entire file — this bounds ingestion time regardless of the exact file size, and keeps D-08's budget protected without needing the exact figure now. This machine has 1.5TB free disk, so storage is not the constraint — wall-clock parse time is.
+   - **Resolved by:** Plan 04-07's `run_pipeline.py` optional `--lichess-zst PATH` flag — skips the bulk stream entirely if omitted, and when given, ingests with an early-exit sample cap sized to the remaining wall-clock budget rather than requiring the full dump.
 
 3. **Checkpoint cadence and DataLoader shard format (both explicitly Claude's Discretion in CONTEXT.md)**
    - What we know: The project defers this choice explicitly; either packed-binary 768-feature-index shards or `.npy`/`.npz` are viable, per PROJECT.md's own note that "the bottleneck is data pipeline throughput... not GPU memory."
    - What's unclear: Without a measured DataLoader throughput number on this hardware, it isn't possible to say definitively whether sparse-index encoding or dense-float32-768 encoding is faster in practice for this dataset size.
    - Recommendation: Start with the simpler dense-float32 `.npy` shard format (Pattern 1's code example assumes this) for a working end-to-end pipeline first; only move to packed sparse-index encoding if a measured DataLoader throughput bottleneck appears during the actual overnight run's early minutes (visible via `tqdm` epoch-time reporting). This is consistent with D-08's own framing — push for max strength within the budget, but the budget is protected by not over-engineering the shard format before there's a measured need.
+   - **Resolved by:** Plan 04-06 committing to the dense float32 `.npz` shard format (`training/data/shards.py`'s `build_shard`/`ShardDataset`), per this section's own recommendation to start simple.
 
 ## Environment Availability
 
