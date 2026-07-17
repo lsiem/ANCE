@@ -57,7 +57,12 @@ def cpu_vs_mps_parity_check(
     def one_step(dev: str) -> torch.Tensor:
         torch.manual_seed(0)
         model = factory().to(dev)
-        output = model(features.to(dev)).squeeze(-1)
+        batch = features.to(dev)
+        try:
+            output = model(batch).squeeze(-1)
+        except TypeError:
+            # Dual-perspective nets (e.g. NNUE) take separate stm/opp feature tensors.
+            output = model(batch, batch).squeeze(-1)
         loss = ((output - targets.to(dev)) ** 2).mean()
         loss.backward()
         return loss.detach().cpu()
