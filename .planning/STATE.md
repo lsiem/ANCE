@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
+current_phase: 04
+current_phase_name: offline-nnue-training-pipeline
 status: executing
 stopped_at: Phase 4 context gathered
-last_updated: "2026-07-13T14:27:42.629Z"
-last_activity: 2026-07-13
-last_activity_desc: Phase 04 planning complete
+last_updated: "2026-07-17T16:56:03Z"
+last_activity: 2026-07-17
+last_activity_desc: Plan 04-01 complete
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 24
-  completed_plans: 24
-  percent: 60
-current_phase_name: Offline NNUE Training Pipeline
+  total_plans: 31
+  completed_plans: 25
+  percent: 62
 ---
 
 # Project State
@@ -24,16 +24,16 @@ current_phase_name: Offline NNUE Training Pipeline
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 4 — offline nnue training pipeline
+**Current focus:** Phase 04 — offline-nnue-training-pipeline
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-13 — Phase 04 planning complete
+Phase: 04 (offline-nnue-training-pipeline) — EXECUTING
+Plan: 2 of 7
+Status: Executing Phase 04 — Plan 04-01 complete
+Last activity: 2026-07-17 — Plan 04-01 complete (nnue_format + mps_gate foundation)
 
-Progress: [██████░░░░] 60%
+Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
@@ -92,6 +92,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Normalize raw python-chess results once inside play_depth_match_game and tally typed deeper-side outcomes directly. — Eliminates color-dependent double interpretation and makes one-game semantics explicit.
 - [Phase 02]: Use game-index parity for color and seed plus game index for deterministic opening selection. — Keeps color assignment independent from reproducible opening variation.
 - [Phase 02]: Classify the interrupted 30+30 run only as runtime calibration and defer statistical strength evidence to Phase 3 optimized search and cutechess. — Two depth games consumed 1205.6582282920135 seconds, projecting the depth suite alone to about 5.02 hours; deterministic evidence is reproducible within the bounded hard wall.
+- [Phase 04]: Omitted tests/training/__init__.py — empty package init caused pytest to shadow project-root training/ when tests/ was prepended to sys.path; pytest tests/training/ works without it
+- [Phase 04]: Recreated .venv with Python 3.14.6 (torch 2.13.0); MPS is_available=True on this machine despite 04-RESEARCH macOS 26 regression note
 
 ### Pending Todos
 
