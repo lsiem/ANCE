@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Phase: 05 (nnue-swap-in-elo-gauntlet) — PAUSED
 Plan: 3 of 3 (05-03 incomplete; stronger net training in flight)
 Status: Paused — resume scale labeling, then finish 05-03 evidence
-Last activity: 2026-07-18 — trainer/dashboard/scale pipeline upgrades; labeling paused ~150k/1M
+Last activity: 2026-07-18 - Completed quick task 260718-tpm: HF Lichess chess-position-evaluations parquet ingest as pre-labeled NNUE data stream
 
 Progress: [██████████] 97%
 
@@ -117,6 +117,12 @@ See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
 
 - [Phase 4] MPS `torch.backends.mps.is_available()` has regressed on recent macOS majors — a smoke test + CPU-vs-MPS numeric parity check must be the first task of the training harness (CPU training is a viable fallback for this tiny net).
 - [Phase 4/5] WDL scaling constant K (~360–400) and the exact Stockfish labeling command (normalized UCI cp ≠ internal eval) must be pinned/measured before generating the dataset.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260718-tpm | Add Hugging Face Lichess chess-position-evaluations parquet ingest path as pre-labeled NNUE training data stream | 2026-07-18 | 68751ee | [260718-tpm-add-hugging-face-lichess-chess-position-](./quick/260718-tpm-add-hugging-face-lichess-chess-position-/) |
 
 ## Deferred Items
 
