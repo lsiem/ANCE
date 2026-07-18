@@ -59,7 +59,8 @@ def run_labeling_resumable(
                 rate = (done - start_index) / elapsed if elapsed > 0 else 0.0
                 remaining = len(fens) - done
                 live.parent.mkdir(parents=True, exist_ok=True)
-                live.write_text(
+                tmp_live = live.with_suffix(live.suffix + ".tmp")
+                tmp_live.write_text(
                     json.dumps(
                         {
                             "phase": "labeling",
@@ -78,6 +79,7 @@ def run_labeling_resumable(
                     + "\n",
                     encoding="utf-8",
                 )
+                tmp_live.replace(live)
             if done % save_every == 0 or done == len(fens):
                 progress.parent.mkdir(parents=True, exist_ok=True)
                 tmp = progress.with_suffix(".tmp")

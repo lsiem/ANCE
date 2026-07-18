@@ -47,6 +47,13 @@ def test_unmake_restores_accumulator(nnue: NnueEval) -> None:
     assert nnue.evaluate(Position(board)) == before
 
 
+def test_evaluate_refreshes_when_same_board_object_mutates(nnue: NnueEval) -> None:
+    board = chess.Board()
+    nnue.refresh(board)
+    board.push(chess.Move.from_uci("e2e4"))
+    assert nnue.evaluate(Position(board)) == nnue.evaluate_dense_reference(Position(board))
+
+
 def test_encode_position_board_matches_fen_wrapper() -> None:
     fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
     board = chess.Board(fen)

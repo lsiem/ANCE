@@ -63,9 +63,14 @@ class NnueEval:
         self._idx_white: set[int] = set()
         self._idx_black: set[int] = set()
         self._stack: list[
-            tuple[np.ndarray, np.ndarray, set[int], set[int]]
+            tuple[np.ndarray, np.ndarray, set[int], set[int], str | None]
         ] = []
         self._board_id: int | None = None
+        self._board_state: str | None = None
+
+    @staticmethod
+    def _board_state_key(board: chess.Board) -> str:
+        return board.fen()
 
     def refresh(self, board: chess.Board) -> None:
         """Full sparse rebuild of both color accumulators for ``board``."""
@@ -81,6 +86,7 @@ class NnueEval:
         self._idx_black = set(idx_b)
         self._stack.clear()
         self._board_id = id(board)
+        self._board_state = self._board_state_key(board)
 
     def on_make(self, board: chess.Board, move: chess.Move) -> None:
         """Update accumulators after ``board.push(move)`` (board is post-move)."""
@@ -97,6 +103,7 @@ class NnueEval:
                 self._acc_black.copy(),
                 set(self._idx_white),
                 set(self._idx_black),
+                self._board_state,
             )
         )
 
@@ -115,6 +122,7 @@ class NnueEval:
         )
         self._idx_white = after_w
         self._idx_black = after_b
+        self._board_state = self._board_state_key(board)
 
     def on_unmake(self) -> None:
         """Restore accumulators after ``board.pop()``."""
@@ -124,6 +132,7 @@ class NnueEval:
                 self._acc_black,
                 self._idx_white,
                 self._idx_black,
+                self._board_state,
             ) = self._stack.pop()
 
     def evaluate(self, pos: Position) -> int:
@@ -132,6 +141,7 @@ class NnueEval:
             self._acc_white is None
             or self._acc_black is None
             or self._board_id != id(board)
+            or self._board_state != self._board_state_key(board)
         ):
             self.refresh(board)
 

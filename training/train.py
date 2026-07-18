@@ -198,6 +198,9 @@ def run_training(
                     f"{checkpoint_dir}/step-{global_step}.pt",
                 )
 
+        if stopped_early and early_stop_reason == "deadline":
+            break
+
         if not epoch_losses:
             break
 

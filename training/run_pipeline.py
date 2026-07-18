@@ -259,7 +259,9 @@ def run_bounded(
         live_path = out_dir / "training-live.json"
 
         def _report_generation(done: int, total: int | None) -> None:
-            live_path.write_text(
+            live_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = live_path.with_suffix(live_path.suffix + ".tmp")
+            tmp.write_text(
                 json.dumps(
                     {
                         "phase": "generating",
@@ -274,6 +276,7 @@ def run_bounded(
                 + "\n",
                 encoding="utf-8",
             )
+            tmp.replace(live_path)
             print(
                 f"generating positions {done}"
                 + (f"/{total}" if total is not None else ""),
