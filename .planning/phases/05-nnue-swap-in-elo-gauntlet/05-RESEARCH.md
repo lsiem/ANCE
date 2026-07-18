@@ -519,15 +519,15 @@ def elo_ci_from_wilson(low: float, high: float, n: int) -> tuple[float, float]:
 | A3 | Depth 3 × 1000 games finishes overnight with NNUE overhead | Depth N | Run may need depth 2 or `--budget-seconds` resume |
 | A4 | Logistic Elo from Wilson score rate satisfies stakeholder intent for "95% CI lower bound > 0" | Elo formula | May need BayesElo if user expects engine-Elo units from cutechess |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should `nnue_format` gain a shared `features.py`?**
+1. **Should `nnue_format` gain a shared `features.py`?** — **RESOLVED**
    - What we know: duplication risks drift; training encoder is authoritative.
-   - Recommendation: duplicate in `ance/eval/nnue/` with exhaustive cross-test; defer package move to v2 cleanup.
+   - **Chosen answer:** Duplicate encoder in `ance/eval/nnue/features.py` (verbatim copy of `training/data/features.py`) with exhaustive cross-test (`test_engine_features_match_training_encoder` on ≥100 FENs); defer shared `nnue_format/features.py` to v2 cleanup.
 
-2. **Package data / editable install resolution for default net path**
+2. **Package data / editable install resolution for default net path** — **RESOLVED**
    - What we know: `pyproject.toml` has no `[tool.setuptools.package-data]` yet.
-   - Recommendation: `Path(__file__).with_name("net.safetensors")` works for repo-relative runs and editable installs if file is on disk next to module (git-tracked).
+   - **Chosen answer:** Resolve default weights via `Path(__file__).with_name("net.safetensors")` in `ance/eval/nnue/eval.py` (colocated git-tracked file at `ance/eval/nnue/net.safetensors`); optional override via `ANCE_NNUE_PATH` per D-05.
 
 ## Sources
 

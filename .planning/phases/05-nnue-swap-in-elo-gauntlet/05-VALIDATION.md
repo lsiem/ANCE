@@ -2,7 +2,7 @@
 phase: 5
 slug: nnue-swap-in-elo-gauntlet
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-18
 ---
@@ -38,19 +38,19 @@ created: 2026-07-18
 
 ## Per-Task Verification Map
 
-> Task IDs are assigned at planning time. Rows below are the requirement/decision → test mapping from research; the planner attaches each to a concrete `{5}-{plan}-{task}` id.
+> Task IDs reference `{phase}-{plan}-{task}` from Phase 5 PLAN.md files. Automated commands match plan `<verify><automated>` gates.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | 1 | EVAL-03 | T-5-01 | NnueEval loads safetensors via strict `nnue_format`; implements Protocol | unit | `pytest tests/test_nnue_eval.py::test_nnue_loads_default_net -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | EVAL-03 / D-13 | — | Torch↔numpy exact integer cp parity | integration (torch) | `pytest tests/test_nnue_eval.py -m torch -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | EVAL-03 / D-03 | T-5-01 | Invalid `ANCE_EVAL` fail-fast (non-zero exit, stderr lists allowed) | subprocess | `pytest tests/test_nnue_eval.py::test_invalid_ance_eval_exits -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | EVAL-03 / D-14 | — | Symmetric king-only positions score exactly 0 | unit | `pytest tests/test_nnue_eval.py::test_symmetric_positions_score_zero -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | EVAL-03 / D-15 | — | Color-mirror + STM flip exact equality | unit | `pytest tests/test_nnue_eval.py::test_color_mirror_stm_flip -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 1 | EVAL-03 / D-16 | — | Stockfish sign agreement on won/lost suite | integration | `pytest tests/test_nnue_eval.py::test_stockfish_sign_agreement -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | TOOL-04 / D-11 | — | Gauntlet depth mode + per-engine env injection | unit | `pytest tests/test_nnue_gauntlet_depth.py -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | TOOL-04 / D-04 | — | Search-config identical except eval env | structural | `pytest tests/test_nnue_eval.py::test_search_config_unchanged -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 3 | TOOL-04 / D-10–D-12 | — | ≥1000-game Elo point estimate > 0 and 95% CI lower bound > 0 | slow e2e | `pytest tests/test_phase5_elo_evidence.py -m slow -x` | ❌ W0 | ⬜ pending |
+| 05-01-2 | 05-01 | 1 | EVAL-03 | T-5-01 | NnueEval loads safetensors via strict `nnue_format`; implements Protocol | unit | `pytest tests/test_nnue_eval.py::test_nnue_loads_default_net -x` | ❌ W0 | ⬜ pending |
+| 05-01-3 | 05-01 | 1 | EVAL-03 / D-13 | — | Torch↔numpy exact integer cp parity | integration (torch) | `pytest tests/test_nnue_eval.py -m torch -x` | ❌ W0 | ⬜ pending |
+| 05-01-3 | 05-01 | 1 | EVAL-03 / D-03 | T-5-01 | Invalid `ANCE_EVAL` fail-fast (non-zero exit, stderr lists allowed) | subprocess | `pytest tests/test_nnue_eval.py::test_invalid_ance_eval_exits -x` | ❌ W0 | ⬜ pending |
+| 05-01-2 | 05-01 | 1 | EVAL-03 / D-14 | — | Symmetric king-only positions score exactly 0 | unit | `pytest tests/test_nnue_eval.py::test_symmetric_positions_score_zero -x` | ❌ W0 | ⬜ pending |
+| 05-01-3 | 05-01 | 1 | EVAL-03 / D-15 | — | Color-mirror + STM flip exact equality | unit | `pytest tests/test_nnue_eval.py::test_color_mirror_stm_flip -x` | ❌ W0 | ⬜ pending |
+| 05-01-3 | 05-01 | 1 | EVAL-03 / D-16 | — | Stockfish sign agreement on won/lost suite | integration | `pytest tests/test_nnue_eval.py::test_stockfish_sign_agreement -x` | ❌ W0 | ⬜ pending |
+| 05-02-2 | 05-02 | 2 | TOOL-04 / D-11 | — | Gauntlet depth mode + per-engine env injection | unit | `pytest tests/test_nnue_gauntlet_depth.py -x` | ❌ W0 | ⬜ pending |
+| 05-02-3 | 05-02 | 2 | TOOL-04 / D-04 | — | Search-config identical except eval env | structural | `pytest tests/test_nnue_eval.py::test_search_config_unchanged_by_eval_env -x` | ❌ W0 | ⬜ pending |
+| 05-03-2 | 05-03 | 3 | TOOL-04 / D-10–D-12 | — | ≥1000-game Elo point estimate > 0 and 95% CI lower bound > 0 | slow e2e | `pytest tests/test_phase5_elo_evidence.py -m slow -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -80,11 +80,11 @@ created: 2026-07-18
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s (excluding slow Elo evidence)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s (excluding slow Elo evidence)
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
