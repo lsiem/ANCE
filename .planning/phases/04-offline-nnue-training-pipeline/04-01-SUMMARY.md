@@ -96,7 +96,7 @@ status: complete
 2. **Task 2: nnue_format contract + roundtrip test + structural torch-leakage test** - `6df7ba6`
 3. **Task 3: MPS availability gate** - `3a3218f`
 
-**Plan metadata:** pending (docs: complete plan 04-01)
+**Plan metadata:** `238cec0` (docs: complete plan 04-01)
 
 ## Files Created/Modified
 

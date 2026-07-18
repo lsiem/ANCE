@@ -8,6 +8,7 @@ helpers — consistent with the project's MPS constraints.
 from __future__ import annotations
 
 import os
+import time
 
 import torch
 from torch.utils.data import DataLoader
@@ -29,12 +30,9 @@ def wdl_loss(
 ) -> torch.Tensor:
     wdl_model = torch.sigmoid(model_out_cp / k)
     wdl_eval_target = torch.sigmoid(eval_cp / k)
-    effective_lambda = torch.where(
-        has_result.bool(),
-        torch.full_like(eval_cp, lambda_),
-        torch.ones_like(eval_cp),
-    )
-    target = effective_lambda * wdl_eval_target + (1 - effective_lambda) * game_result
+    # Avoid 0 * NaN when game_result is missing (fresh-only labels).
+    mixed = lambda_ * wdl_eval_target + (1 - lambda_) * game_result
+    target = torch.where(has_result.bool(), mixed, wdl_eval_target)
     return ((wdl_model - target) ** 2).mean()
 
 
@@ -103,6 +101,7 @@ def run_training(
     epochs: int,
     checkpoint_dir: str,
     checkpoint_every_n_steps: int = 500,
+    deadline_monotonic: float | None = None,
 ) -> dict:
     device = preflight_mps_gate()
     model = NNUE().to(device)
@@ -114,11 +113,22 @@ def run_training(
     train_losses: list[float] = []
     val_losses: list[float] = []
     global_step = 0
+    stopped_early = False
+
+    os.makedirs(checkpoint_dir, exist_ok=True)
 
     for epoch in range(epochs):
+        if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+            stopped_early = True
+            break
+
         model.train()
         epoch_losses: list[float] = []
         for stm, opp, eval_cp, game_result, has_result in train_loader:
+            if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+                stopped_early = True
+                break
+
             stm = stm.to(device)
             opp = opp.to(device)
             eval_cp = eval_cp.to(device)
@@ -141,6 +151,9 @@ def run_training(
                     f"{checkpoint_dir}/step-{global_step}.pt",
                 )
 
+        if not epoch_losses:
+            break
+
         train_losses.append(sum(epoch_losses) / max(len(epoch_losses), 1))
 
         model.eval()
@@ -162,4 +175,22 @@ def run_training(
                 )
         val_losses.append(sum(val_epoch_losses) / max(len(val_epoch_losses), 1))
 
-    return {"train_losses": train_losses, "val_losses": val_losses, "device": device, "model": model, "optimizer": optimizer}
+        save_checkpoint(
+            model,
+            optimizer,
+            epoch,
+            f"{checkpoint_dir}/epoch-{epoch + 1}.pt",
+        )
+
+        if stopped_early:
+            break
+
+    return {
+        "train_losses": train_losses,
+        "val_losses": val_losses,
+        "device": device,
+        "model": model,
+        "optimizer": optimizer,
+        "stopped_early": stopped_early,
+        "global_step": global_step,
+    }
