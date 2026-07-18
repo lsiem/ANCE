@@ -29,6 +29,7 @@ times out, they invalidate the surviving generation before changing state.
 
 from __future__ import annotations
 
+import os
 import sys
 import threading
 import time
@@ -39,7 +40,6 @@ import chess
 import ance.debug as debug
 from ance.board.position import Position
 from ance.eval.base import Evaluator
-from ance.eval.handcrafted import HandcraftedEval
 from ance.search.negamax import SearchAborted, search_root
 from ance.search.ordering import new_history, new_killers
 from ance.search.transposition import TranspositionTable
@@ -67,10 +67,37 @@ active_job: SearchJob | None = None
 search_generation = 0
 generation_lock = threading.Lock()
 
-# The engine's real default evaluator (EVAL-02): Simplified Evaluation
-# Function material+PST plus mobility/bishop-pair/tempo/pawn-structure
-# terms (D-05/D-06), replacing Plan 01-03's bootstrap MaterialEval.
-evaluator: Evaluator = HandcraftedEval()
+_ALLOWED_EVAL = frozenset({"handcrafted", "nnue"})
+
+
+def resolve_evaluator() -> Evaluator:
+    """Select evaluator from ``ANCE_EVAL`` (D-01..D-03, D-06).
+
+    Default is handcrafted. Invalid values and NNUE load failures exit
+    non-zero with stderr guidance — never silently fall back.
+    """
+    mode = os.environ.get("ANCE_EVAL", "handcrafted")
+    if mode not in _ALLOWED_EVAL:
+        print(
+            f"error: invalid ANCE_EVAL={mode!r}; allowed: {sorted(_ALLOWED_EVAL)}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if mode == "nnue":
+        try:
+            from ance.eval.nnue.eval import NnueEval
+
+            return NnueEval()
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"error: failed to load NNUE weights: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
+    from ance.eval.handcrafted import HandcraftedEval
+
+    return HandcraftedEval()
+
+
+# Module-init wiring: env-selectable Evaluator behind the Protocol seam (EVAL-03).
+evaluator: Evaluator = resolve_evaluator()
 transposition_table = TranspositionTable()
 killer_moves = new_killers()
 history_table = new_history()
