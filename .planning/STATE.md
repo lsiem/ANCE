@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: NNUE Swap-In & Elo Gauntlet
-status: ready_to_plan
-stopped_at: Phase 5 context gathered
-last_updated: "2026-07-18T09:58:39.674Z"
+status: ready_to_execute
+stopped_at: Phase 5 planned (3 plans)
+last_updated: "2026-07-18T12:15:00.000Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 04 verification passed (`04-VERIFICATION.md`)
+last_activity_desc: Phase 5 planned — 3 plans across 3 waves (EVAL-03 + TOOL-04)
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 31
+  total_plans: 34
   completed_plans: 31
   percent: 80
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 5 — NNUE Swap-In & Elo Gauntlet
-Plan: Not started
-Status: Ready to discuss/plan Phase 5
-Last activity: 2026-07-18 — Phase 04 verification passed (`04-VERIFICATION.md`)
+Plan: 0/3
+Status: Ready to execute
+Last activity: 2026-07-18 — Phase 5 planned (`05-01`…`05-03`)
 
 Progress: [████████░░] 80%
 
@@ -118,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T09:58:39.666Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-nnue-swap-in-elo-gauntlet/05-CONTEXT.md
+Last session: 2026-07-18T12:15:00.000Z
+Stopped at: Phase 5 planned — ready to execute
+Resume file: .planning/phases/05-nnue-swap-in-elo-gauntlet/05-01-PLAN.md

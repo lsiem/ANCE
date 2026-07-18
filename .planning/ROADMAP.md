@@ -206,7 +206,21 @@ Plans:
   3. Swapping handcrafted → NNUE changes only the eval; the two gauntlet builds are diff-verified to share identical search configuration.
   4. Over a ≥1000-game fixed-opening-book `cutechess-cli` gauntlet the NNUE build shows a measurable positive Elo gain over the handcrafted build, reported with error bars (CI/SPRT) and reproducible on a rerun.
 
-**Plans**: TBD
+**Plans**: 0/3 plans executed
+
+Plans:
+
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — NnueEval + git-tracked `net.safetensors` + `ANCE_EVAL` wiring + torch↔numpy parity/golden tests (EVAL-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-02-PLAN.md — Gauntlet `--depth` + `EngineSpec.env` + logistic Elo/Wilson CI + search-config diff verify (TOOL-04 harness)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-03-PLAN.md — ≥1000-game depth-3 evidence run + D-12 Elo CI gate + committed evidence JSON (TOOL-04 proof)
 
 ## Progress
 
@@ -219,4 +233,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | 2. Core Alpha-Beta Search | 12/12 | Complete    | 2026-07-10 |
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
-| 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |
+| 5. NNUE Swap-In & Elo Gauntlet | 0/3 | Planned | - |
