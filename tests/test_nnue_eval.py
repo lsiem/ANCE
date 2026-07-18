@@ -292,3 +292,94 @@ def test_negamax_never_imports_concrete_nnue_or_handcrafted() -> None:
     )
     assert "NnueEval" not in non_comment
     assert "HandcraftedEval" not in non_comment
+
+
+def _non_comment_source(path: Path) -> str:
+    return "\n".join(
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if not line.strip().startswith("#")
+    )
+
+
+def test_search_config_unchanged_by_eval_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D-04: search modules ignore concrete evals; gauntlet env differs only by ANCE_EVAL.
+
+    Baseline: search/types.py constants are shared by both builds; eval selection
+    is env-only at UCI process launch, so search source must not name NnueEval
+    or HandcraftedEval.
+    """
+    search_modules = (
+        Path("ance/search/negamax.py"),
+        Path("ance/search/transposition.py"),
+        Path("ance/search/ordering.py"),
+    )
+    for module_path in search_modules:
+        non_comment = _non_comment_source(module_path)
+        assert "NnueEval" not in non_comment
+        assert "HandcraftedEval" not in non_comment
+
+    from ance.tools import gauntlet
+
+    engine_argv = [sys.executable, "-m", "ance"]
+    monkeypatch.setattr(
+        gauntlet.chess.engine.SimpleEngine,
+        "popen_uci",
+        lambda argv, **kwargs: type(
+            "E",
+            (),
+            {
+                "quit": lambda self: None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        gauntlet,
+        "play_gauntlet_game",
+        lambda *args, **kwargs: {
+            "outcome": "draw",
+            "result": "1/2-1/2",
+            "reason": "halfmove_cap",
+            "moves": 0,
+            "forfeited_by": None,
+            "elapsed_s": 0.0,
+        },
+    )
+
+    report = gauntlet.run_gauntlet(
+        gauntlet.EngineSpec(
+            "hc", list(engine_argv), env={"ANCE_EVAL": "handcrafted"}
+        ),
+        gauntlet.EngineSpec(
+            "nnue", list(engine_argv), env={"ANCE_EVAL": "nnue"}
+        ),
+        [chess.STARTING_FEN],
+        n_games=2,
+        tc_base_s=30.0,
+        tc_inc_s=0.3,
+        max_halfmoves=20,
+        output_path=tmp_path / "d04-params.json",
+        search_depth=3,
+    )
+    params = report["parameters"]
+    assert params["engine_a"]["argv"] == params["engine_b"]["argv"] == engine_argv
+    a_env = dict(params["engine_a"]["env"])
+    b_env = dict(params["engine_b"]["env"])
+    assert set(a_env) == set(b_env) == {"ANCE_EVAL"}
+    assert a_env["ANCE_EVAL"] == "handcrafted"
+    assert b_env["ANCE_EVAL"] == "nnue"
+
+
+@pytest.mark.slow
+def test_ten_game_depth2_nnue_vs_hc_smoke_stub() -> None:
+    """Optional pre-flight for Plan 05-03 (skipped unless -m slow).
+
+    Manual: run_gauntlet at depth 2, n_games=10 with ANCE_EVAL=nnue vs
+    handcrafted. Acceptance depth for TOOL-04 is N=3 (05-RESEARCH); this stub
+    documents the smoke only — Plan 05-03 owns the ≥1000-game D-12 gate.
+    """
+    pytest.skip(
+        "Plan 05-03 owns the TOOL-04 evidence run; use depth=3 for acceptance"
+    )
