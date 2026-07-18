@@ -48,6 +48,9 @@ def row_to_sample(
     Quality filter uses OR semantics: a row is kept iff its depth OR its
     knodes meets the corresponding threshold (None values never pass).
     """
+    if n_buckets <= 0:
+        raise ValueError("n_buckets must be a positive integer")
+
     depth = row.get("depth")
     knodes = row.get("knodes")
     depth_ok = depth is not None and depth >= min_depth

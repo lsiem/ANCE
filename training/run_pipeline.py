@@ -96,6 +96,45 @@ def _save_json(path: Path, rows: list[dict]) -> None:
     path.write_text(json.dumps(rows), encoding="utf-8")
 
 
+def _latest_manifest_event(path: Path, *, event: str) -> dict | None:
+    if not path.exists():
+        return None
+    for row in reversed(_load_json(path)):
+        if row.get("event") == event:
+            return row
+    return None
+
+
+def _can_reuse_hf_cache(
+    manifest: Path,
+    *,
+    repo_id: str,
+    max_positions: int,
+    min_depth: int,
+    min_knodes: int,
+) -> bool:
+    event = _latest_manifest_event(manifest, event="hf_ingest")
+    if event is None:
+        return False
+    return (
+        event.get("repo_id") == repo_id
+        and event.get("max_positions") == max_positions
+        and event.get("min_depth") == min_depth
+        and event.get("min_knodes") == min_knodes
+    )
+
+
+def _invalidate_hf_derived_outputs(out_dir: Path) -> None:
+    for path in (
+        out_dir / "merged_samples.json",
+        out_dir / "train.npz",
+        out_dir / "val.npz",
+        out_dir / "net.safetensors",
+    ):
+        if path.exists():
+            path.unlink()
+
+
 def _cp_from_label(label: dict, mate_score: int = _MATE_SCORE) -> float | None:
     if label.get("cp") is not None:
         return float(label["cp"])
@@ -272,9 +311,17 @@ def run_bounded(
     # (they feed fit_k_from_samples; HF rows have game_result=None).
     hf_path = out_dir / "hf_samples.json"
     if hf_dataset is not None:
-        if hf_path.exists():
+        if hf_path.exists() and _can_reuse_hf_cache(
+            manifest,
+            repo_id=hf_dataset,
+            max_positions=hf_max_positions,
+            min_depth=hf_min_depth,
+            min_knodes=hf_min_knodes,
+        ):
             hf_samples = _load_json(hf_path)
         else:
+            if hf_path.exists():
+                _invalidate_hf_derived_outputs(out_dir)
             hf_samples = _ingest_hf(
                 hf_dataset,
                 max_positions=hf_max_positions,
@@ -287,6 +334,7 @@ def run_bounded(
                 str(manifest),
                 event="hf_ingest",
                 n_samples=len(hf_samples),
+                repo_id=hf_dataset,
                 max_positions=hf_max_positions,
                 min_depth=hf_min_depth,
                 min_knodes=hf_min_knodes,

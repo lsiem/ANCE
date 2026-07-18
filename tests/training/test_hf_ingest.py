@@ -74,6 +74,11 @@ class TestSkipRow:
     def test_short_fen_is_skipped(self) -> None:
         assert row_to_sample(_row(fen="onlyonefield")) is None
 
+    @pytest.mark.parametrize("n_buckets", [0, -1])
+    def test_non_positive_bucket_count_raises(self, n_buckets: int) -> None:
+        with pytest.raises(ValueError, match="n_buckets must be a positive integer"):
+            row_to_sample(_row(), n_buckets=n_buckets)
+
 
 class TestPseudoGameId:
     def test_same_fen_same_game_id_and_deterministic_crc32(self) -> None:
