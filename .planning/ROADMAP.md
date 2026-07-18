@@ -218,5 +218,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
 | 2. Core Alpha-Beta Search | 12/12 | Complete    | 2026-07-10 |
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
-| 4. Offline NNUE Training Pipeline | 7/7 | Complete   | 2026-07-18 |
+| 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |

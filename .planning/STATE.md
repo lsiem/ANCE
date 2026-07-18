@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 04
-current_phase_name: offline-nnue-training-pipeline
-status: verifying
-stopped_at: Phase 04 execution complete — ready for verification
-last_updated: "2026-07-18T08:44:20.140Z"
+current_phase: 5
+current_phase_name: NNUE Swap-In & Elo Gauntlet
+status: ready_to_plan
+stopped_at: Phase 04 verified — ready to discuss/plan Phase 5
+last_updated: "2026-07-18T09:15:11.917Z"
 last_activity: 2026-07-18
-last_activity_desc: Plan 04-07 complete (real bounded training run approved)
+last_activity_desc: Phase 04 verification passed; transitioned to Phase 5
 progress:
   total_phases: 5
   completed_phases: 4
@@ -24,22 +24,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 04 — offline-nnue-training-pipeline
+**Current focus:** Phase 5 — NNUE Swap-In & Elo Gauntlet
 
 ## Current Position
 
-Phase: 04 (offline-nnue-training-pipeline) — EXECUTING
-Plan: 7 of 7 (complete)
-Status: Phase 04 execution complete — ready for verification
-Last activity: 2026-07-18 — Plan 04-07 complete (real bounded training run approved)
+Phase: 5 — NNUE Swap-In & Elo Gauntlet
+Plan: Not started
+Status: Ready to discuss/plan Phase 5
+Last activity: 2026-07-18 — Phase 04 verification passed (`04-VERIFICATION.md`)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 24
+- Total plans completed: 31
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -50,6 +50,7 @@ Progress: [██████████] 100%
 | 1 | 6 | - | - |
 | 2 | 12 | - | - |
 | 3 | 6 | - | - |
+| 04 | 7 | - | - |
 
 **Recent Trend:**
 
@@ -117,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T08:42:50.245Z
-Stopped at: Completed 04-07-PLAN.md — Phase 04 execution done
-Resume file: .planning/phases/04-offline-nnue-training-pipeline/04-07-SUMMARY.md
+Last session: 2026-07-18T09:15:11.917Z
+Stopped at: Phase 04 verified — ready to discuss/plan Phase 5
+Resume file: .planning/phases/04-offline-nnue-training-pipeline/04-VERIFICATION.md
