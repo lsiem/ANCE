@@ -59,6 +59,25 @@ def _poll_stop(ctx: SearchContext) -> None:
         raise SearchAborted()
 
 
+def _eval_refresh(evaluator: Evaluator, board: chess.Board) -> None:
+    """Optional NNUE accumulator sync (duck-typed; never imports concrete eval)."""
+    refresh = getattr(evaluator, "refresh", None)
+    if refresh is not None:
+        refresh(board)
+
+
+def _eval_make(evaluator: Evaluator, board: chess.Board, move: chess.Move) -> None:
+    on_make = getattr(evaluator, "on_make", None)
+    if on_make is not None:
+        on_make(board, move)
+
+
+def _eval_unmake(evaluator: Evaluator) -> None:
+    on_unmake = getattr(evaluator, "on_unmake", None)
+    if on_unmake is not None:
+        on_unmake()
+
+
 def _child_ctx(ctx: SearchContext, ply: int) -> SearchContext:
     return SearchContext(
         stop_flag=ctx.stop_flag,
@@ -139,6 +158,7 @@ def quiescence_search(
             child_ply = ctx.ply + 1
             for move in moves:
                 board.push(move)
+                _eval_make(ctx.evaluator, board, move)
                 try:
                     score = -quiescence_search(
                         pos,
@@ -149,6 +169,7 @@ def quiescence_search(
                     )
                 finally:
                     board.pop()
+                    _eval_unmake(ctx.evaluator)
                 if score > best:
                     best = score
                 if score >= beta:
@@ -171,6 +192,7 @@ def quiescence_search(
             if stand_pat + capture_value + DELTA_MARGIN < alpha:
                 continue
             board.push(move)
+            _eval_make(ctx.evaluator, board, move)
             try:
                 score = -quiescence_search(
                     pos,
@@ -181,6 +203,7 @@ def quiescence_search(
                 )
             finally:
                 board.pop()
+                _eval_unmake(ctx.evaluator)
             if score > alpha:
                 alpha = score
             if score >= beta:
@@ -248,6 +271,7 @@ def negamax(
             ctx.history,
         ):
             board.push(move)
+            _eval_make(ctx.evaluator, board, move)
             try:
                 score = -negamax(
                     pos,
@@ -258,6 +282,7 @@ def negamax(
                 )
             finally:
                 board.pop()
+                _eval_unmake(ctx.evaluator)
             if score > best:
                 best = score
                 best_move = move
@@ -309,6 +334,7 @@ def _search_at_depth(
     best_score = -MATE - 1
     counter = [0]
     board = pos.board
+    _eval_refresh(evaluator, board)
 
     for move in moves:
         if stop_flag.is_set():
@@ -316,6 +342,7 @@ def _search_at_depth(
         if deadline is not None and time.monotonic() >= deadline:
             raise SearchAborted()
         board.push(move)
+        _eval_make(evaluator, board, move)
         try:
             ctx = SearchContext(
                 stop_flag=stop_flag,
@@ -336,6 +363,7 @@ def _search_at_depth(
         finally:
             if board.move_stack:
                 board.pop()
+            _eval_unmake(evaluator)
 
         if score > best_score:
             best_score = score

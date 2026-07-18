@@ -4,8 +4,8 @@ Canonical board768 scheme for this phase — Phase 5's engine-side encoder
 must mirror this bit-for-bit. Built directly on ``chess.Board``; does not
 import ``ance.board.position.Position``.
 
-Copied verbatim from ``training/data/features.py`` so the engine never
-imports ``training/``.
+Copied from ``training/data/features.py`` (plus engine-side index helpers)
+so the engine never imports ``training/``.
 """
 
 from __future__ import annotations
@@ -40,21 +40,37 @@ def feature_index(
     )
 
 
+def active_feature_indices(board: chess.Board, perspective: bool) -> list[int]:
+    """Sparse active board768 indices for one color perspective."""
+    indices: list[int] = []
+    for square, piece in board.piece_map().items():
+        indices.append(
+            feature_index(
+                perspective,
+                square,
+                piece.piece_type,
+                piece.color,
+            )
+        )
+    return indices
+
+
 def encode_perspective(board: chess.Board, perspective: bool) -> np.ndarray:
     features = np.zeros(NUM_FEATURES, dtype=np.float32)
-    for square, piece in board.piece_map().items():
-        index = feature_index(
-            perspective,
-            square,
-            piece.piece_type,
-            piece.color,
-        )
+    for index in active_feature_indices(board, perspective):
         features[index] = 1.0
     return features
 
 
-def encode_position(fen: str) -> tuple[np.ndarray, np.ndarray]:
-    board = chess.Board(fen)
+def encode_position_board(
+    board: chess.Board,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Encode STM/OPP perspectives directly from a board (no FEN round-trip)."""
     stm = board.turn
     opp = not stm
     return encode_perspective(board, stm), encode_perspective(board, opp)
+
+
+def encode_position(fen: str) -> tuple[np.ndarray, np.ndarray]:
+    """FEN convenience wrapper — kept for training/test parity helpers."""
+    return encode_position_board(chess.Board(fen))

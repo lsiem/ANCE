@@ -107,6 +107,45 @@ def _color_name(color: chess.Color) -> str:
     return "white" if color == chess.WHITE else "black"
 
 
+def _material_totals(board: chess.Board) -> dict[str, int]:
+    """Classic material totals in centipawns (no king), white-relative balance."""
+    values = {
+        chess.PAWN: 100,
+        chess.KNIGHT: 320,
+        chess.BISHOP: 330,
+        chess.ROOK: 500,
+        chess.QUEEN: 900,
+    }
+    white = 0
+    black = 0
+    for piece in board.piece_map().values():
+        if piece.piece_type == chess.KING:
+            continue
+        pts = values.get(piece.piece_type, 0)
+        if piece.color == chess.WHITE:
+            white += pts
+        else:
+            black += pts
+    return {
+        "white_cp": white,
+        "black_cp": black,
+        "balance_cp": white - black,
+    }
+
+
+def _write_live_position(payload: dict[str, Any]) -> None:
+    """Best-effort live board sidecar for dashboards (env ANCE_GAUNTLET_LIVE_PATH)."""
+    raw = os.environ.get("ANCE_GAUNTLET_LIVE_PATH")
+    if not raw:
+        return
+    path = Path(raw)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        return
+
+
 def play_gauntlet_game(
     engine_white: Any,
     engine_black: Any,
@@ -118,6 +157,7 @@ def play_gauntlet_game(
     stop_event: threading.Event | None,
     deadline: float | None,
     search_depth: int | None = None,
+    live_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Play one game under clock referee or fixed search depth (D-11)."""
     if search_depth is not None and search_depth <= 0:
@@ -135,12 +175,66 @@ def play_gauntlet_game(
     move_timings: list[dict[str, Any]] = []
     max_move_elapsed_s = {"white": 0.0, "black": 0.0}
     depth_mode = search_depth is not None
+    san_moves: list[str] = []
+    meta = dict(live_meta or {})
 
     def timing_evidence() -> dict[str, Any]:
         return {
             "move_timings": list(move_timings),
             "max_move_elapsed_s": dict(max_move_elapsed_s),
         }
+
+    def publish_live(
+        last_uci: str | None = None,
+        last_san: str | None = None,
+        last_think_s: float | None = None,
+        *,
+        thinking: bool = False,
+        think_started_monotonic: float | None = None,
+    ) -> None:
+        material = _material_totals(board)
+        now_mono = time.monotonic()
+        think_elapsed = (
+            max(0.0, now_mono - think_started_monotonic)
+            if thinking and think_started_monotonic is not None
+            else None
+        )
+        # Display clocks: deduct in-progress think so the UI can tick.
+        w_clock = clocks[chess.WHITE]
+        b_clock = clocks[chess.BLACK]
+        if thinking and think_elapsed is not None:
+            if board.turn == chess.WHITE:
+                w_clock = max(0.0, w_clock - think_elapsed)
+            else:
+                b_clock = max(0.0, b_clock - think_elapsed)
+        _write_live_position(
+            {
+                **meta,
+                "fen": board.fen(),
+                "turn": "white" if board.turn == chess.WHITE else "black",
+                "halfmoves": halfmoves,
+                "san_moves": list(san_moves),
+                "last_uci": last_uci,
+                "last_san": last_san,
+                "last_think_s": last_think_s,
+                "thinking": thinking,
+                "think_elapsed_s": think_elapsed,
+                "white_clock_s": w_clock,
+                "black_clock_s": b_clock,
+                "white_clock_base_s": clocks[chess.WHITE],
+                "black_clock_base_s": clocks[chess.BLACK],
+                "tc_base_s": tc_base_s,
+                "tc_inc_s": tc_inc_s,
+                "in_check": board.is_check(),
+                "is_game_over": board.is_game_over(claim_draw=True),
+                "material": material,
+                "piece_count": len(board.piece_map()),
+                "updated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "server_mono_s": now_mono,
+            }
+        )
+
+    publish_live()
 
     while not board.is_game_over(claim_draw=True) and halfmoves < max_halfmoves:
         check_harness_expiry(stop_event, deadline)
@@ -156,7 +250,24 @@ def play_gauntlet_game(
                 black_inc=tc_inc_s,
             )
         started = time.monotonic()
-        play_result = engines[mover].play(board, limit, game=game_key)
+        stop_tick = threading.Event()
+
+        def _live_tick() -> None:
+            while not stop_tick.wait(0.5):
+                publish_live(
+                    thinking=True,
+                    think_started_monotonic=started,
+                )
+
+        publish_live(thinking=True, think_started_monotonic=started)
+        ticker = threading.Thread(target=_live_tick, name="gauntlet-live-tick", daemon=True)
+        ticker.start()
+        try:
+            play_result = engines[mover].play(board, limit, game=game_key)
+        finally:
+            stop_tick.set()
+            ticker.join(timeout=1.0)
+
         elapsed = max(0.0, time.monotonic() - started)
         elapsed_total += elapsed
         color_name = _color_name(mover)
@@ -171,9 +282,11 @@ def play_gauntlet_game(
             max_move_elapsed_s[color_name],
             elapsed,
         )
+        # Charge think time for live clocks (depth mode uses this for UI only).
+        clocks[mover] -= elapsed
         if not depth_mode:
-            clocks[mover] -= elapsed
             if clocks[mover] < 0:
+                publish_live()
                 return {
                     "outcome": "time_forfeit",
                     "result": "0-1" if mover == chess.WHITE else "1-0",
@@ -186,13 +299,22 @@ def play_gauntlet_game(
 
             # Increment is earned only after a move finishes within the clock.
             clocks[mover] += tc_inc_s
+        else:
+            clocks[mover] = max(0.0, clocks[mover])
         move = play_result.move
         if move is None or move not in board.legal_moves:
             raise ValueError(
                 f"engine returned no legal move for {_color_name(mover)}: {move}"
             )
+        last_san = board.san(move)
         board.push(move)
+        san_moves.append(last_san)
         halfmoves += 1
+        publish_live(
+            last_uci=move.uci(),
+            last_san=last_san,
+            last_think_s=elapsed,
+        )
 
     if halfmoves >= max_halfmoves and not board.is_game_over(claim_draw=True):
         return {
@@ -470,6 +592,19 @@ def run_gauntlet(
                 stop_event=event,
                 deadline=deadline,
                 search_depth=search_depth,
+                live_meta={
+                    "game_index": game_index,
+                    "n_games": n_games,
+                    "opening_index": opening_index,
+                    "opening_fen": openings[opening_index],
+                    "a_is_white": a_is_white,
+                    "white": spec_a.name if a_is_white else spec_b.name,
+                    "black": spec_b.name if a_is_white else spec_a.name,
+                    "white_env": dict(spec_a.env if a_is_white else spec_b.env),
+                    "black_env": dict(spec_b.env if a_is_white else spec_a.env),
+                    "search_depth": search_depth,
+                    "mode": "fixed_depth" if search_depth is not None else "clock",
+                },
             )
             if raw["outcome"] == "time_forfeit":
                 a_forfeited = (raw["forfeited_by"] == "white") == a_is_white

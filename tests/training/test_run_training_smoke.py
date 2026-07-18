@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pytest
 import torch
@@ -53,3 +54,32 @@ def test_run_training_val_loss_tracked_and_checkpoint_roundtrips(tmp_path) -> No
 
     for key, tensor in model.state_dict().items():
         assert torch.allclose(tensor.cpu(), fresh_model.state_dict()[key].cpu())
+
+
+def test_run_training_keeps_best_val_checkpoint_and_metrics(tmp_path) -> None:
+    train_samples = _labeled_samples(seed=3, n_games=3)
+    val_samples = _labeled_samples(seed=4, n_games=3)
+    train_shard = tmp_path / "train.npz"
+    val_shard = tmp_path / "val.npz"
+    build_shard(train_samples, str(train_shard))
+    build_shard(val_samples, str(val_shard))
+
+    result = run_training(
+        str(train_shard),
+        str(val_shard),
+        k=400.0,
+        epochs=8,
+        checkpoint_dir=str(tmp_path / "ckpts"),
+        batch_size=16,
+        early_stop_patience=3,
+        metrics_path=str(tmp_path / "metrics.json"),
+        sample_fen=train_samples[0]["fen"],
+    )
+
+    assert result["best_checkpoint"] is not None
+    assert Path(result["best_checkpoint"]).is_file()
+    assert result["best_epoch"] >= 1
+    assert result["best_val_loss"] is not None
+    metrics = (tmp_path / "metrics.json").read_text(encoding="utf-8")
+    assert "train_losses" in metrics
+    assert "best_val_loss" in metrics
