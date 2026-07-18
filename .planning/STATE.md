@@ -4,11 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: paused
+status: "Quick task 260718-tpm shipped — PR #4"
 stopped_at: Paused 2026-07-18 — scale labeling ~150k/1M; 05-03 gauntlet incomplete
-last_updated: "2026-07-18T15:43:00.000Z"
+last_updated: "2026-07-18T20:07:54.589Z"
 last_activity: 2026-07-18
-last_activity_desc: "A/B/C training upgrades landed; scale run paused; next todos documented"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -30,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 05 (nnue-swap-in-elo-gauntlet) — PAUSED
 Plan: 3 of 3 (05-03 incomplete; stronger net training in flight)
-Status: Paused — resume scale labeling, then finish 05-03 evidence
-Last activity: 2026-07-18 - Completed quick task 260718-tpm: HF Lichess chess-position-evaluations parquet ingest as pre-labeled NNUE data stream
+Status: Quick task 260718-tpm shipped — PR #4
+Last activity: 2026-07-18
 
 Progress: [██████████] 97%
 
