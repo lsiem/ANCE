@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-07-18T10:36:01.395Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-07-18T10:49:50.453Z"
 last_activity: 2026-07-18
-last_activity_desc: Completed 05-01 NNUE swap-in eval
+last_activity_desc: Completed 05-02 gauntlet depth/env/Elo harness
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 34
-  completed_plans: 32
-  percent: 94
+  completed_plans: 33
+  percent: 97
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (nnue-swap-in-elo-gauntlet) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-07-18 — Completed 05-01 (NnueEval + ANCE_EVAL wiring)
+Last activity: 2026-07-18 — Completed 05-02 (gauntlet depth/env/Elo)
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 94%
 | Phase 02 P10 | 7 min | 3 tasks | 4 files |
 | Phase 04 P07 | ~2 days (3 run attempts) | 2 tasks | 4 files |
 | Phase 05 P01 | 9 min | 3 tasks | 8 files |
+| Phase 05 P02 | 10min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 04]: wdl_loss selects target via torch.where(has_result, mixed, wdl_eval_target) — the effective-lambda blend computed 0×NaN on result-less fresh labels, producing all-NaN losses in run #2
 - [Phase 04]: Real D-08 run trained on fresh-only Stockfish depth-14 labels (13,960 positions); K=400 fallback since no game outcomes present — empirical K-fit deferred to a Lichess-fed run
 - [Phase 05]: D-14 exact-0 golden uses startpos (Phase 4 net bias on king-only) — Approved net scores ~-20 on king-only; startpos is exact 0 for both STMs
+- [Phase 05]: Acceptance depth N=3 for TOOL-04 overnight gauntlet — 05-RESEARCH wall-clock projection (~4-8h with NNUE at d3)
+- [Phase 05]: Phase 3 popen_uci mocks accept **kwargs for EngineSpec.env merge — Required so env= kwarg does not break clock-mode harness tests
 
 ### Pending Todos
 
@@ -120,6 +123,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T10:35:35.757Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-07-18T10:49:24.677Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

@@ -40,7 +40,7 @@ patterns-established:
   - "Checkpoint parameters record mode/search_depth and per-engine env"
   - "Aggregate always includes elo / elo_ci_low / elo_ci_high from Wilson bounds"
 
-requirements-completed: [TOOL-04]
+requirements-completed: []  # TOOL-04 harness slice only; full REQ closed by 05-03 evidence
 
 coverage:
   - id: D1
