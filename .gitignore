@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .DS_Store
+
+# Large regenerable training-run data (keep run_manifest.json + net.safetensors tracked)
+.planning/phases/*/run-output/*.npz
+.planning/phases/*/run-output/*_samples.json
+.planning/phases/*/run-output/checkpoints/
