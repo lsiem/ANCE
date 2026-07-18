@@ -37,7 +37,7 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 
 - [x] **EVAL-01**: A stable `evaluate(position) -> centipawns` interface exists, side-to-move relative, with mate scored as ±(MATE − ply); NNUE must drop in without any search change
 - [x] **EVAL-02**: A handcrafted material + piece-square-table evaluator implements the interface (the M3 baseline to beat)
-- [ ] **EVAL-03**: A `(768→N)×2→1` NNUE evaluator implements the same interface, loading trained weights
+- [x] **EVAL-03**: A `(768→N)×2→1` NNUE evaluator implements the same interface, loading trained weights
 
 ### Training & Data
 
@@ -126,7 +126,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | TRN-03 | Phase 4 | Complete |
 | TRN-04 | Phase 4 | Complete |
 | TRN-05 | Phase 4 | Complete |
-| EVAL-03 | Phase 5 | Pending |
+| EVAL-03 | Phase 5 | Complete |
 | TOOL-04 | Phase 5 | Pending |
 
 **Coverage:**

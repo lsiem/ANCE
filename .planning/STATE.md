@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 5
-current_phase_name: NNUE Swap-In & Elo Gauntlet
-status: ready_to_execute
-stopped_at: Phase 5 planned (3 plans)
-last_updated: "2026-07-18T12:15:00.000Z"
+current_phase: 05
+current_phase_name: nnue-swap-in-elo-gauntlet
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-07-18T10:36:01.395Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 5 planned — 3 plans across 3 waves (EVAL-03 + TOOL-04)
+last_activity_desc: Completed 05-01 NNUE swap-in eval
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 34
-  completed_plans: 31
+  completed_plans: 32
   percent: 80
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 5 — NNUE Swap-In & Elo Gauntlet
+**Current focus:** Phase 05 — nnue-swap-in-elo-gauntlet
 
 ## Current Position
 
-Phase: 5 — NNUE Swap-In & Elo Gauntlet
-Plan: 0/3
+Phase: 05 (nnue-swap-in-elo-gauntlet) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-18 — Phase 5 planned (`05-01`…`05-03`)
+Last activity: 2026-07-18 — Completed 05-01 (NnueEval + ANCE_EVAL wiring)
 
 Progress: [████████░░] 80%
 
@@ -39,7 +39,7 @@ Progress: [████████░░] 80%
 
 **Velocity:**
 
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -68,6 +68,7 @@ Progress: [████████░░] 80%
 | Phase 02 P09 | 5 min | 2 tasks | 3 files |
 | Phase 02 P10 | 7 min | 3 tasks | 4 files |
 | Phase 04 P07 | ~2 days (3 run attempts) | 2 tasks | 4 files |
+| Phase 05 P01 | 9 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ Recent decisions affecting current work:
 - [Phase 04]: Recreated .venv with Python 3.14.6 (torch 2.13.0); MPS is_available=True on this machine despite 04-RESEARCH macOS 26 regression note
 - [Phase 04]: wdl_loss selects target via torch.where(has_result, mixed, wdl_eval_target) — the effective-lambda blend computed 0×NaN on result-less fresh labels, producing all-NaN losses in run #2
 - [Phase 04]: Real D-08 run trained on fresh-only Stockfish depth-14 labels (13,960 positions); K=400 fallback since no game outcomes present — empirical K-fit deferred to a Lichess-fed run
+- [Phase 05]: D-14 exact-0 golden uses startpos (Phase 4 net bias on king-only) — Approved net scores ~-20 on king-only; startpos is exact 0 for both STMs
 
 ### Pending Todos
 
@@ -118,6 +120,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T12:15:00.000Z
-Stopped at: Phase 5 planned — ready to execute
-Resume file: .planning/phases/05-nnue-swap-in-elo-gauntlet/05-01-PLAN.md
+Last session: 2026-07-18T10:35:35.757Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
