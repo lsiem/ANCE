@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Minimal UCI Engine & Evaluator Seam** - Non-blocking UCI loop, handcrafted eval behind the swap seam, plays a full legal game (validated live in En Croissant) and never loses to a random mover (0 losses, ≥70% wins — replanned 2026-07-07) (completed 2026-07-08)
 - [x] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess (completed 2026-07-08)
 - [x] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness (completed 2026-07-11)
-- [ ] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights
+- [x] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights (completed 2026-07-18)
 - [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain
 
 ## Phase Details
@@ -170,28 +170,28 @@ Plans:
   4. Training first verifies `torch.backends.mps.is_available()` and passes a float32 CPU-vs-MPS numeric sanity check before the real run.
   5. Trained weights export to a plain versioned format (npz/safetensors) that the shared loader validates (arch id / feature-set / shapes) and roundtrips with zero torch dependency.
 
-**Plans**: 0/7 plans executed
+**Plans**: 7/7 plans complete
 
 Plans:
 
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Environment setup (torch/numpy/safetensors/zstandard/scipy/tqdm + Stockfish), `nnue_format` contract (D-07/TRN-04), MPS gate (D-09/TRN-05)
+- [x] 04-01-PLAN.md — Environment setup (torch/numpy/safetensors/zstandard/scipy/tqdm + Stockfish), `nnue_format` contract (D-07/TRN-04), MPS gate (D-09/TRN-05)
 
 **Wave 2** *(parallel — no file overlap, all depend only on Wave 1)*
 
-- [ ] 04-02-PLAN.md — NNUE model (D-06), sigmoid-WDL training loop, export path — thin end-to-end slice on synthetic data (TRN-03/TRN-04/TRN-05)
-- [ ] 04-03-PLAN.md — Fresh Stockfish labeling + depth benchmark + provenance manifest (TRN-01/D-02)
-- [ ] 04-04-PLAN.md — Lichess ingestion with sign correction, merge/dedup, by-game split with disjointness assertion (TRN-02/D-01/D-03)
-- [ ] 04-05-PLAN.md — K-fit calibration (D-04/D-05) + 768-index feature encoder
+- [x] 04-02-PLAN.md — NNUE model (D-06), sigmoid-WDL training loop, export path — thin end-to-end slice on synthetic data (TRN-03/TRN-04/TRN-05)
+- [x] 04-03-PLAN.md — Fresh Stockfish labeling + depth benchmark + provenance manifest (TRN-01/D-02)
+- [x] 04-04-PLAN.md — Lichess ingestion with sign correction, merge/dedup, by-game split with disjointness assertion (TRN-02/D-01/D-03)
+- [x] 04-05-PLAN.md — K-fit calibration (D-04/D-05) + 768-index feature encoder
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-06-PLAN.md — On-disk shards, real DataLoader-driven training with checkpointing, full mechanical pipeline smoke test
+- [x] 04-06-PLAN.md — On-disk shards, real DataLoader-driven training with checkpointing, full mechanical pipeline smoke test
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-07-PLAN.md — Pipeline CLI orchestrator + the real ~8-12h bounded training run (D-08, checkpoint:human-verify)
+- [x] 04-07-PLAN.md — Pipeline CLI orchestrator + the real ~8-12h bounded training run (D-08, checkpoint:human-verify)
 
 ### Phase 5: NNUE Swap-In & Elo Gauntlet
 
@@ -218,5 +218,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | 1. Minimal UCI Engine & Evaluator Seam | 6/6 | Complete    | 2026-07-08 |
 | 2. Core Alpha-Beta Search | 12/12 | Complete    | 2026-07-10 |
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
-| 4. Offline NNUE Training Pipeline | 0/7 | Planned | - |
+| 4. Offline NNUE Training Pipeline | 7/7 | Complete   | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 0/TBD | Not started | - |

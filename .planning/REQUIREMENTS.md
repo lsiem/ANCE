@@ -41,11 +41,11 @@ Milestone 1 scope: **M1** minimal UCI engine → **M2** strong alpha-beta search
 
 ### Training & Data
 
-- [ ] **TRN-01**: A Stockfish labeling pipeline produces (FEN → centipawn) training samples at a fixed depth/nodes, using normalized UCI cp output (not internal eval)
-- [ ] **TRN-02**: A dataset is generated with a train/validation split held out by game (not by position) to prevent leakage
-- [ ] **TRN-03**: The `(768→N)×2→1` NNUE trains in PyTorch on the MPS backend against a sigmoid-scaled win-probability target
-- [ ] **TRN-04**: Trained weights export to a plain format (npz/safetensors) and the running engine loads them at startup
-- [ ] **TRN-05**: Training verifies MPS availability and runs a float32 CPU-vs-MPS numeric sanity check before the real run
+- [x] **TRN-01**: A Stockfish labeling pipeline produces (FEN → centipawn) training samples at a fixed depth/nodes, using normalized UCI cp output (not internal eval)
+- [x] **TRN-02**: A dataset is generated with a train/validation split held out by game (not by position) to prevent leakage
+- [x] **TRN-03**: The `(768→N)×2→1` NNUE trains in PyTorch on the MPS backend against a sigmoid-scaled win-probability target
+- [x] **TRN-04**: Trained weights export to a plain format (npz/safetensors) and the running engine loads them at startup
+- [x] **TRN-05**: Training verifies MPS availability and runs a float32 CPU-vs-MPS numeric sanity check before the real run
 
 ### Tooling & Measurement
 
@@ -121,11 +121,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SRCH-08 | Phase 3 | Complete |
 | UCI-08 | Phase 3 | Complete |
 | TOOL-03 | Phase 3 | Complete |
-| TRN-01 | Phase 4 | Pending |
-| TRN-02 | Phase 4 | Pending |
-| TRN-03 | Phase 4 | Pending |
-| TRN-04 | Phase 4 | Pending |
-| TRN-05 | Phase 4 | Pending |
+| TRN-01 | Phase 4 | Complete |
+| TRN-02 | Phase 4 | Complete |
+| TRN-03 | Phase 4 | Complete |
+| TRN-04 | Phase 4 | Complete |
+| TRN-05 | Phase 4 | Complete |
 | EVAL-03 | Phase 5 | Pending |
 | TOOL-04 | Phase 5 | Pending |
 

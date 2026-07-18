@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 current_phase_name: offline-nnue-training-pipeline
-status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-07-17T17:15:00Z"
-last_activity: 2026-07-17
-last_activity_desc: Plan 04-07 Task 1 complete — human checkpoint pending
+status: verifying
+stopped_at: Phase 04 execution complete — ready for verification
+last_updated: "2026-07-18T08:44:20.140Z"
+last_activity: 2026-07-18
+last_activity_desc: Plan 04-07 complete (real bounded training run approved)
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 31
-  completed_plans: 30
-  percent: 97
+  completed_plans: 31
+  percent: 80
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 04 (offline-nnue-training-pipeline) — EXECUTING
-Plan: 4 of 7
-Status: Executing Phase 04 — Plan 04-03 complete
-Last activity: 2026-07-17 — Plan 04-03 complete (Stockfish labeling stream)
+Plan: 7 of 7 (complete)
+Status: Phase 04 execution complete — ready for verification
+Last activity: 2026-07-18 — Plan 04-07 complete (real bounded training run approved)
 
-Progress: [███████░░░] 68%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [███████░░░] 68%
 | Phase 02 P08 | 11min | 2 tasks | 3 files |
 | Phase 02 P09 | 5 min | 2 tasks | 3 files |
 | Phase 02 P10 | 7 min | 3 tasks | 4 files |
+| Phase 04 P07 | ~2 days (3 run attempts) | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Classify the interrupted 30+30 run only as runtime calibration and defer statistical strength evidence to Phase 3 optimized search and cutechess. — Two depth games consumed 1205.6582282920135 seconds, projecting the depth suite alone to about 5.02 hours; deterministic evidence is reproducible within the bounded hard wall.
 - [Phase 04]: Omitted tests/training/__init__.py — empty package init caused pytest to shadow project-root training/ when tests/ was prepended to sys.path; pytest tests/training/ works without it
 - [Phase 04]: Recreated .venv with Python 3.14.6 (torch 2.13.0); MPS is_available=True on this machine despite 04-RESEARCH macOS 26 regression note
+- [Phase 04]: wdl_loss selects target via torch.where(has_result, mixed, wdl_eval_target) — the effective-lambda blend computed 0×NaN on result-less fresh labels, producing all-NaN losses in run #2
+- [Phase 04]: Real D-08 run trained on fresh-only Stockfish depth-14 labels (13,960 positions); K=400 fallback since no game outcomes present — empirical K-fit deferred to a Lichess-fed run
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T00:44:59.418Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-offline-nnue-training-pipeline/04-CONTEXT.md
+Last session: 2026-07-18T08:42:50.245Z
+Stopped at: Completed 04-07-PLAN.md — Phase 04 execution done
+Resume file: .planning/phases/04-offline-nnue-training-pipeline/04-07-SUMMARY.md
