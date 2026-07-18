@@ -69,6 +69,97 @@ def _import_run_pipeline(monkeypatch):
     return importlib.import_module("training.run_pipeline")
 
 
+def test_latest_manifest_event_returns_latest_matching_entry(tmp_path, monkeypatch) -> None:
+    run_pipeline = _import_run_pipeline(monkeypatch)
+    manifest = tmp_path / "run_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            [
+                {"event": "hf_ingest", "repo_id": "old/repo"},
+                {"event": "merge", "n_samples": 8},
+                {"event": "hf_ingest", "repo_id": "new/repo"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert run_pipeline._latest_manifest_event(manifest, event="hf_ingest") == {
+        "event": "hf_ingest",
+        "repo_id": "new/repo",
+    }
+    assert run_pipeline._latest_manifest_event(manifest, event="shards") is None
+    assert run_pipeline._latest_manifest_event(tmp_path / "missing.json", event="hf_ingest") is None
+
+
+def test_can_reuse_hf_cache_requires_all_manifest_fields_to_match(tmp_path, monkeypatch) -> None:
+    run_pipeline = _import_run_pipeline(monkeypatch)
+    manifest = tmp_path / "run_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            [
+                {
+                    "event": "hf_ingest",
+                    "repo_id": "fake/repo",
+                    "max_positions": 6,
+                    "min_depth": 22,
+                    "min_knodes": 1500,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert run_pipeline._can_reuse_hf_cache(
+        manifest,
+        repo_id="fake/repo",
+        max_positions=6,
+        min_depth=22,
+        min_knodes=1500,
+    )
+    assert not run_pipeline._can_reuse_hf_cache(
+        manifest,
+        repo_id="other/repo",
+        max_positions=6,
+        min_depth=22,
+        min_knodes=1500,
+    )
+    assert not run_pipeline._can_reuse_hf_cache(
+        manifest,
+        repo_id="fake/repo",
+        max_positions=7,
+        min_depth=22,
+        min_knodes=1500,
+    )
+    assert not run_pipeline._can_reuse_hf_cache(
+        manifest,
+        repo_id="fake/repo",
+        max_positions=6,
+        min_depth=23,
+        min_knodes=1500,
+    )
+    assert not run_pipeline._can_reuse_hf_cache(
+        manifest,
+        repo_id="fake/repo",
+        max_positions=6,
+        min_depth=22,
+        min_knodes=1501,
+    )
+
+
+def test_invalidate_hf_derived_outputs_removes_known_files(tmp_path, monkeypatch) -> None:
+    run_pipeline = _import_run_pipeline(monkeypatch)
+
+    for name in ("merged_samples.json", "train.npz", "val.npz", "net.safetensors"):
+        (tmp_path / name).write_text("stale", encoding="utf-8")
+
+    run_pipeline._invalidate_hf_derived_outputs(tmp_path)
+
+    for name in ("merged_samples.json", "train.npz", "val.npz", "net.safetensors"):
+        assert not (tmp_path / name).exists()
+
+    run_pipeline._invalidate_hf_derived_outputs(tmp_path)
+
+
 def test_run_bounded_reuses_hf_cache_when_manifest_matches(tmp_path, monkeypatch) -> None:
     run_pipeline = _import_run_pipeline(monkeypatch)
     fake_samples = _fake_hf_samples("cached")
