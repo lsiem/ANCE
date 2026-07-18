@@ -5,7 +5,33 @@ __pycache__/
 *.egg-info/
 .DS_Store
 
+# Tooling / local indexes (not product source)
+.codegraph/
+.cursor/
+.serena/
+.playwright-mcp/
+*.png
+
 # Large regenerable training-run data (keep run_manifest.json + net.safetensors tracked)
 .planning/phases/*/run-output/*.npz
 .planning/phases/*/run-output/*_samples.json
 .planning/phases/*/run-output/checkpoints/
+
+# Scale-run / gauntlet live artifacts (multi‑MB; resume locally)
+.planning/phases/*/scale-run/fresh_labels_progress.json
+.planning/phases/*/scale-run/fresh_samples.json
+.planning/phases/*/scale-run/merged_samples.json
+.planning/phases/*/scale-run/*_samples.json
+.planning/phases/*/scale-run/training-live.json
+.planning/phases/*/scale-run/checkpoints/
+.planning/phases/*/scale-run/*.npz
+.planning/phases/*/scale-run/*.html
+.planning/phases/*/scale-run/*.svg
+.planning/phases/*/scale-run/*.log
+.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.json
+.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.html
+.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.svg
+.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.log
+.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.txt
+.planning/phases/05-nnue-swap-in-elo-gauntlet/05-live-board.png
+.planning/async-jobs/

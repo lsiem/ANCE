@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import time
+from pathlib import Path
 
 import chess
 import chess.engine
@@ -24,6 +26,66 @@ def label_position(
 def run_labeling(stockfish_path: str, fens: list[str], depth: int) -> list[dict]:
     with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
         return [label_position(engine, fen, depth) for fen in fens]
+
+
+def run_labeling_resumable(
+    stockfish_path: str,
+    fens: list[str],
+    depth: int,
+    *,
+    progress_path: str | Path,
+    live_path: str | Path | None = None,
+    save_every: int = 50,
+) -> list[dict]:
+    """Label FENs with JSON progress resume (for multi-hour 1M-scale runs)."""
+    progress = Path(progress_path)
+    live = Path(live_path) if live_path else None
+    results: list[dict] = []
+    if progress.exists():
+        results = json.loads(progress.read_text(encoding="utf-8"))
+    start_index = len(results)
+    if start_index >= len(fens):
+        return results[: len(fens)]
+
+    started = time.monotonic()
+    with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
+        for index in range(start_index, len(fens)):
+            fen = fens[index]
+            label = label_position(engine, fen, depth)
+            results.append(label)
+            done = index + 1
+            if live is not None:
+                elapsed = time.monotonic() - started
+                rate = (done - start_index) / elapsed if elapsed > 0 else 0.0
+                remaining = len(fens) - done
+                live.parent.mkdir(parents=True, exist_ok=True)
+                tmp_live = live.with_suffix(live.suffix + ".tmp")
+                tmp_live.write_text(
+                    json.dumps(
+                        {
+                            "phase": "labeling",
+                            "fen": fen,
+                            "depth": depth,
+                            "done": done,
+                            "total": len(fens),
+                            "rate_per_s": rate,
+                            "eta_s": remaining / rate if rate > 0 else None,
+                            "updated_utc": time.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                            ),
+                        },
+                        indent=2,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                tmp_live.replace(live)
+            if done % save_every == 0 or done == len(fens):
+                progress.parent.mkdir(parents=True, exist_ok=True)
+                tmp = progress.with_suffix(".tmp")
+                tmp.write_text(json.dumps(results) + "\n", encoding="utf-8")
+                tmp.replace(progress)
+    return results
 
 
 def run_depth_benchmark(
@@ -50,8 +112,20 @@ def run_and_record_labeling(
     fens: list[str],
     depth: int,
     manifest_path: str,
+    *,
+    progress_path: str | None = None,
+    live_path: str | None = None,
 ) -> list[dict]:
-    results = run_labeling(stockfish_path, fens, depth)
+    if progress_path is not None:
+        results = run_labeling_resumable(
+            stockfish_path,
+            fens,
+            depth,
+            progress_path=progress_path,
+            live_path=live_path,
+        )
+    else:
+        results = run_labeling(stockfish_path, fens, depth)
     record_event(
         manifest_path,
         event="fresh_labeling",

@@ -1,0 +1,24 @@
+[
+  {
+    "timestamp": "2026-07-18T14:10:47.449618+00:00",
+    "event": "preflight",
+    "device": "mps",
+    "git_sha": "bdfda2d78cd5a31cf5d45fc2ba5f496bb02bbbde",
+    "fresh_n_games": 200,
+    "fresh_target_positions": 1000000,
+    "max_hours": 72.0,
+    "seed": 42,
+    "batch_size": 256
+  },
+  {
+    "timestamp": "2026-07-18T14:11:53.956459+00:00",
+    "event": "preflight",
+    "device": "mps",
+    "git_sha": "bdfda2d78cd5a31cf5d45fc2ba5f496bb02bbbde",
+    "fresh_n_games": 200,
+    "fresh_target_positions": 1000000,
+    "max_hours": 72.0,
+    "seed": 42,
+    "batch_size": 256
+  }
+]

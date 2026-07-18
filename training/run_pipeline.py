@@ -192,6 +192,14 @@ def run_bounded(
     depth: int | None,
     max_hours: float,
     seed: int = 42,
+    fresh_target_positions: int | None = None,
+    skip_checks: bool = True,
+    max_games: int | None = None,
+    batch_size: int = 256,
+    lr: float = 1e-3,
+    weight_decay: float = 1e-4,
+    early_stop_patience: int = 5,
+    epochs: int = 50,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest = out_dir / "run_manifest.json"
@@ -205,8 +213,10 @@ def run_bounded(
         device=device,
         git_sha=_git_sha(),
         fresh_n_games=fresh_n_games,
+        fresh_target_positions=fresh_target_positions,
         max_hours=max_hours,
         seed=seed,
+        batch_size=batch_size,
     )
 
     streams: list[list[dict]] = []
@@ -246,7 +256,41 @@ def run_bounded(
                     resolved_depth = int(event["depth"])
                     break
     else:
-        positions = generate_position_set(n_games=fresh_n_games, seed=seed)
+        live_path = out_dir / "training-live.json"
+
+        def _report_generation(done: int, total: int | None) -> None:
+            live_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = live_path.with_suffix(live_path.suffix + ".tmp")
+            tmp.write_text(
+                json.dumps(
+                    {
+                        "phase": "generating",
+                        "done": done,
+                        "total": total,
+                        "updated_utc": time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                        ),
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            tmp.replace(live_path)
+            print(
+                f"generating positions {done}"
+                + (f"/{total}" if total is not None else ""),
+                flush=True,
+            )
+
+        positions = generate_position_set(
+            n_games=fresh_n_games,
+            seed=seed,
+            target_positions=fresh_target_positions,
+            skip_checks=skip_checks,
+            max_games=max_games,
+            progress_callback=_report_generation,
+        )
         fens = [row["fen"] for row in positions]
         remaining = max(0.0, deadline - time.monotonic())
         if not fens:
@@ -270,6 +314,8 @@ def run_bounded(
             fens,
             resolved_depth,
             str(manifest),
+            progress_path=str(out_dir / "fresh_labels_progress.json"),
+            live_path=str(out_dir / "training-live.json"),
         )
         fresh_samples = []
         for position, label in zip(positions, labels, strict=True):
@@ -346,13 +392,20 @@ def run_bounded(
         n_val=len(val),
     )
 
+    sample_fen = train[0]["fen"] if train else None
     result = run_training(
         str(train_shard),
         str(val_shard),
         k=fitted_k,
-        epochs=50,
+        epochs=epochs,
         checkpoint_dir=str(out_dir / "checkpoints"),
         deadline_monotonic=deadline,
+        batch_size=batch_size,
+        lr=lr,
+        weight_decay=weight_decay,
+        early_stop_patience=early_stop_patience,
+        metrics_path=str(out_dir / "metrics.json"),
+        sample_fen=sample_fen,
     )
     record_event(
         str(manifest),
@@ -362,6 +415,10 @@ def run_bounded(
         device=result["device"],
         stopped_early=result["stopped_early"],
         global_step=result["global_step"],
+        best_epoch=result.get("best_epoch"),
+        best_val_loss=result.get("best_val_loss"),
+        early_stop_reason=result.get("early_stop_reason"),
+        batch_size=result.get("batch_size"),
     )
 
     labeling_command = (
@@ -383,9 +440,18 @@ def run_bounded(
                 "n_val": str(len(val)),
                 "n_merged": str(len(merged)),
                 "seed": str(seed),
+                "best_epoch": str(result.get("best_epoch")),
+                "best_val_loss": str(result.get("best_val_loss")),
+                "batch_size": str(batch_size),
             },
         )
-        record_event(str(manifest), event="export", path=str(net_path))
+        record_event(
+            str(manifest),
+            event="export",
+            path=str(net_path),
+            best_epoch=result.get("best_epoch"),
+            best_val_loss=result.get("best_val_loss"),
+        )
 
     return {
         "k": fitted_k,
@@ -405,9 +471,31 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional Lichess .pgn.zst dump (skipped when omitted)",
     )
     parser.add_argument("--fresh-n-games", type=int, default=200)
+    parser.add_argument(
+        "--fresh-target-positions",
+        type=int,
+        default=None,
+        help="Generate/label until this many fresh FENs (e.g. 1000000)",
+    )
     parser.add_argument("--depth", type=int, default=None)
     parser.add_argument("--max-hours", type=float, default=10.0)
     parser.add_argument("--out-dir", type=str, default="./training-run-output")
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--early-stop-patience", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument(
+        "--keep-checks",
+        action="store_true",
+        help="Do not skip in-check positions when sampling fresh FENs",
+    )
+    parser.add_argument(
+        "--max-games",
+        type=int,
+        default=None,
+        help="Cap random-walk games when using --fresh-target-positions",
+    )
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out_dir)
@@ -423,6 +511,14 @@ def main(argv: list[str] | None = None) -> int:
             fresh_n_games=args.fresh_n_games,
             depth=args.depth,
             max_hours=args.max_hours,
+            fresh_target_positions=args.fresh_target_positions,
+            skip_checks=not args.keep_checks,
+            max_games=args.max_games,
+            batch_size=args.batch_size,
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            early_stop_patience=args.early_stop_patience,
+            epochs=args.epochs,
         )
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)

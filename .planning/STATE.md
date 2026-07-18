@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-07-18T10:49:50.453Z"
+status: paused
+stopped_at: Paused 2026-07-18 — scale labeling ~150k/1M; 05-03 gauntlet incomplete
+last_updated: "2026-07-18T15:43:00.000Z"
 last_activity: 2026-07-18
-last_activity_desc: Completed 05-02 gauntlet depth/env/Elo harness
+last_activity_desc: "A/B/C training upgrades landed; scale run paused; next todos documented"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 05 (nnue-swap-in-elo-gauntlet) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-07-18 — Completed 05-02 (gauntlet depth/env/Elo)
+Phase: 05 (nnue-swap-in-elo-gauntlet) — PAUSED
+Plan: 3 of 3 (05-03 incomplete; stronger net training in flight)
+Status: Paused — resume scale labeling, then finish 05-03 evidence
+Last activity: 2026-07-18 — trainer/dashboard/scale pipeline upgrades; labeling paused ~150k/1M
 
 Progress: [██████████] 97%
 
@@ -106,7 +106,12 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
+
+1. Resume 1M SF depth-12 scale labeling (~150k done; resumable progress JSON local).
+2. Finish train/export → install new `net.safetensors` into `ance/eval/nnue/`.
+3. Complete 05-03 ≥1000-game D-12 gauntlet evidence (honest `gates_failed` if Elo still bad).
+4. Write `05-03-SUMMARY.md` + sync ROADMAP/STATE; gap plan if D-12 fails.
 
 ### Blockers/Concerns
 
@@ -123,6 +128,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T10:49:24.677Z
-Stopped at: Completed 05-02-PLAN.md
-Resume file: None
+Last session: 2026-07-18T15:43:00.000Z
+Stopped at: User pause — scale labeling + 05-03 incomplete
+Resume file: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
