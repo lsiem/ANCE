@@ -51,7 +51,7 @@ def test_fixed_depth_uses_limit_depth_not_clocks() -> None:
         chess.STARTING_FEN,
         tc_base_s=30.0,
         tc_inc_s=0.3,
-        max_halfmoves=20,
+        max_halfmoves=2,
         game_key="g0",
         stop_event=None,
         deadline=None,
@@ -161,3 +161,64 @@ def test_aggregate_includes_logistic_elo_and_wilson_ci_bounds() -> None:
     assert "elo_ci_high" in aggregate
     assert aggregate["elo_ci_low"] < aggregate["elo"] < aggregate["elo_ci_high"]
     assert aggregate["score_rate"] == pytest.approx(0.6)
+
+
+def test_cli_depth_sets_search_depth_and_ignores_clock_tc(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(*args: object, **kwargs: object) -> dict[str, object]:
+        captured["search_depth"] = kwargs.get("search_depth")
+        captured["tc_base_s"] = args[4] if len(args) > 4 else kwargs.get("tc_base_s")
+        return {
+            "aggregate": {"wins": 0, "losses": 0, "draws": 0},
+            "parameters": {"search_depth": kwargs.get("search_depth"), "mode": "fixed_depth"},
+            "status": "completed",
+        }
+
+    monkeypatch.setattr(gauntlet, "run_gauntlet", fake_run)
+    monkeypatch.setattr(gauntlet, "load_openings", lambda path: [chess.STARTING_FEN])
+
+    output = tmp_path / "cli-depth.json"
+    rc = gauntlet.main(
+        [
+            "--games",
+            "2",
+            "--tc",
+            "30+0.3",
+            "--depth",
+            "3",
+            "--output",
+            str(output),
+            "--runner",
+            "arbiter",
+            "--openings",
+            str(tmp_path / "dummy.epd"),
+        ]
+    )
+
+    assert rc == 0
+    assert captured["search_depth"] == 3
+
+
+def test_omitting_search_depth_preserves_clock_limits() -> None:
+    white = _ScriptedEngine(["e2e4"])
+    black = _ScriptedEngine(["e7e5"])
+
+    gauntlet.play_gauntlet_game(
+        white,
+        black,
+        chess.STARTING_FEN,
+        tc_base_s=30.0,
+        tc_inc_s=0.3,
+        max_halfmoves=2,
+        game_key="clock",
+        stop_event=None,
+        deadline=None,
+    )
+
+    assert white.limits[0].depth is None
+    assert white.limits[0].white_clock == pytest.approx(30.0)
+    assert white.limits[0].black_clock == pytest.approx(30.0)
+    assert black.limits[0].depth is None

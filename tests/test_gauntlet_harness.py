@@ -85,7 +85,7 @@ def test_game_index_controls_opening_and_color_parity(
     monkeypatch.setattr(
         gauntlet.chess.engine.SimpleEngine,
         "popen_uci",
-        lambda argv: next(launched),
+        lambda argv, **kwargs: next(launched),
     )
 
     def play_spy(
@@ -146,7 +146,7 @@ def test_checkpoint_is_atomic_and_resume_only_plays_missing_games(
     monkeypatch.setattr(
         gauntlet.chess.engine.SimpleEngine,
         "popen_uci",
-        lambda argv: _ScriptedEngine([]),
+        lambda argv, **kwargs: _ScriptedEngine([]),
     )
     monkeypatch.setattr(
         gauntlet.os,
@@ -199,7 +199,9 @@ def test_checkpoint_is_atomic_and_resume_only_plays_missing_games(
     monkeypatch.setattr(
         gauntlet.chess.engine.SimpleEngine,
         "popen_uci",
-        lambda argv: pytest.fail("engine launched before parameter validation"),
+        lambda argv, **kwargs: pytest.fail(
+            "engine launched before parameter validation"
+        ),
     )
     with pytest.raises(ValueError, match="incompatible"):
         gauntlet.run_gauntlet(
@@ -221,7 +223,7 @@ def test_report_has_complete_d19_contract(
     monkeypatch.setattr(
         gauntlet.chess.engine.SimpleEngine,
         "popen_uci",
-        lambda argv: next(launched),
+        lambda argv, **kwargs: next(launched),
     )
     outcomes = iter(
         [

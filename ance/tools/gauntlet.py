@@ -1,7 +1,12 @@
-"""Reusable UCI self-play gauntlet and clock referee (D-14 through D-19).
+"""Reusable UCI self-play gauntlet and clock / fixed-depth referee (D-14–D-19, TOOL-04).
 
-The default runner drives two external engines with python-chess, charges each
-move's measured wall time to the mover, and adjudicates flag falls itself.
+The default runner drives two external engines with python-chess.  With a clock
+time control it charges each move's measured wall time to the mover and
+adjudicates flag falls itself.  TOOL-04 acceptance uses fixed depth
+(``--depth N`` / ``search_depth``) so both sides receive
+``chess.engine.Limit(depth=N)`` instead of clocks (D-11).  Per-engine
+``EngineSpec.env`` is merged into the child process environment at
+``popen_uci`` so NNUE vs handcrafted differs only by ``ANCE_EVAL`` (D-04).
 Results are atomically checkpointed after every game for safe interruption and
 resume.  A cutechess-cli passthrough is available when that binary is on PATH.
 """
@@ -20,7 +25,7 @@ import sys
 import threading
 import time
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -41,16 +46,18 @@ __all__ = [
     "main",
     "play_gauntlet_game",
     "run_gauntlet",
+    "score_rate_to_elo",
     "wilson_ci",
 ]
 
 
 @dataclass(frozen=True)
 class EngineSpec:
-    """A display name and an argv-safe UCI engine command."""
+    """A display name, argv-safe UCI command, and optional child-process env."""
 
     name: str
     argv: list[str]
+    env: dict[str, str] = field(default_factory=dict)
 
 
 def load_openings(path: str | Path) -> list[str]:
@@ -87,6 +94,15 @@ def wilson_ci(
     return center - half, center + half
 
 
+def score_rate_to_elo(p: float) -> float:
+    """Logistic Elo from a score rate in [0, 1] (∞ at the endpoints)."""
+    if p <= 0.0:
+        return float("-inf")
+    if p >= 1.0:
+        return float("inf")
+    return -400.0 * math.log10(1.0 / p - 1.0)
+
+
 def _color_name(color: chess.Color) -> str:
     return "white" if color == chess.WHITE else "black"
 
@@ -101,9 +117,12 @@ def play_gauntlet_game(
     game_key: object,
     stop_event: threading.Event | None,
     deadline: float | None,
+    search_depth: int | None = None,
 ) -> dict[str, Any]:
-    """Play one game while independently refereeing both wall clocks."""
-    if tc_base_s <= 0 or tc_inc_s < 0:
+    """Play one game under clock referee or fixed search depth (D-11)."""
+    if search_depth is not None and search_depth <= 0:
+        raise ValueError("search_depth must be positive when set")
+    if search_depth is None and (tc_base_s <= 0 or tc_inc_s < 0):
         raise ValueError("time control must have positive base and non-negative increment")
     if max_halfmoves <= 0:
         raise ValueError("max_halfmoves must be positive")
@@ -115,6 +134,7 @@ def play_gauntlet_game(
     elapsed_total = 0.0
     move_timings: list[dict[str, Any]] = []
     max_move_elapsed_s = {"white": 0.0, "black": 0.0}
+    depth_mode = search_depth is not None
 
     def timing_evidence() -> dict[str, Any]:
         return {
@@ -126,12 +146,15 @@ def play_gauntlet_game(
         check_harness_expiry(stop_event, deadline)
         mover = board.turn
         clock_before = clocks[mover]
-        limit = chess.engine.Limit(
-            white_clock=clocks[chess.WHITE],
-            black_clock=clocks[chess.BLACK],
-            white_inc=tc_inc_s,
-            black_inc=tc_inc_s,
-        )
+        if depth_mode:
+            limit = chess.engine.Limit(depth=search_depth)
+        else:
+            limit = chess.engine.Limit(
+                white_clock=clocks[chess.WHITE],
+                black_clock=clocks[chess.BLACK],
+                white_inc=tc_inc_s,
+                black_inc=tc_inc_s,
+            )
         started = time.monotonic()
         play_result = engines[mover].play(board, limit, game=game_key)
         elapsed = max(0.0, time.monotonic() - started)
@@ -148,20 +171,21 @@ def play_gauntlet_game(
             max_move_elapsed_s[color_name],
             elapsed,
         )
-        clocks[mover] -= elapsed
-        if clocks[mover] < 0:
-            return {
-                "outcome": "time_forfeit",
-                "result": "0-1" if mover == chess.WHITE else "1-0",
-                "reason": "time_forfeit",
-                "moves": halfmoves,
-                "forfeited_by": color_name,
-                "elapsed_s": elapsed_total,
-                **timing_evidence(),
-            }
+        if not depth_mode:
+            clocks[mover] -= elapsed
+            if clocks[mover] < 0:
+                return {
+                    "outcome": "time_forfeit",
+                    "result": "0-1" if mover == chess.WHITE else "1-0",
+                    "reason": "time_forfeit",
+                    "moves": halfmoves,
+                    "forfeited_by": color_name,
+                    "elapsed_s": elapsed_total,
+                    **timing_evidence(),
+                }
 
-        # Increment is earned only after a move finishes within the clock.
-        clocks[mover] += tc_inc_s
+            # Increment is earned only after a move finishes within the clock.
+            clocks[mover] += tc_inc_s
         move = play_result.move
         if move is None or move not in board.legal_moves:
             raise ValueError(
@@ -216,10 +240,19 @@ def _parameters(
     tc_inc_s: float,
     max_halfmoves: int,
     openings_path: str | Path | None,
+    search_depth: int | None = None,
 ) -> dict[str, Any]:
     return {
-        "engine_a": {"name": spec_a.name, "argv": list(spec_a.argv)},
-        "engine_b": {"name": spec_b.name, "argv": list(spec_b.argv)},
+        "engine_a": {
+            "name": spec_a.name,
+            "argv": list(spec_a.argv),
+            "env": dict(spec_a.env),
+        },
+        "engine_b": {
+            "name": spec_b.name,
+            "argv": list(spec_b.argv),
+            "env": dict(spec_b.env),
+        },
         "n_games": n_games,
         "tc": _tc_string(tc_base_s, tc_inc_s),
         "tc_base_s": tc_base_s,
@@ -227,6 +260,8 @@ def _parameters(
         "max_halfmoves": max_halfmoves,
         "openings_path": str(openings_path) if openings_path is not None else "<memory>",
         "openings": list(openings),
+        "mode": "fixed_depth" if search_depth is not None else "clock",
+        "search_depth": search_depth,
     }
 
 
@@ -257,6 +292,8 @@ def _default_command_line(
         "--runner",
         "arbiter",
     ]
+    if parameters.get("search_depth") is not None:
+        argv.extend(["--depth", str(parameters["search_depth"])])
     return shlex.join(argv)
 
 
@@ -266,6 +303,7 @@ def _aggregate(games: list[dict[str, Any]], spec_a: EngineSpec, spec_b: EngineSp
     draws = sum(game["outcome"] == "draw" for game in games)
     n = len(games)
     score_points = wins + 0.5 * draws
+    score_rate = score_points / n if n else 0.0
     low, high = wilson_ci(score_points, n)
     forfeits = {spec_a.name: 0, spec_b.name: 0}
     for game in games:
@@ -278,10 +316,13 @@ def _aggregate(games: list[dict[str, Any]], spec_a: EngineSpec, spec_b: EngineSp
         "wins": wins,
         "losses": losses,
         "draws": draws,
-        "score_rate": score_points / n if n else 0.0,
+        "score_rate": score_rate,
         "draw_rate": draws / n if n else 0.0,
         "wilson_low": low,
         "wilson_high": high,
+        "elo": score_rate_to_elo(score_rate),
+        "elo_ci_low": score_rate_to_elo(low),
+        "elo_ci_high": score_rate_to_elo(high),
         "time_forfeits": forfeits,
         "n_games": n,
         "elapsed_s": sum(float(game.get("elapsed_s", 0.0)) for game in games),
@@ -357,6 +398,7 @@ def run_gauntlet(
     *,
     openings_path: str | Path | None = None,
     command_line: str | None = None,
+    search_depth: int | None = None,
 ) -> dict[str, Any]:
     """Run or resume an atomically checkpointed, color-paired gauntlet."""
     if n_games <= 0:
@@ -365,6 +407,8 @@ def run_gauntlet(
         raise ValueError("openings must not be empty")
     if not spec_a.argv or not spec_b.argv:
         raise ValueError("engine argv lists must not be empty")
+    if search_depth is not None and search_depth <= 0:
+        raise ValueError("search_depth must be positive when set")
 
     output = Path(output_path)
     parameters = _parameters(
@@ -376,6 +420,7 @@ def run_gauntlet(
         tc_inc_s,
         max_halfmoves,
         openings_path,
+        search_depth=search_depth,
     )
     exact_command = command_line or _default_command_line(
         spec_a, spec_b, parameters, output
@@ -401,8 +446,13 @@ def run_gauntlet(
     engine_b: Any | None = None
     try:
         check_harness_expiry(event, deadline)
-        engine_a = chess.engine.SimpleEngine.popen_uci(spec_a.argv)
-        engine_b = chess.engine.SimpleEngine.popen_uci(spec_b.argv)
+        base_env = os.environ.copy()
+        engine_a = chess.engine.SimpleEngine.popen_uci(
+            spec_a.argv, env={**base_env, **spec_a.env}
+        )
+        engine_b = chess.engine.SimpleEngine.popen_uci(
+            spec_b.argv, env={**base_env, **spec_b.env}
+        )
         for game_index in range(len(games), n_games):
             check_harness_expiry(event, deadline)
             opening_index = (game_index // 2) % len(openings)
@@ -419,6 +469,7 @@ def run_gauntlet(
                 game_key=f"gauntlet-{game_index}",
                 stop_event=event,
                 deadline=deadline,
+                search_depth=search_depth,
             )
             if raw["outcome"] == "time_forfeit":
                 a_forfeited = (raw["forfeited_by"] == "white") == a_is_white
@@ -543,6 +594,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--restart", action="store_true")
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--budget-seconds", type=float, default=None)
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=None,
+        help="Fixed go depth N for both engines (D-11 / TOOL-04); ignores clock TC when set",
+    )
     return parser
 
 
@@ -649,6 +706,7 @@ def main(argv: list[str] | None = None) -> int:
                 restart=args.restart,
                 openings_path=args.openings,
                 command_line=command_line,
+                search_depth=args.depth,
             )
         finally:
             for sig, handler in previous_handlers.items():
