@@ -49,7 +49,7 @@ def row_to_sample(
     knodes meets the corresponding threshold (None values never pass).
     """
     if n_buckets <= 0:
-        raise ValueError("n_buckets must be a positive integer")
+        raise ValueError(f"n_buckets must be a positive integer, got {n_buckets}")
 
     depth = row.get("depth")
     knodes = row.get("knodes")

@@ -76,7 +76,10 @@ class TestSkipRow:
 
     @pytest.mark.parametrize("n_buckets", [0, -1])
     def test_non_positive_bucket_count_raises(self, n_buckets: int) -> None:
-        with pytest.raises(ValueError, match="n_buckets must be a positive integer"):
+        with pytest.raises(
+            ValueError,
+            match=rf"n_buckets must be a positive integer, got {n_buckets}",
+        ):
             row_to_sample(_row(), n_buckets=n_buckets)
 
 
