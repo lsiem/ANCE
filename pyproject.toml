@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "ANCE - A Neural-network Chess Engine: a UCI engine driven by a swappable evaluator."
 requires-python = ">=3.12"
 
+[project.optional-dependencies]
+# Hugging Face Lichess/chess-position-evaluations ingest (training pipeline only).
+hf-ingest = ["huggingface_hub", "pyarrow"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
