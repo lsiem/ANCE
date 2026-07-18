@@ -47,11 +47,24 @@ def test_unmake_restores_accumulator(nnue: NnueEval) -> None:
     assert nnue.evaluate(Position(board)) == before
 
 
-def test_evaluate_refreshes_when_same_board_object_mutates(nnue: NnueEval) -> None:
+def test_evaluate_refreshes_when_same_board_object_mutates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    nnue = NnueEval()
     board = chess.Board()
     nnue.refresh(board)
+    refresh_calls = 0
+    original_refresh = nnue.refresh
+
+    def _refresh_spy(live_board: chess.Board) -> None:
+        nonlocal refresh_calls
+        refresh_calls += 1
+        original_refresh(live_board)
+
+    monkeypatch.setattr(nnue, "refresh", _refresh_spy)
     board.push(chess.Move.from_uci("e2e4"))
     assert nnue.evaluate(Position(board)) == nnue.evaluate_dense_reference(Position(board))
+    assert refresh_calls == 1
 
 
 def test_encode_position_board_matches_fen_wrapper() -> None:

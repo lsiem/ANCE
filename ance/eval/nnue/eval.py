@@ -41,6 +41,8 @@ class NnueEval:
     no extra turn flip (unlike HandcraftedEval's white-relative + sign flip).
     """
 
+    _BoardState = tuple[int, int, int, int, int, int, int, int, int, int, int]
+
     def __init__(self) -> None:
         path = os.environ.get("ANCE_NNUE_PATH", str(_DEFAULT_NET))
         if not Path(path).is_file():
@@ -63,14 +65,27 @@ class NnueEval:
         self._idx_white: set[int] = set()
         self._idx_black: set[int] = set()
         self._stack: list[
-            tuple[np.ndarray, np.ndarray, set[int], set[int], str | None]
+            tuple[np.ndarray, np.ndarray, set[int], set[int], NnueEval._BoardState | None]
         ] = []
         self._board_id: int | None = None
-        self._board_state: str | None = None
+        self._board_state: NnueEval._BoardState | None = None
 
     @staticmethod
-    def _board_state_key(board: chess.Board) -> str:
-        return board.fen()
+    def _board_state_key(board: chess.Board) -> _BoardState:
+        ep_square = -1 if board.ep_square is None else board.ep_square
+        return (
+            board.pawns,
+            board.knights,
+            board.bishops,
+            board.rooks,
+            board.queens,
+            board.kings,
+            board.occupied_co[chess.WHITE],
+            board.occupied_co[chess.BLACK],
+            int(board.turn),
+            board.castling_rights,
+            ep_square,
+        )
 
     def refresh(self, board: chess.Board) -> None:
         """Full sparse rebuild of both color accumulators for ``board``."""
@@ -90,10 +105,11 @@ class NnueEval:
 
     def on_make(self, board: chess.Board, move: chess.Move) -> None:
         """Update accumulators after ``board.push(move)`` (board is post-move)."""
-        if self._acc_white is None or self._acc_black is None:
-            self.refresh(board)
-            return
-        if self._board_id is not None and self._board_id != id(board):
+        if (
+            self._acc_white is None
+            or self._acc_black is None
+            or (self._board_id is not None and self._board_id != id(board))
+        ):
             self.refresh(board)
             return
 
