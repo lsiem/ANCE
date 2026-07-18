@@ -67,14 +67,23 @@ def test_invalid_ance_eval_exits_nonzero() -> None:
 
 
 def test_symmetric_positions_score_zero() -> None:
-    """King-only symmetric FEN scores exactly 0 for white and black STM (D-14)."""
+    """Color-symmetric positions: exact 0 + STM agreement (D-14)."""
     from ance.eval.nnue.eval import NnueEval
 
     nnue = NnueEval()
-    assert nnue.evaluate(Position(chess.Board(SYMMETRIC_FEN))) == 0
-    black_stm = chess.Board(SYMMETRIC_FEN)
-    black_stm.turn = chess.BLACK
-    assert nnue.evaluate(Position(black_stm)) == 0
+    # Startpos is fully color-symmetric; NNUE has no tempo term → exact 0.
+    # King-only (SYMMETRIC_FEN) is also color-symmetric but Phase 4 weights
+    # produce a nonzero shared bias on that feature pattern (~-20); both STMs
+    # must still agree (perspective invariance).
+    assert nnue.evaluate(Position()) == 0
+    black_start = chess.Board()
+    black_start.turn = chess.BLACK
+    assert nnue.evaluate(Position(black_start)) == 0
+
+    king_only = chess.Board(SYMMETRIC_FEN)
+    white_cp = nnue.evaluate(Position(king_only))
+    king_only.turn = chess.BLACK
+    assert nnue.evaluate(Position(king_only)) == white_cp
 
 
 @pytest.mark.torch
@@ -93,6 +102,46 @@ def test_torch_numpy_parity_sample(fen: str) -> None:
     model = load_torch_nnue_from_safetensors(str(_DEFAULT_NET))
     nnue = NnueEval()
     assert torch_cp_int(model, fen) == numpy_cp_int(nnue, fen)
+
+
+def test_engine_features_match_training_encoder() -> None:
+    """Engine encode_position matches training on 100 random legal FENs."""
+    import numpy as np
+    from ance.eval.nnue import features as engine_features
+    from training.data import features as training_features
+
+    rng = np.random.default_rng(42)
+    board = chess.Board()
+    fens: list[str] = [board.fen()]
+    while len(fens) < 100:
+        moves = list(board.legal_moves)
+        if not moves:
+            board.reset()
+            continue
+        board.push(moves[int(rng.integers(0, len(moves)))])
+        if board.is_game_over():
+            board.reset()
+            continue
+        fens.append(board.fen())
+
+    for fen in fens:
+        eng_stm, eng_opp = engine_features.encode_position(fen)
+        trn_stm, trn_opp = training_features.encode_position(fen)
+        assert np.array_equal(eng_stm, trn_stm), fen
+        assert np.array_equal(eng_opp, trn_opp), fen
+
+
+def test_copied_net_passes_schema_validation() -> None:
+    """Copied default net passes load_net shape/arch assertions (D-08)."""
+    from nnue_format import io as nnue_io
+    from nnue_format import schema
+
+    assert _DEFAULT_NET.is_file()
+    arrays, meta = nnue_io.load_net(str(_DEFAULT_NET))
+    assert arrays["ft.weight"].shape == (768, 256)
+    assert arrays["out.weight"].shape == (512, 1)
+    assert meta["arch_id"] == schema.ARCH_ID
+    assert meta["feature_set"] == schema.FEATURE_SET
 
 
 def test_negamax_never_imports_concrete_nnue_or_handcrafted() -> None:
