@@ -1,0 +1,445 @@
+# Instincts generated from https://github.com/lsiem/ANCE
+# Generated: 2026-07-18T17:46:45.443Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: ANCE-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, fix
+
+## Evidence
+
+- 2 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: scale NNUE training, dashboards, and sparse eval hooks, fix: address PR review issues in training and NNUE paths
+
+---
+id: ANCE-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Commit Length
+
+## Action
+
+Write moderate-length commit messages (~58 characters)
+
+## Evidence
+
+- Average commit message length: 58 chars
+- Based on 2 commits
+
+---
+id: ANCE-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: ANCE-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: ANCE-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: ANCE-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: ANCE-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: ANCE-workflow-nnue-training-feature-development
+trigger: "when doing nnue training feature development"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Workflow Nnue Training Feature Development
+
+## Action
+
+Follow the nnue-training-feature-development workflow:
+1. Modify or add NNUE training and evaluation code (e.g., ance/eval/nnue/*.py, training/train.py)
+2. Update or add dashboard and tooling scripts (e.g., ance/tools/gauntlet_dashboard.py, ance/tools/training_dashboard.py)
+3. Update or add test files for new or changed features (e.g., tests/test_nnue_accumulator.py, tests/training/test_training_dashboard_smoke.py)
+4. Update planning or documentation files to reflect new features or next steps (e.g., .planning/STATE.md, .planning/todos/pending/*.md)
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: ance/eval/nnue/eval.py, ance/eval/nnue/features.py, ance/eval/nnue/inference.py
+
+---
+id: ANCE-workflow-nnue-training-bugfix-or-review
+trigger: "when doing nnue training bugfix or review"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/lsiem/ANCE
+---
+
+# ANCE Workflow Nnue Training Bugfix Or Review
+
+## Action
+
+Follow the nnue-training-bugfix-or-review workflow:
+1. Modify NNUE training or evaluation code to fix issues (e.g., ance/eval/nnue/eval.py, training/train.py)
+2. Update or fix related test files (e.g., tests/test_nnue_accumulator.py, tests/training/test_stockfish_labeler.py)
+3. Update supporting scripts or labelers if needed (e.g., training/label/stockfish_labeler.py, training/run_pipeline.py)
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: ance/eval/nnue/eval.py, ance/tools/gauntlet.py, tests/test_nnue_accumulator.py
+
+---
+id: ance-instinct-file-naming-snake-case
+trigger: "When creating a new Python file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct File Naming Snake Case
+
+## Action
+
+Name the file using snake_case
+
+## Evidence
+
+- Pattern in files: ance/eval/nnue/eval.py, training/train.py
+
+---
+id: ance-instinct-function-naming-camelCase
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Function Naming CamelCase
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Naming convention in analysis
+
+---
+id: ance-instinct-class-naming-pascal-case
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Class Naming Pascal Case
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Naming convention in analysis
+
+---
+id: ance-instinct-constant-naming-screaming-snake-case
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Constant Naming Screaming Snake Case
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Naming convention in analysis
+
+---
+id: ance-instinct-import-relative
+trigger: "When importing modules within the package"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Import Relative
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Import style: relative (analysis)
+
+---
+id: ance-instinct-export-named
+trigger: "When exporting functions or classes from a module"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Export Named
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Export style: named (analysis)
+
+---
+id: ance-instinct-test-file-pattern
+trigger: "When adding a new test file"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Test File Pattern
+
+## Action
+
+Name the test file with .test.ts extension
+
+## Evidence
+
+- Testing pattern: *.test.ts
+
+---
+id: ance-instinct-test-type-unit
+trigger: "When writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Test Type Unit
+
+## Action
+
+Write unit tests
+
+## Evidence
+
+- Test types: unit (analysis)
+
+---
+id: ance-instinct-test-location-separate
+trigger: "When organizing test files"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Test Location Separate
+
+## Action
+
+Place test files in the separate 'tests' directory
+
+## Evidence
+
+- tests directory in folder structure
+
+---
+id: ance-instinct-git-conventional-commits
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Git Conventional Commits
+
+## Action
+
+Use conventional commit prefixes: 'feat' for features, 'fix' for bug fixes
+
+## Evidence
+
+- Commits: 'feat: scale NNUE training...', 'fix: address PR review issues...'
+
+---
+id: ance-instinct-git-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Git Commit Length
+
+## Action
+
+Keep the commit message concise, around 58 characters on average
+
+## Evidence
+
+- Average commit length: 58
+
+---
+id: ance-instinct-nnue-training-feature-workflow
+trigger: "When someone wants to add or improve NNUE training functionality or related dashboards"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Nnue Training Feature Workflow
+
+## Action
+
+Modify or add NNUE training/evaluation code, update dashboards, add/update tests, and update planning/docs as a sequence
+
+## Evidence
+
+- Workflow: nnue-training-feature-development
+- Commit sequence and files in workflow analysis
+
+---
+id: ance-instinct-nnue-training-bugfix-workflow
+trigger: "When someone needs to fix issues or respond to code review in NNUE training or evaluation code"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: lsiem/ANCE
+---
+
+# Ance Instinct Nnue Training Bugfix Workflow
+
+## Action
+
+Modify NNUE code to fix issues, update/fix related tests, and update supporting scripts/labelers as a sequence
+
+## Evidence
+
+- Workflow: nnue-training-bugfix-or-review
+- Commit sequence and files in workflow analysis
+
