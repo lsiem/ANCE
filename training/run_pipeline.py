@@ -26,6 +26,8 @@ from training.data.split import assert_no_fen_leakage, split_by_game
 from training.export import export_checkpoint
 from training.label.position_source import generate_position_set
 from training.label.stockfish_labeler import (
+    default_label_workers,
+    record_labeling_command,
     run_and_record_labeling,
     run_depth_benchmark,
 )
@@ -279,6 +281,9 @@ def run_bounded(
     hf_max_positions: int = 250_000,
     hf_min_depth: int = 20,
     hf_min_knodes: int = 1000,
+    label_workers: int | None = None,
+    sf_threads: int = 1,
+    sf_hash_mb: int = 64,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest = out_dir / "run_manifest.json"
@@ -357,6 +362,10 @@ def run_bounded(
             )
         streams.append(hf_samples)
 
+    workers = default_label_workers() if label_workers is None else max(1, label_workers)
+    threads = max(1, sf_threads)
+    hash_mb = max(1, sf_hash_mb)
+
     stockfish_path: str | None = None
     resolved_depth: int | None = None
     if fresh_n_games > 0:
@@ -421,7 +430,14 @@ def run_bounded(
                 raise RuntimeError("fresh position set is empty")
 
             if depth is None:
-                rates = run_depth_benchmark(stockfish_path, fens, _CANDIDATE_DEPTHS)
+                rates = run_depth_benchmark(
+                    stockfish_path,
+                    fens,
+                    _CANDIDATE_DEPTHS,
+                    workers=workers,
+                    threads=threads,
+                    hash_mb=hash_mb,
+                )
                 resolved_depth = _pick_depth(rates, len(fens), remaining)
                 record_event(
                     str(manifest),
@@ -429,10 +445,18 @@ def run_bounded(
                     rates=rates,
                     chosen_depth=resolved_depth,
                     n_positions=len(fens),
+                    workers=workers,
+                    threads=threads,
+                    hash_mb=hash_mb,
                 )
             else:
                 resolved_depth = depth
 
+            print(
+                f"labeling {len(fens)} positions depth={resolved_depth} "
+                f"workers={workers} Threads={threads} Hash={hash_mb}",
+                flush=True,
+            )
             labels = run_and_record_labeling(
                 stockfish_path,
                 fens,
@@ -440,6 +464,9 @@ def run_bounded(
                 str(manifest),
                 progress_path=str(out_dir / "fresh_labels_progress.json"),
                 live_path=str(out_dir / "training-live.json"),
+                workers=workers,
+                threads=threads,
+                hash_mb=hash_mb,
             )
             fresh_samples = []
             for position, label in zip(positions, labels, strict=True):
@@ -552,7 +579,13 @@ def run_bounded(
     )
 
     labeling_command = (
-        f"{stockfish_path} -- chess.engine.SimpleEngine.analyse(depth={resolved_depth})"
+        record_labeling_command(
+            stockfish_path,
+            resolved_depth,
+            workers=workers,
+            threads=threads,
+            hash_mb=hash_mb,
+        )
         if resolved_depth is not None
         else "unknown"
     )
@@ -648,6 +681,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--early-stop-patience", type=int, default=5)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument(
+        "--label-workers",
+        type=int,
+        default=None,
+        help=(
+            "Parallel single-threaded Stockfish processes for labeling "
+            f"(default: CPU count, currently {default_label_workers()})"
+        ),
+    )
+    parser.add_argument(
+        "--sf-threads",
+        type=int,
+        default=1,
+        help="UCI Threads per Stockfish worker (default: 1; prefer more workers)",
+    )
+    parser.add_argument(
+        "--sf-hash",
+        type=int,
+        default=64,
+        help="UCI Hash size in MiB per Stockfish worker (default: 64)",
+    )
+    parser.add_argument(
         "--keep-checks",
         action="store_true",
         help="Do not skip in-check positions when sampling fresh FENs",
@@ -685,6 +739,9 @@ def main(argv: list[str] | None = None) -> int:
             hf_max_positions=args.hf_max_positions,
             hf_min_depth=args.hf_min_depth,
             hf_min_knodes=args.hf_min_knodes,
+            label_workers=args.label_workers,
+            sf_threads=args.sf_threads,
+            sf_hash_mb=args.sf_hash,
         )
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -108,6 +108,7 @@ def render_html(
     label_rate = _finite(live.get("rate_per_s"))
     label_eta = _finite(live.get("eta_s"))
     label_depth = live.get("depth")
+    label_workers = live.get("workers")
     label_pct = (100.0 * label_done / label_total) if label_total else 0.0
 
     current_lr = learning_rates[-1] if learning_rates else lr
@@ -144,6 +145,7 @@ def render_html(
         "label_rate": label_rate,
         "label_eta": label_eta,
         "label_depth": label_depth,
+        "label_workers": label_workers,
         "last_train_loss": last_train,
         "last_val_loss": last_val,
         "fen": fen,
@@ -162,8 +164,13 @@ def render_html(
             if is_labeling
             else "Generating positions"
         )
+        workers_bit = (
+            f" · {int(label_workers)} workers"
+            if is_labeling and label_workers is not None
+            else ""
+        )
         rate_eta = (
-            f"rate {label_rate:.2f} pos/s · ETA {_fmt_hms(label_eta)}"
+            f"rate {label_rate:.2f} pos/s{workers_bit} · ETA {_fmt_hms(label_eta)}"
             if is_labeling
             else "random-walk FENs"
         )
