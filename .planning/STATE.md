@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 5
 current_phase_name: NNUE Swap-In & Elo Gauntlet
 status: ready_to_plan
-stopped_at: Phase 04 verified — ready to discuss/plan Phase 5
-last_updated: "2026-07-18T09:15:11.917Z"
+stopped_at: Phase 5 context gathered
+last_updated: "2026-07-18T09:58:39.674Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 04 verification passed; transitioned to Phase 5
+last_activity_desc: Phase 04 verification passed (`04-VERIFICATION.md`)
 progress:
   total_phases: 5
   completed_phases: 4
@@ -118,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T09:15:11.917Z
-Stopped at: Phase 04 verified — ready to discuss/plan Phase 5
-Resume file: .planning/phases/04-offline-nnue-training-pipeline/04-VERIFICATION.md
+Last session: 2026-07-18T09:58:39.666Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-nnue-swap-in-elo-gauntlet/05-CONTEXT.md
