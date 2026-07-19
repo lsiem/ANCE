@@ -28,6 +28,13 @@ __pycache__/
 .planning/phases/*/scale-run/*.html
 .planning/phases/*/scale-run/*.svg
 .planning/phases/*/scale-run/*.log
+# Cloud HF scale-train artifacts (multi‑MB samples/shards)
+.planning/phases/*/cloud-hf-run/*_samples.json
+.planning/phases/*/cloud-hf-run/*.npz
+.planning/phases/*/cloud-hf-run/checkpoints/
+.planning/phases/*/cloud-hf-run/*.log
+.planning/phases/*/cloud-hf-run/train.npz
+.planning/phases/*/cloud-hf-run/val.npz
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.json
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.html
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.svg
