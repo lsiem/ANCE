@@ -17,6 +17,7 @@ from pathlib import Path
 import chess
 import numpy as np
 
+from training.data.hf_ingest import iter_hf_samples
 from training.data.kfit import fit_k_from_samples, sigmoid
 from training.data.lichess_ingest import extract_samples, iter_games
 from training.data.merge import merge_and_dedup
@@ -92,7 +93,50 @@ def _load_json(path: Path) -> list[dict]:
 
 
 def _save_json(path: Path, rows: list[dict]) -> None:
-    path.write_text(json.dumps(rows), encoding="utf-8")
+    # Atomic write: sample caches can reach 100+ MB and a kill mid-write must
+    # not leave a corrupt resume file behind.
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(rows), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _latest_manifest_event(path: Path, *, event: str) -> dict | None:
+    if not path.exists():
+        return None
+    for row in reversed(_load_json(path)):
+        if row.get("event") == event:
+            return row
+    return None
+
+
+def _can_reuse_hf_cache(
+    manifest: Path,
+    *,
+    repo_id: str,
+    max_positions: int,
+    min_depth: int,
+    min_knodes: int,
+) -> bool:
+    event = _latest_manifest_event(manifest, event="hf_ingest")
+    if event is None:
+        return False
+    return (
+        event.get("repo_id") == repo_id
+        and event.get("max_positions") == max_positions
+        and event.get("min_depth") == min_depth
+        and event.get("min_knodes") == min_knodes
+    )
+
+
+def _invalidate_hf_derived_outputs(out_dir: Path) -> None:
+    for path in (
+        out_dir / "merged_samples.json",
+        out_dir / "train.npz",
+        out_dir / "val.npz",
+        out_dir / "net.safetensors",
+    ):
+        if path.exists():
+            path.unlink()
 
 
 def _cp_from_label(label: dict, mate_score: int = _MATE_SCORE) -> float | None:
@@ -135,6 +179,37 @@ def _ingest_lichess(
             del samples[sample_cap:]
             break
     return samples
+
+
+def _ingest_hf(
+    repo_id: str,
+    *,
+    max_positions: int,
+    min_depth: int,
+    min_knodes: int,
+    deadline_monotonic: float,
+) -> tuple[list[dict], bool]:
+    """Ingest HF samples; returns (samples, truncated_by_deadline)."""
+    samples: list[dict] = []
+    truncated = False
+    for sample in iter_hf_samples(
+        repo_id,
+        max_positions=max_positions,
+        min_depth=min_depth,
+        min_knodes=min_knodes,
+        deadline_monotonic=deadline_monotonic,
+    ):
+        if time.monotonic() >= deadline_monotonic:
+            truncated = True
+            break
+        samples.append(sample)
+        if len(samples) >= max_positions:
+            break
+    if not truncated and time.monotonic() >= deadline_monotonic:
+        # iter_hf_samples stopped because the deadline passed, not because
+        # the position budget was met.
+        truncated = len(samples) < max_positions
+    return samples, truncated
 
 
 def run_smoke(out_dir: Path, seed: int = 7) -> dict:
@@ -200,6 +275,10 @@ def run_bounded(
     weight_decay: float = 1e-4,
     early_stop_patience: int = 5,
     epochs: int = 50,
+    hf_dataset: str | None = None,
+    hf_max_positions: int = 250_000,
+    hf_min_depth: int = 20,
+    hf_min_knodes: int = 1000,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest = out_dir / "run_manifest.json"
@@ -239,101 +318,152 @@ def run_bounded(
             )
         streams.append(lichess_samples)
 
-    stockfish_path = shutil.which("stockfish")
-    if stockfish_path is None:
-        raise RuntimeError("stockfish binary not found on PATH")
-
-    fresh_path = out_dir / "fresh_samples.json"
-    resolved_depth = depth
-    if fresh_path.exists():
-        fresh_samples = _load_json(fresh_path)
-        if resolved_depth is None and manifest.exists():
-            for event in _load_json(manifest):
-                if event.get("event") == "depth_benchmark" and "chosen_depth" in event:
-                    resolved_depth = int(event["chosen_depth"])
-                    break
-                if event.get("event") == "fresh_labeling" and "depth" in event:
-                    resolved_depth = int(event["depth"])
-                    break
-    else:
-        live_path = out_dir / "training-live.json"
-
-        def _report_generation(done: int, total: int | None) -> None:
-            live_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = live_path.with_suffix(live_path.suffix + ".tmp")
-            tmp.write_text(
-                json.dumps(
-                    {
-                        "phase": "generating",
-                        "done": done,
-                        "total": total,
-                        "updated_utc": time.strftime(
-                            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-                        ),
-                    },
-                    indent=2,
-                )
-                + "\n",
-                encoding="utf-8",
+    # Stream order matters for merge_and_dedup's first-wins FEN dedup:
+    # lichess_zst -> HF -> fresh, so result-bearing lichess rows win ties
+    # (they feed fit_k_from_samples; HF rows have game_result=None).
+    hf_path = out_dir / "hf_samples.json"
+    if hf_dataset is not None:
+        if hf_path.exists() and _can_reuse_hf_cache(
+            manifest,
+            repo_id=hf_dataset,
+            max_positions=hf_max_positions,
+            min_depth=hf_min_depth,
+            min_knodes=hf_min_knodes,
+        ):
+            hf_samples = _load_json(hf_path)
+        else:
+            if hf_path.exists():
+                _invalidate_hf_derived_outputs(out_dir)
+            hf_samples, hf_truncated = _ingest_hf(
+                hf_dataset,
+                max_positions=hf_max_positions,
+                min_depth=hf_min_depth,
+                min_knodes=hf_min_knodes,
+                deadline_monotonic=deadline,
             )
-            tmp.replace(live_path)
-            print(
-                f"generating positions {done}"
-                + (f"/{total}" if total is not None else ""),
-                flush=True,
-            )
-
-        positions = generate_position_set(
-            n_games=fresh_n_games,
-            seed=seed,
-            target_positions=fresh_target_positions,
-            skip_checks=skip_checks,
-            max_games=max_games,
-            progress_callback=_report_generation,
-        )
-        fens = [row["fen"] for row in positions]
-        remaining = max(0.0, deadline - time.monotonic())
-        if not fens:
-            raise RuntimeError("fresh position set is empty")
-
-        if depth is None:
-            rates = run_depth_benchmark(stockfish_path, fens, _CANDIDATE_DEPTHS)
-            resolved_depth = _pick_depth(rates, len(fens), remaining)
+            if hf_samples:
+                # Never cache an empty ingest (e.g. deadline hit before the
+                # first sample): a cached [] would poison every resume.
+                _save_json(hf_path, hf_samples)
             record_event(
                 str(manifest),
-                event="depth_benchmark",
-                rates=rates,
-                chosen_depth=resolved_depth,
-                n_positions=len(fens),
+                event="hf_ingest",
+                n_samples=len(hf_samples),
+                repo_id=hf_dataset,
+                max_positions=hf_max_positions,
+                min_depth=hf_min_depth,
+                min_knodes=hf_min_knodes,
+                truncated=hf_truncated,
             )
+        streams.append(hf_samples)
+
+    stockfish_path: str | None = None
+    resolved_depth: int | None = None
+    if fresh_n_games > 0:
+        stockfish_path = shutil.which("stockfish")
+        if stockfish_path is None:
+            raise RuntimeError("stockfish binary not found on PATH")
+
+        fresh_path = out_dir / "fresh_samples.json"
+        resolved_depth = depth
+        if fresh_path.exists():
+            fresh_samples = _load_json(fresh_path)
+            if resolved_depth is None and manifest.exists():
+                for event in _load_json(manifest):
+                    if (
+                        event.get("event") == "depth_benchmark"
+                        and "chosen_depth" in event
+                    ):
+                        resolved_depth = int(event["chosen_depth"])
+                        break
+                    if event.get("event") == "fresh_labeling" and "depth" in event:
+                        resolved_depth = int(event["depth"])
+                        break
         else:
-            resolved_depth = depth
+            live_path = out_dir / "training-live.json"
 
-        labels = run_and_record_labeling(
-            stockfish_path,
-            fens,
-            resolved_depth,
-            str(manifest),
-            progress_path=str(out_dir / "fresh_labels_progress.json"),
-            live_path=str(out_dir / "training-live.json"),
-        )
-        fresh_samples = []
-        for position, label in zip(positions, labels, strict=True):
-            cp = _cp_from_label(label)
-            if cp is None:
-                continue
-            fresh_samples.append(
-                {
-                    "fen": position["fen"],
-                    "cp": cp,
-                    "game_result": None,
-                    "game_id": position["game_id"],
-                    "source": "fresh",
-                }
+            def _report_generation(done: int, total: int | None) -> None:
+                live_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = live_path.with_suffix(live_path.suffix + ".tmp")
+                tmp.write_text(
+                    json.dumps(
+                        {
+                            "phase": "generating",
+                            "done": done,
+                            "total": total,
+                            "updated_utc": time.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                            ),
+                        },
+                        indent=2,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                tmp.replace(live_path)
+                print(
+                    f"generating positions {done}"
+                    + (f"/{total}" if total is not None else ""),
+                    flush=True,
+                )
+
+            positions = generate_position_set(
+                n_games=fresh_n_games,
+                seed=seed,
+                target_positions=fresh_target_positions,
+                skip_checks=skip_checks,
+                max_games=max_games,
+                progress_callback=_report_generation,
             )
-        _save_json(fresh_path, fresh_samples)
+            fens = [row["fen"] for row in positions]
+            remaining = max(0.0, deadline - time.monotonic())
+            if not fens:
+                raise RuntimeError("fresh position set is empty")
 
-    streams.append(fresh_samples)
+            if depth is None:
+                rates = run_depth_benchmark(stockfish_path, fens, _CANDIDATE_DEPTHS)
+                resolved_depth = _pick_depth(rates, len(fens), remaining)
+                record_event(
+                    str(manifest),
+                    event="depth_benchmark",
+                    rates=rates,
+                    chosen_depth=resolved_depth,
+                    n_positions=len(fens),
+                )
+            else:
+                resolved_depth = depth
+
+            labels = run_and_record_labeling(
+                stockfish_path,
+                fens,
+                resolved_depth,
+                str(manifest),
+                progress_path=str(out_dir / "fresh_labels_progress.json"),
+                live_path=str(out_dir / "training-live.json"),
+            )
+            fresh_samples = []
+            for position, label in zip(positions, labels, strict=True):
+                cp = _cp_from_label(label)
+                if cp is None:
+                    continue
+                fresh_samples.append(
+                    {
+                        "fen": position["fen"],
+                        "cp": cp,
+                        "game_result": None,
+                        "game_id": position["game_id"],
+                        "source": "fresh",
+                    }
+                )
+            _save_json(fresh_path, fresh_samples)
+
+        streams.append(fresh_samples)
+
+    if not streams:
+        raise RuntimeError(
+            "no sample streams configured: provide --lichess-zst, --hf-dataset, "
+            "or --fresh-n-games > 0"
+        )
 
     merged_path = out_dir / "merged_samples.json"
     if merged_path.exists():
@@ -470,7 +600,39 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional Lichess .pgn.zst dump (skipped when omitted)",
     )
-    parser.add_argument("--fresh-n-games", type=int, default=200)
+    parser.add_argument(
+        "--fresh-n-games",
+        type=int,
+        default=200,
+        help="Random-walk games for fresh Stockfish labeling (0 skips fresh labeling entirely)",
+    )
+    parser.add_argument(
+        "--hf-dataset",
+        type=str,
+        default=None,
+        help=(
+            "Hugging Face dataset repo of pre-labeled evals, e.g. "
+            "Lichess/chess-position-evaluations (skipped when omitted)"
+        ),
+    )
+    parser.add_argument(
+        "--hf-max-positions",
+        type=int,
+        default=250_000,
+        help="Cap on samples ingested from --hf-dataset",
+    )
+    parser.add_argument(
+        "--hf-min-depth",
+        type=int,
+        default=20,
+        help="Keep HF rows with depth >= this (OR --hf-min-knodes)",
+    )
+    parser.add_argument(
+        "--hf-min-knodes",
+        type=int,
+        default=1000,
+        help="Keep HF rows with knodes >= this (OR --hf-min-depth)",
+    )
     parser.add_argument(
         "--fresh-target-positions",
         type=int,
@@ -519,6 +681,10 @@ def main(argv: list[str] | None = None) -> int:
             weight_decay=args.weight_decay,
             early_stop_patience=args.early_stop_patience,
             epochs=args.epochs,
+            hf_dataset=args.hf_dataset,
+            hf_max_positions=args.hf_max_positions,
+            hf_min_depth=args.hf_min_depth,
+            hf_min_knodes=args.hf_min_knodes,
         )
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
