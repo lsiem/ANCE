@@ -173,3 +173,20 @@ class TestParquetStreaming:
         )
         assert len(samples) == 2
         assert [s["cp"] for s in samples] == [20.0, -150.0]
+
+    def test_expired_deadline_stops_before_any_batch(self, tmp_path) -> None:
+        """HI-01: the run deadline bounds shard scanning even when every row
+        would fail the quality filter and yield nothing."""
+        import time
+
+        path = self._write_parquet(tmp_path)
+        samples = list(
+            iter_parquet_samples(
+                path,
+                min_depth=20,
+                min_knodes=1000,
+                n_buckets=1000,
+                deadline_monotonic=time.monotonic() - 1.0,
+            )
+        )
+        assert samples == []

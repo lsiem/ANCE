@@ -165,7 +165,7 @@ def test_run_bounded_reuses_hf_cache_when_manifest_matches(tmp_path, monkeypatch
     fake_samples = _fake_hf_samples("cached")
     calls: list[tuple[str, int, int, int]] = []
 
-    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000):
+    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000, deadline_monotonic=None):
         calls.append((repo_id, max_positions, min_depth, min_knodes))
         yield from fake_samples[:max_positions]
 
@@ -212,7 +212,7 @@ def test_run_bounded_reingests_hf_cache_when_manifest_mismatches(tmp_path, monke
     second_samples = _fake_hf_samples("second")
     calls: list[tuple[str, int, int, int]] = []
 
-    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000):
+    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000, deadline_monotonic=None):
         calls.append((repo_id, max_positions, min_depth, min_knodes))
         samples = first_samples if len(calls) == 1 else second_samples
         yield from samples[:max_positions]

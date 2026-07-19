@@ -47,36 +47,67 @@ def _fake_hf_samples(n: int, n_game_ids: int = 6) -> list[dict]:
 def test_ingest_hf_caps_samples_and_forwards_thresholds(monkeypatch) -> None:
     seen_kwargs: dict = {}
 
-    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000):
+    def fake_iter(
+        repo_id,
+        *,
+        max_positions,
+        min_depth,
+        min_knodes,
+        n_buckets=1000,
+        deadline_monotonic=None,
+    ):
         seen_kwargs.update(
             repo_id=repo_id,
             max_positions=max_positions,
             min_depth=min_depth,
             min_knodes=min_knodes,
+            deadline_monotonic=deadline_monotonic,
         )
         yield from _fake_hf_samples(50)
 
     monkeypatch.setattr(run_pipeline, "iter_hf_samples", fake_iter)
 
-    samples = run_pipeline._ingest_hf(
+    deadline = time.monotonic() + 60.0
+    samples, truncated = run_pipeline._ingest_hf(
         "fake/repo",
         max_positions=10,
         min_depth=22,
         min_knodes=1500,
-        deadline_monotonic=time.monotonic() + 60.0,
+        deadline_monotonic=deadline,
     )
 
-    assert len(samples) <= 10
+    assert len(samples) == 10
+    assert truncated is False
     assert seen_kwargs["repo_id"] == "fake/repo"
     assert seen_kwargs["min_depth"] == 22
     assert seen_kwargs["min_knodes"] == 1500
+    # HI-01: the run deadline must reach the shard-download layer.
+    assert seen_kwargs["deadline_monotonic"] == deadline
+
+
+def test_ingest_hf_reports_deadline_truncation(monkeypatch) -> None:
+    def fake_iter(repo_id, **kwargs):
+        yield from _fake_hf_samples(50)
+
+    monkeypatch.setattr(run_pipeline, "iter_hf_samples", fake_iter)
+
+    samples, truncated = run_pipeline._ingest_hf(
+        "fake/repo",
+        max_positions=50,
+        min_depth=20,
+        min_knodes=1000,
+        deadline_monotonic=time.monotonic() - 1.0,
+    )
+
+    assert samples == []
+    assert truncated is True
 
 
 def test_run_bounded_hf_primary_no_stockfish(tmp_path, monkeypatch) -> None:
     fake_samples = _fake_hf_samples(60)
     assert len({s["game_id"] for s in fake_samples}) >= 4
 
-    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000):
+    def fake_iter(repo_id, *, max_positions, **kwargs):
         yield from fake_samples[:max_positions]
 
     monkeypatch.setattr(run_pipeline, "iter_hf_samples", fake_iter)
@@ -107,7 +138,7 @@ def test_run_bounded_hf_primary_no_stockfish(tmp_path, monkeypatch) -> None:
 def test_run_bounded_reuses_hf_samples_cache(tmp_path, monkeypatch) -> None:
     fake_samples = _fake_hf_samples(60)
 
-    def fake_iter(repo_id, *, max_positions, min_depth, min_knodes, n_buckets=1000):
+    def fake_iter(repo_id, *, max_positions, **kwargs):
         yield from fake_samples[:max_positions]
 
     monkeypatch.setattr(run_pipeline, "iter_hf_samples", fake_iter)
@@ -141,3 +172,67 @@ def test_run_bounded_reuses_hf_samples_cache(tmp_path, monkeypatch) -> None:
         hf_max_positions=60,
         epochs=1,
     )
+
+
+def test_run_bounded_does_not_cache_empty_hf_ingest(tmp_path, monkeypatch) -> None:
+    """A deadline-truncated empty ingest must not poison resume (MD-01)."""
+
+    def empty_iter(repo_id, **kwargs):
+        yield from ()
+
+    monkeypatch.setattr(run_pipeline, "iter_hf_samples", empty_iter)
+    monkeypatch.setattr(run_pipeline.shutil, "which", lambda name: None)
+
+    with pytest.raises(RuntimeError):
+        run_pipeline.run_bounded(
+            tmp_path,
+            lichess_zst=None,
+            fresh_n_games=0,
+            depth=None,
+            max_hours=0.1,
+            hf_dataset="fake/repo",
+            hf_max_positions=60,
+            epochs=1,
+        )
+
+    assert not (tmp_path / "hf_samples.json").exists()
+
+
+def test_run_bounded_lichess_wins_fen_dedup_over_hf(tmp_path, monkeypatch) -> None:
+    """Stream order lichess -> HF -> fresh feeds K-fit result rows (MD-02)."""
+    hf_samples = _fake_hf_samples(60)
+    shared_fen = hf_samples[0]["fen"]
+    lichess_samples = [
+        {
+            "fen": shared_fen,
+            "cp": 42.0,
+            "game_result": 1.0,
+            "game_id": "lichess-0",
+            "source": "lichess",
+        }
+    ]
+
+    def fake_hf_iter(repo_id, *, max_positions, **kwargs):
+        yield from hf_samples[:max_positions]
+
+    monkeypatch.setattr(run_pipeline, "iter_hf_samples", fake_hf_iter)
+    monkeypatch.setattr(
+        run_pipeline, "_ingest_lichess", lambda *a, **k: list(lichess_samples)
+    )
+    monkeypatch.setattr(run_pipeline.shutil, "which", lambda name: None)
+
+    run_pipeline.run_bounded(
+        tmp_path,
+        lichess_zst="unused-fake.pgn.zst",
+        fresh_n_games=0,
+        depth=None,
+        max_hours=0.1,
+        hf_dataset="fake/repo",
+        hf_max_positions=60,
+        epochs=1,
+    )
+
+    merged = json.loads((tmp_path / "merged_samples.json").read_text(encoding="utf-8"))
+    winner = next(row for row in merged if row["fen"] == shared_fen)
+    assert winner["source"] == "lichess"
+    assert winner["game_result"] == 1.0

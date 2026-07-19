@@ -22,6 +22,7 @@ that use them) so importing this module — and therefore
 
 from __future__ import annotations
 
+import time
 import zlib
 from collections.abc import Iterator
 
@@ -98,17 +99,22 @@ def iter_parquet_samples(
     min_knodes: int = 1000,
     n_buckets: int = 1000,
     max_positions: int | None = None,
+    deadline_monotonic: float | None = None,
 ) -> Iterator[dict]:
     """Stream filtered+transformed samples from one local parquet shard.
 
     Iterates record batches so peak RAM stays small — a whole shard is never
-    materialized (24 GB unified-memory constraint).
+    materialized (24 GB unified-memory constraint). The deadline is checked
+    per record batch so a shard whose rows all fail the quality filter still
+    respects the run's time bound.
     """
     import pyarrow.parquet as pq
 
     yielded = 0
     parquet_file = pq.ParquetFile(path)
     for batch in parquet_file.iter_batches(batch_size=_BATCH_SIZE, columns=_COLUMNS):
+        if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+            return
         for row in batch.to_pylist():
             sample = row_to_sample(
                 row,
@@ -131,12 +137,16 @@ def iter_hf_samples(
     min_depth: int = 20,
     min_knodes: int = 1000,
     n_buckets: int = 1000,
+    deadline_monotonic: float | None = None,
 ) -> Iterator[dict]:
     """Stream samples from the Hugging Face dataset, shard by shard.
 
     Downloads parquet shards lazily (HF cache handles reuse) and stops as
     soon as ``max_positions`` samples have been yielded, so later shards are
     never downloaded — the ~42 GB dataset must never be pulled wholesale.
+    ``deadline_monotonic`` is checked before every shard download (and per
+    batch inside each shard) so an unsatisfiable filter cannot keep pulling
+    shards past the run's time bound.
     """
     from huggingface_hub import HfApi, hf_hub_download
 
@@ -150,6 +160,8 @@ def iter_hf_samples(
     for filename in shard_names:
         if remaining <= 0:
             return
+        if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+            return
         local_path = hf_hub_download(
             repo_id=repo_id,
             filename=filename,
@@ -161,6 +173,7 @@ def iter_hf_samples(
             min_knodes=min_knodes,
             n_buckets=n_buckets,
             max_positions=remaining,
+            deadline_monotonic=deadline_monotonic,
         ):
             yield sample
             remaining -= 1

@@ -93,7 +93,11 @@ def _load_json(path: Path) -> list[dict]:
 
 
 def _save_json(path: Path, rows: list[dict]) -> None:
-    path.write_text(json.dumps(rows), encoding="utf-8")
+    # Atomic write: sample caches can reach 100+ MB and a kill mid-write must
+    # not leave a corrupt resume file behind.
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(rows), encoding="utf-8")
+    tmp.replace(path)
 
 
 def _latest_manifest_event(path: Path, *, event: str) -> dict | None:
@@ -184,20 +188,28 @@ def _ingest_hf(
     min_depth: int,
     min_knodes: int,
     deadline_monotonic: float,
-) -> list[dict]:
+) -> tuple[list[dict], bool]:
+    """Ingest HF samples; returns (samples, truncated_by_deadline)."""
     samples: list[dict] = []
+    truncated = False
     for sample in iter_hf_samples(
         repo_id,
         max_positions=max_positions,
         min_depth=min_depth,
         min_knodes=min_knodes,
+        deadline_monotonic=deadline_monotonic,
     ):
         if time.monotonic() >= deadline_monotonic:
+            truncated = True
             break
         samples.append(sample)
         if len(samples) >= max_positions:
             break
-    return samples
+    if not truncated and time.monotonic() >= deadline_monotonic:
+        # iter_hf_samples stopped because the deadline passed, not because
+        # the position budget was met.
+        truncated = len(samples) < max_positions
+    return samples, truncated
 
 
 def run_smoke(out_dir: Path, seed: int = 7) -> dict:
@@ -322,14 +334,17 @@ def run_bounded(
         else:
             if hf_path.exists():
                 _invalidate_hf_derived_outputs(out_dir)
-            hf_samples = _ingest_hf(
+            hf_samples, hf_truncated = _ingest_hf(
                 hf_dataset,
                 max_positions=hf_max_positions,
                 min_depth=hf_min_depth,
                 min_knodes=hf_min_knodes,
                 deadline_monotonic=deadline,
             )
-            _save_json(hf_path, hf_samples)
+            if hf_samples:
+                # Never cache an empty ingest (e.g. deadline hit before the
+                # first sample): a cached [] would poison every resume.
+                _save_json(hf_path, hf_samples)
             record_event(
                 str(manifest),
                 event="hf_ingest",
@@ -338,6 +353,7 @@ def run_bounded(
                 max_positions=hf_max_positions,
                 min_depth=hf_min_depth,
                 min_knodes=hf_min_knodes,
+                truncated=hf_truncated,
             )
         streams.append(hf_samples)
 
