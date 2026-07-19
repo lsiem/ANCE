@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: "Quick task 260718-tpm shipped — PR #4"
-stopped_at: Paused 2026-07-18 — scale labeling ~150k/1M; 05-03 gauntlet incomplete
-last_updated: "2026-07-18T20:07:54.589Z"
-last_activity: 2026-07-18
+status: "HF-primary scale train complete — net installed; 05-03 gauntlet next"
+stopped_at: Ready for 05-03 gauntlet with HF-trained net (36.7k unique positions)
+last_updated: "2026-07-19T16:50:00.000Z"
+last_activity: 2026-07-19
 progress:
   total_phases: 5
   completed_phases: 4
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 05 (nnue-swap-in-elo-gauntlet) — PAUSED
-Plan: 3 of 3 (05-03 incomplete; stronger net training in flight)
-Status: Quick task 260718-tpm shipped — PR #4
-Last activity: 2026-07-18
+Phase: 05 (nnue-swap-in-elo-gauntlet) — IN PROGRESS
+Plan: 3 of 3 (05-03 incomplete; stronger net trained + installed)
+Status: HF-primary scale train complete — net installed; 05-03 gauntlet next
+Last activity: 2026-07-19
 
 Progress: [██████████] 97%
 
@@ -107,10 +107,9 @@ Recent decisions affecting current work:
 
 See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
 
-1. Resume 1M SF depth-12 scale labeling (~150k done; resumable progress JSON local).
-2. Finish train/export → install new `net.safetensors` into `ance/eval/nnue/`.
-3. Complete 05-03 ≥1000-game D-12 gauntlet evidence (honest `gates_failed` if Elo still bad).
-4. Write `05-03-SUMMARY.md` + sync ROADMAP/STATE; gap plan if D-12 fails.
+1. ~~Resume scale labeling / train+export / install net~~ — done via HF-primary cloud run (250k ingest → 36.7k unique; 50 epochs; best val 0.02422).
+2. Complete 05-03 ≥1000-game D-12 gauntlet evidence (honest `gates_failed` if Elo still bad).
+3. Write `05-03-SUMMARY.md` + sync ROADMAP/STATE; gap plan if D-12 fails.
 
 ### Blockers/Concerns
 
@@ -133,6 +132,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T15:43:00.000Z
-Stopped at: User pause — scale labeling + 05-03 incomplete
+Last session: 2026-07-19T16:50:00.000Z
+Stopped at: HF scale train complete; net installed into `ance/eval/nnue/`; 05-03 gauntlet remaining
 Resume file: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
