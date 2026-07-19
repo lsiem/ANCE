@@ -4,10 +4,11 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: "Quick task 260718-tpm shipped — PR #4"
-stopped_at: Paused 2026-07-18 — scale labeling ~150k/1M; 05-03 gauntlet incomplete
-last_updated: "2026-07-18T20:07:54.589Z"
+status: in_progress
+stopped_at: —
+last_updated: "2026-07-18T18:25:00.000Z"
 last_activity: 2026-07-18
+last_activity_desc: "Resumed scale labeling+dashboard; post-train closer armed for 05-03 close"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -27,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 05 (nnue-swap-in-elo-gauntlet) — PAUSED
-Plan: 3 of 3 (05-03 incomplete; stronger net training in flight)
-Status: Quick task 260718-tpm shipped — PR #4
-Last activity: 2026-07-18
+Phase: 05 (nnue-swap-in-elo-gauntlet) — IN PROGRESS
+Plan: 3 of 3 (05-03 incomplete; scale labeling restarted under /Users/lasse/ANCE)
+Status: Running — dashboard :8766 + scale pipeline + post-train closer
+Last activity: 2026-07-18 — resumed after pause; prior ~150k progress was on deleted path
 
 Progress: [██████████] 97%
 
@@ -107,21 +108,15 @@ Recent decisions affecting current work:
 
 See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
 
-1. Resume 1M SF depth-12 scale labeling (~150k done; resumable progress JSON local).
-2. Finish train/export → install new `net.safetensors` into `ance/eval/nnue/`.
-3. Complete 05-03 ≥1000-game D-12 gauntlet evidence (honest `gates_failed` if Elo still bad).
-4. Write `05-03-SUMMARY.md` + sync ROADMAP/STATE; gap plan if D-12 fails.
+1. Scale labeling + train in flight (1M SF depth-12; progress JSON local / gitignored).
+2. Auto: install `scale-run/net.safetensors` → `ance/eval/nnue/` via `post_train_close_05_03.py`.
+3. Auto: ≥1000-game 05-03 gauntlet + honest evidence JSON.
+4. Auto: `05-03-SUMMARY.md` + STATE/ROADMAP sync (gap note if D-12 fails).
 
 ### Blockers/Concerns
 
 - [Phase 4] MPS `torch.backends.mps.is_available()` has regressed on recent macOS majors — a smoke test + CPU-vs-MPS numeric parity check must be the first task of the training harness (CPU training is a viable fallback for this tiny net).
 - [Phase 4/5] WDL scaling constant K (~360–400) and the exact Stockfish labeling command (normalized UCI cp ≠ internal eval) must be pinned/measured before generating the dataset.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260718-tpm | Add Hugging Face Lichess chess-position-evaluations parquet ingest path as pre-labeled NNUE training data stream | 2026-07-18 | 68751ee | [260718-tpm-add-hugging-face-lichess-chess-position-](./quick/260718-tpm-add-hugging-face-lichess-chess-position-/) |
 
 ## Deferred Items
 
@@ -133,6 +128,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T15:43:00.000Z
-Stopped at: User pause — scale labeling + 05-03 incomplete
+Last session: 2026-07-18T18:25:00.000Z
+Stopped at: — (resumed; screen jobs: ance-train-dash, ance-train-scale, ance-post-train)
 Resume file: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
