@@ -42,3 +42,9 @@ __pycache__/
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.txt
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-live-board.png
 .planning/async-jobs/
+.planning/phases/*/cloud-hf-run-v2/*_samples.json
+.planning/phases/*/cloud-hf-run-v2/*.npz
+.planning/phases/*/cloud-hf-run-v2/checkpoints/
+.planning/phases/*/cloud-hf-run-v2/*.log
+.planning/phases/*/cloud-hf-run-v2/train.npz
+.planning/phases/*/cloud-hf-run-v2/val.npz
