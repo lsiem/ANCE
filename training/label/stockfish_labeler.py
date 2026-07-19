@@ -84,11 +84,17 @@ def _load_progress(path: Path) -> list[dict]:
             raise ValueError(f"progress file must be a JSON list: {path}")
         return data
     results: list[dict] = []
-    for line in text.splitlines():
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
         line = line.strip()
         if not line:
             continue
-        row = json.loads(line)
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as exc:
+            if i == len(lines) - 1:
+                break
+            raise ValueError(f"invalid JSONL in progress file: {path}") from exc
         if not isinstance(row, dict):
             raise ValueError(f"progress JSONL rows must be objects: {path}")
         results.append(row)
