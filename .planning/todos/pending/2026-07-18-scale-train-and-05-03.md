@@ -1,77 +1,58 @@
-# Next: finish scaled NNUE train + close 05-03 Elo evidence
+# Next: close 05-03 Elo evidence with HF-trained net
 
 **Created:** 2026-07-18  
-**Status:** Gauntlet running (fresh scale-run net; started 2026-07-20 via /gsd-progress --next --auto)  
-**Depends on:** Local scale-run artifacts (not in git — too large)
+**Updated:** 2026-07-20  
+**Status:** Superseded — 05-03 closed with honest `gates_failed`; Phase 6 strength-run next  
+**Depends on:** —
 
 ## Context
 
 Phase 4 net was too weak / overfit (~13k train). A/B/C upgrades landed:
 
 - **A** — trainer: AdamW+WD, cosine LR, batch 256, best-val checkpoint, early-stop, `metrics.json`
-- **B** — 1M fresh SF depth-12 labeling (resumable progress)
+- **B** — 1M fresh SF depth-12 labeling (local Mac progress was gitignored; not available in cloud)
 - **C** — `ance.tools.training_dashboard` at `:8766`
+- **HF path** — `Lichess/chess-position-evaluations` ingest (PR #4) used for cloud resume
 
-**Note:** Prior ~150k labeling progress lived under the old path
-`/Users/lasse/Development/Projects/ANCE` (gone) and was gitignored — this
-checkout restarted labeling from 0 under `/Users/lasse/ANCE`. Resume still
-works via `fresh_labels_progress.json` once present.
+### Cloud training run (2026-07-19)
 
-## Active jobs (screen)
+- Mode: `--fresh-n-games 0 --hf-dataset Lichess/chess-position-evaluations --hf-max-positions 250000`
+- Device: CPU (Linux cloud; no MPS/Stockfish)
+- Ingested 250k HF rows → **36,755** unique after FEN dedup → 34,855 train / 1,900 val
+- Trained 50 epochs; best val loss **0.02422** @ epoch 50; `K=400` fallback
+- Exported + installed `ance/eval/nnue/net.safetensors` (later superseded by local scale-run / Phase 6 nets)
 
-| Session | Role |
-|---------|------|
-| `ance-train-dash` | Training dashboard `:8766` |
-| `ance-train-scale` | Scale pipeline (label → train → export) |
-| `ance-post-train` | Waits for net → install → 05-03 gauntlet → GSD close |
+### Local scale-run (2026-07-20)
 
-## Next todos (in order)
+- Completed early-stop @ epoch 49; metrics committed under `scale-run/metrics.json`
+- 05-03 evidence written with `gates_failed` (TOOL-04 not met)
 
-1. **Scale labeling + train** — in flight (`training.run_pipeline`, same `--out-dir`).
-2. **Install new net** — automated by `post_train_close_05_03.py`.
-3. **Re-run / finish 05-03 gauntlet** — ≥1000-game fixed-depth; honest `gates_failed` if Elo still bad.
-4. **Close GSD 05-03** — `05-03-SUMMARY.md`, STATE/ROADMAP (also automated).
+### Phase 6 (current)
 
-## Resume commands
+- Quiet-data harness + Lichess 2013-01 strength-run trained
+- Net installed from `strength-run/net.safetensors`
+- **Next:** `post_train_close_06.py` (200-game probe → ≥1000 TOOL-04)
+
+## Todos (historical — closed)
+
+1. ~~Resume scale labeling / train+export / install net~~ — done
+2. ~~05-03 gauntlet evidence~~ — committed; `gates_failed` honest
+3. ~~05-03 SUMMARY + STATE/ROADMAP~~ — done; Phase 6 opened
+
+## Active next
 
 ```bash
-# Training dashboard
-.venv/bin/python -u -m ance.tools.training_dashboard \
-  --serve --host 127.0.0.1 --port 8766 --open \
-  --out-dir .planning/phases/04-offline-nnue-training-pipeline/scale-run
-
-# Scale pipeline (resumes labels from progress JSON)
-screen -dmS ance-train-scale bash -lc '
-cd /Users/lasse/ANCE
-export PYTHONUNBUFFERED=1
-export PATH="/opt/homebrew/bin:$PATH"
-.venv/bin/python -u -m training.run_pipeline \
-  --fresh-target-positions 1000000 \
-  --depth 12 \
-  --max-hours 72 \
-  --batch-size 256 \
-  --early-stop-patience 5 \
-  --epochs 50 \
-  --out-dir .planning/phases/04-offline-nnue-training-pipeline/scale-run \
-  >> .planning/phases/04-offline-nnue-training-pipeline/scale-run/scale-run.log 2>&1
-'
-
-# Post-train closer (net → gauntlet → SUMMARY/STATE/ROADMAP)
-screen -dmS ance-post-train bash -lc '
-cd /Users/lasse/ANCE
-export PYTHONUNBUFFERED=1
-export PATH="/opt/homebrew/bin:$PATH"
-.venv/bin/python -u .planning/phases/05-nnue-swap-in-elo-gauntlet/post_train_close_05_03.py \
-  >> .planning/phases/05-nnue-swap-in-elo-gauntlet/post-train-close.log 2>&1
-'
-
-# Gauntlet dashboard (after net install / during 05-03)
-.venv/bin/python -u -m ance.tools.gauntlet_dashboard \
-  --serve --host 127.0.0.1 --port 8765 --sf-depth 12
+# Phase 6 closer (diagnostics → 200 probe → ≥1000 TOOL-04)
+python3 -u .planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py \
+  >> .planning/phases/06-quiet-data-nnue-strength-gap/post-train-close.log 2>&1
 ```
 
 ## Local artifacts (gitignored)
 
-- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/fresh_labels_progress.json`
-- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/training-live.json`
-- `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json`
+- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/hf_samples.json`
+- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/merged_samples.json`
+- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/{train,val}.npz`
+- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/checkpoints/`
+- `.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors`
+- `.planning/phases/06-quiet-data-nnue-strength-gap/data/`
+- `.planning/phases/06-quiet-data-nnue-strength-gap/strength-run/` (except committed snapshots)
