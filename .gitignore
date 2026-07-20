@@ -25,6 +25,7 @@ __pycache__/
 .planning/phases/*/scale-run/training-live.json
 .planning/phases/*/scale-run/checkpoints/
 .planning/phases/*/scale-run/*.npz
+.planning/phases/*/scale-run/*.safetensors
 .planning/phases/*/scale-run/*.html
 .planning/phases/*/scale-run/*.svg
 .planning/phases/*/scale-run/*.log
