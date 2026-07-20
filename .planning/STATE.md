@@ -6,9 +6,9 @@ current_phase: 06
 current_phase_name: quiet-data-nnue-strength-gap
 status: in_progress
 stopped_at: —
-last_updated: "2026-07-20T12:13:16.000Z"
+last_updated: "2026-07-20T12:24:08.000Z"
 last_activity: 2026-07-20
-last_activity_desc: "05-03 closed with honest gates_failed; Phase 6 quiet-data strength gap started"
+last_activity_desc: "Phase 6 strength-run started (Lichess 2013-01, ~34k result samples)"
 progress:
   total_phases: 6
   completed_phases: 4
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
 Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
 Plan: Phase 6 workstreams 06-01…06-05
-Status: Implementing quiet corpus + trainer recipe after honest TOOL-04 failure
+Status: Strength-run training in progress (tmux ance-strength-06) — then post_train_close_06
 Last activity: 2026-07-18 — resumed after pause; prior ~150k progress was on deleted path
 
 Progress: [██████████] 97%

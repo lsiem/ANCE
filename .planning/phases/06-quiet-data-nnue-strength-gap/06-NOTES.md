@@ -30,3 +30,10 @@ python -m training.run_pipeline \
 2. 200-game depth-3 probe with `elo_ci_low > 0`
 3. ≥1000-game TOOL-04 (`post_train_close_06.py`)
 4. Optional clock/nodes note + accumulator parity (already unit-tested)
+
+## Active run (2026-07-20)
+
+- tmux: `ance-strength-06`
+- out: `strength-run/`
+- data: `data/lichess_db_standard_rated_2013-01.pgn.zst` (~34k eval samples)
+- elo probes during train: disabled (`--elo-probe-every 0`); use closer after export
