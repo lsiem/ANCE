@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: "Executing 05-03 — durable ≥1000-game gauntlet running"
+status: "Executing 05-03 — gauntlet ~226/1000 (Elo≈−453; D-12 fail expected)"
 stopped_at: null
-last_updated: "2026-07-19T17:25:00.000Z"
-last_activity: 2026-07-19
+last_updated: "2026-07-20T00:59:00.000Z"
+last_activity: 2026-07-20
 progress:
   total_phases: 5
   completed_phases: 4
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 05 (nnue-swap-in-elo-gauntlet) — IN PROGRESS
 Plan: 3 of 3 (05-03 Task 1 complete; Task 2 gauntlet running)
-Status: Executing 05-03 — durable ≥1000-game gauntlet running
-Last activity: 2026-07-19
+Status: Executing 05-03 — gauntlet ~226/1000 (14W–209L–3D, Elo≈−453)
+Last activity: 2026-07-20
 
 Progress: [██████████] 97%
 
