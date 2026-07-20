@@ -133,6 +133,30 @@ def _material_totals(board: chess.Board) -> dict[str, int]:
     }
 
 
+def default_live_path(output_path: str | Path) -> Path:
+    """Derive ``*-live.json`` next to a gauntlet checkpoint path."""
+    output = Path(output_path)
+    name = output.name
+    if "checkpoint" in name:
+        return output.with_name(name.replace("checkpoint", "live", 1))
+    return output.with_name(f"{output.stem}-live{output.suffix or '.json'}")
+
+
+def ensure_live_sidecar_env(output_path: str | Path) -> Path:
+    """Ensure ``ANCE_GAUNTLET_LIVE_PATH`` is set for dashboard board/clock updates.
+
+    If the env var is already set, keep it. Otherwise default to a sibling
+    ``*-live.json`` beside the checkpoint so ``gauntlet_dashboard`` works
+    without callers remembering to export the path.
+    """
+    raw = os.environ.get("ANCE_GAUNTLET_LIVE_PATH")
+    if raw:
+        return Path(raw)
+    path = default_live_path(output_path)
+    os.environ["ANCE_GAUNTLET_LIVE_PATH"] = str(path)
+    return path
+
+
 def _write_live_position(payload: dict[str, Any]) -> None:
     """Best-effort live board sidecar for dashboards (env ANCE_GAUNTLET_LIVE_PATH)."""
     raw = os.environ.get("ANCE_GAUNTLET_LIVE_PATH")
@@ -535,6 +559,7 @@ def run_gauntlet(
         raise ValueError("search_depth must be positive when set")
 
     output = Path(output_path)
+    ensure_live_sidecar_env(output)
     parameters = _parameters(
         spec_a,
         spec_b,

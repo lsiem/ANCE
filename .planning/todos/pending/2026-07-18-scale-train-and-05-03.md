@@ -1,9 +1,9 @@
 # Next: close 05-03 Elo evidence with HF-trained net
 
 **Created:** 2026-07-18  
-**Updated:** 2026-07-19  
-**Status:** Train+export done (cloud HF-primary); gauntlet remaining  
-**Depends on:** Installed `ance/eval/nnue/net.safetensors` from scale-run export
+**Updated:** 2026-07-20  
+**Status:** Superseded — 05-03 closed with honest `gates_failed`; Phase 6 strength-run next  
+**Depends on:** —
 
 ## Context
 
@@ -20,30 +20,31 @@ Phase 4 net was too weak / overfit (~13k train). A/B/C upgrades landed:
 - Device: CPU (Linux cloud; no MPS/Stockfish)
 - Ingested 250k HF rows → **36,755** unique after FEN dedup → 34,855 train / 1,900 val
 - Trained 50 epochs; best val loss **0.02422** @ epoch 50; `K=400` fallback
-- Exported + installed `ance/eval/nnue/net.safetensors`
+- Exported + installed `ance/eval/nnue/net.safetensors` (later superseded by local scale-run / Phase 6 nets)
 
-## Next todos (in order)
+### Local scale-run (2026-07-20)
 
-1. ~~Resume scale labeling~~ — skipped in cloud; used HF pre-labeled stream instead.
-2. ~~Finish train + export~~ — done (`scale-run/net.safetensors` + metrics/manifest).
-3. ~~Install new net~~ — copied into `ance/eval/nnue/net.safetensors`.
-4. **Re-run / finish 05-03 gauntlet** — ≥1000-game fixed-depth NNUE vs handcrafted; write `05-GAUNTLET-EVIDENCE.json` honestly (`gates_failed` if Elo still bad).
-5. **Close GSD 05-03** — `05-03-SUMMARY.md`, STATE/ROADMAP, phase verify (gap plan if D-12 fails).
+- Completed early-stop @ epoch 49; metrics committed under `scale-run/metrics.json`
+- 05-03 evidence written with `gates_failed` (TOOL-04 not met)
 
-## Optional follow-ups
+### Phase 6 (current)
 
-- Larger HF stream (more shards / higher `--hf-max-positions`) — first-shard ingest collides heavily on FEN; 250k → ~37k unique.
-- Resume Mac SF 1M labeling if local `fresh_labels_progress.json` still exists (separate out-dir to avoid clobbering HF artifacts).
+- Quiet-data harness + Lichess 2013-01 strength-run trained
+- Net installed from `strength-run/net.safetensors`
+- **Next:** `post_train_close_06.py` (200-game probe → ≥1000 TOOL-04)
 
-## Resume commands
+## Todos (historical — closed)
+
+1. ~~Resume scale labeling / train+export / install net~~ — done
+2. ~~05-03 gauntlet evidence~~ — committed; `gates_failed` honest
+3. ~~05-03 SUMMARY + STATE/ROADMAP~~ — done; Phase 6 opened
+
+## Active next
 
 ```bash
-# Gauntlet (resumes checkpoint)
-.venv/bin/python -u .planning/phases/05-nnue-swap-in-elo-gauntlet/run_gauntlet_05_03.py
-
-# Gauntlet dashboard (resume 05-03)
-.venv/bin/python -u -m ance.tools.gauntlet_dashboard \
-  --serve --host 127.0.0.1 --port 8765 --sf-depth 12
+# Phase 6 closer (diagnostics → 200 probe → ≥1000 TOOL-04)
+python3 -u .planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py \
+  >> .planning/phases/06-quiet-data-nnue-strength-gap/post-train-close.log 2>&1
 ```
 
 ## Local artifacts (gitignored)
@@ -53,5 +54,5 @@ Phase 4 net was too weak / overfit (~13k train). A/B/C upgrades landed:
 - `.planning/phases/04-offline-nnue-training-pipeline/scale-run/{train,val}.npz`
 - `.planning/phases/04-offline-nnue-training-pipeline/scale-run/checkpoints/`
 - `.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors`
-- `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json`
-- `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-run.log`
+- `.planning/phases/06-quiet-data-nnue-strength-gap/data/`
+- `.planning/phases/06-quiet-data-nnue-strength-gap/strength-run/` (except committed snapshots)

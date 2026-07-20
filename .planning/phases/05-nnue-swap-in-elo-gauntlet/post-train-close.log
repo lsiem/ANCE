@@ -1,0 +1,28 @@
+2026-07-18T18:22:57Z post-train closer starting root=/Users/lasse/ANCE
+2026-07-18T18:22:57Z post-train closer starting root=/Users/lasse/ANCE
+2026-07-18T18:22:57Z waiting for /Users/lasse/ANCE/.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors
+2026-07-18T18:22:57Z waiting for /Users/lasse/ANCE/.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors
+2026-07-18T21:58:44Z net ready size=790244
+2026-07-18T21:58:44Z net ready size=790244
+2026-07-18T21:58:44Z installed /Users/lasse/ANCE/ance/eval/nnue/net.safetensors
+2026-07-18T21:58:44Z installed /Users/lasse/ANCE/ance/eval/nnue/net.safetensors
+2026-07-18T21:58:44Z starting 05-03 gauntlet (≥1000 games, depth 3)
+2026-07-18T21:58:44Z starting 05-03 gauntlet (≥1000 games, depth 3)
+==== gsd-auto restart 2026-07-20T11:22:10Z ====
+2026-07-20T11:22:11Z post-train closer starting root=/Users/lasse/ANCE
+2026-07-20T11:22:11Z post-train closer starting root=/Users/lasse/ANCE
+2026-07-20T11:22:11Z waiting for /Users/lasse/ANCE/.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors
+2026-07-20T11:22:11Z waiting for /Users/lasse/ANCE/.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors
+2026-07-20T11:22:16Z net ready size=790244
+2026-07-20T11:22:16Z net ready size=790244
+2026-07-20T11:22:16Z installed /Users/lasse/ANCE/ance/eval/nnue/net.safetensors
+2026-07-20T11:22:16Z installed /Users/lasse/ANCE/ance/eval/nnue/net.safetensors
+2026-07-20T11:22:16Z starting 05-03 gauntlet (≥1000 games, depth 3)
+2026-07-20T11:22:16Z starting 05-03 gauntlet (≥1000 games, depth 3)
+==== live-sidecar restart 2026-07-20T11:41:22Z ====
+2026-07-20T11:41:22Z post-train closer starting root=/Users/lasse/ANCE
+2026-07-20T11:41:22Z post-train closer starting root=/Users/lasse/ANCE
+2026-07-20T11:41:22Z resuming with existing engine net phase=gauntlet_running
+2026-07-20T11:41:22Z resuming with existing engine net phase=gauntlet_running
+2026-07-20T11:41:22Z starting 05-03 gauntlet (≥1000 games, depth 3) live=/Users/lasse/ANCE/.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-live.json
+2026-07-20T11:41:22Z starting 05-03 gauntlet (≥1000 games, depth 3) live=/Users/lasse/ANCE/.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-live.json

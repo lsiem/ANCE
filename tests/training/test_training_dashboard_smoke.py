@@ -43,6 +43,47 @@ def test_training_dashboard_generate_contains_loss_curves(tmp_path) -> None:
         encoding="utf-8",
     )
 
+    # Stale labeling sidecar must not freeze the UI once metrics show training.
+    live_path.write_text(
+        json.dumps(
+            {
+                "phase": "labeling",
+                "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+                "depth": 14,
+                "done": 1000,
+                "total": 1000,
+                "rate_per_s": 12.5,
+                "eta_s": 0.0,
+                "updated_utc": "2026-07-18T11:00:00Z",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    info = generate(metrics_path, out_path, live_path=live_path)
+    html = out_path.read_text(encoding="utf-8")
+
+    assert info["out"] == str(out_path)
+    assert info["is_labeling"] is False
+    assert info["payload"]["show_epoch_progress"] is True
+    assert info["payload"]["change_key"]
+    assert "train" in html.lower()
+    assert "Train loss" in html
+    assert "Val loss" in html
+    assert "0.510000" in html or "0.51" in html
+    assert info["payload"]["is_labeling"] is False
+    assert info["payload"]["status"] == "running"
+    assert "http-equiv=\"refresh\"" not in html
+    assert "/api.json" in html
+    assert "<svg" in html
+
+
+def test_training_dashboard_shows_active_labeling_when_no_metrics(tmp_path) -> None:
+    live_path = tmp_path / "training-live.json"
+    out_path = tmp_path / "training-dashboard.html"
+    metrics_path = tmp_path / "metrics.json"
+
     live_path.write_text(
         json.dumps(
             {
@@ -63,10 +104,11 @@ def test_training_dashboard_generate_contains_loss_curves(tmp_path) -> None:
     info = generate(metrics_path, out_path, live_path=live_path)
     html = out_path.read_text(encoding="utf-8")
 
-    assert info["out"] == str(out_path)
-    assert "train" in html.lower()
-    assert "Train loss" in html
-    assert "Val loss" in html
-    assert "0.510000" in html or "0.51" in html
-    assert "labeling" in html.lower()
-    assert "<svg" in html
+    assert info["is_labeling"] is True
+    assert "labeling live" in html.lower()
+    assert info["payload"]["label_done"] == 100
+    assert info["payload"]["label_total"] == 1000
+    assert "change_key" in info["payload"]
+    assert "/api.json" in html
+    assert "http-equiv=\"refresh\"" not in html
+    assert "charts on change" in html or "poll 4s" in html

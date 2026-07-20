@@ -1,6 +1,6 @@
 #!/bin/bash
 set -u
-ROOT="/Users/lasse/Development/Projects/ANCE"
+ROOT="/Users/lasse/ANCE"
 CK="$ROOT/.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json"
 LOG="$ROOT/.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-progress.txt"
 RUNNER="$ROOT/.venv/bin/python $ROOT/.planning/phases/05-nnue-swap-in-elo-gauntlet/run_gauntlet_05_03.py"

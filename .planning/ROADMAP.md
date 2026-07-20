@@ -12,7 +12,8 @@ measurement backbone. Phase 4 runs offline (it binds only to the shared weights
 contract, so it can proceed in parallel once the eval seam exists) and produces a
 validated, exported NNUE. Phase 5 is the payoff: the trained net drops in behind
 the untouched search seam and is proven to beat the handcrafted baseline over a
-rigorous ≥1000-game gauntlet.
+rigorous ≥1000-game gauntlet. Phase 6 closes the strength gap when TOOL-04 fails
+honestly: quiet, result-bearing training data + Stockfish-aligned trainer recipe.
 
 ## Phases
 
@@ -27,7 +28,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess (completed 2026-07-08)
 - [x] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness (completed 2026-07-11)
 - [x] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights (completed 2026-07-18)
-- [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain
+- [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain — 05-03 evidence written; gates_failed (honest)
+- [ ] **Phase 6: Quiet-Data NNUE Strength Gap** - Quiet/result-bearing corpus, λ schedule + fen-skipping, Elo-probe checkpoints, 200→1000 re-gate (no HalfKA)
 
 ## Phase Details
 
@@ -220,12 +222,35 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-03-PLAN.md — ≥1000-game depth-3 evidence run + D-12 Elo CI gate + committed evidence JSON (TOOL-04 proof)
+- [ ] 05-03-PLAN.md — ≥1000-game depth-3 evidence run + D-12 Elo CI gate + committed evidence JSON (TOOL-04 proof) — evidence written; gates_failed (honest)
+
+### Phase 6: Quiet-Data NNUE Strength Gap
+
+**Goal**: Rebuild the training distribution around quiet, result-bearing positions and Stockfish-aligned trainer controls so NNUE can pass TOOL-04 (`elo_ci_low > 0`) at fixed depth 3.
+**Mode:** mvp
+**Depends on**: Phase 5 (honest evidence)
+**Requirements**: TOOL-04 (re-gate), TRN data/quality
+**Success Criteria** (what must be TRUE):
+
+  1. Strength corpus prefers Lichess PGN + HF fill; fresh random-walk ≤10%; ≥50% rows have `game_result`; K is fitted (not fallback-only).
+  2. Quiet filter rejects checks, capture-bestmoves, and `|static − qsearch| > 60`; training cp soft-clamped to ±10000.
+  3. Trainer supports λ 1.0→0.75, random fen-skipping 3, resume-from, and mid-train Elo probes; final net is best-by-Elo when probes ran.
+  4. Diagnostics pass; 200-game probe gate then ≥1000-game TOOL-04; accumulator parity + optional clock/nodes note. No HalfKA.
+
+**Plans**: 0/5 planned (implementation tracked in quiet-nnue-strength-gap workstreams)
+
+Plans:
+
+- [x] 06-01 — Quiet filter + mate clamp + corpus mix guards + tests
+- [x] 06-02 — λ schedule, fen-skip, resume-from CLI
+- [x] 06-03 — Mid-train Elo probes + best_elo export + dashboard
+- [x] 06-04 — Diagnostics + 200→1000 closer + dual TC evidence (harness; overnight run pending Lichess dump)
+- [x] 06-05 — Accumulator parity / nps evidence (no arch change)
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed in parallel with 2–3; Phase 5 requires both 3 and 4).
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may proceed in parallel with 2–3; Phase 5 requires both 3 and 4; Phase 6 follows honest Phase 5 evidence).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -233,4 +258,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | 2. Core Alpha-Beta Search | 12/12 | Complete    | 2026-07-10 |
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
-| 5. NNUE Swap-In & Elo Gauntlet | 2/3 | In Progress|  |
+| 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
+| 6. Quiet-Data NNUE Strength Gap | 5/5 harness | Harness complete; strength retrain pending | 2026-07-20 |

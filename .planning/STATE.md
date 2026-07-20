@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 05
-current_phase_name: nnue-swap-in-elo-gauntlet
-status: "HF-primary scale train complete — net installed; 05-03 gauntlet next"
-stopped_at: Ready for 05-03 gauntlet with HF-trained net (36.7k unique positions)
-last_updated: "2026-07-19T16:50:00.000Z"
-last_activity: 2026-07-19
+current_phase: 06
+current_phase_name: quiet-data-nnue-strength-gap
+status: in_progress
+stopped_at: —
+last_updated: "2026-07-20T12:52:00.000Z"
+last_activity: 2026-07-20
+last_activity_desc: "Merged main; Phase 6 strength-run net installed; 05-03 closed with honest gates_failed"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
   total_plans: 34
   completed_plans: 33
@@ -23,14 +24,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 05 — nnue-swap-in-elo-gauntlet / Plan 05-03
+**Current focus:** Phase 06 — quiet-data NNUE strength gap
 
 ## Current Position
 
-Phase: 05 (nnue-swap-in-elo-gauntlet) — IN PROGRESS
-Plan: 3 of 3 (05-03 incomplete; stronger net trained + installed)
-Status: HF-primary scale train complete — net installed; 05-03 gauntlet next
-Last activity: 2026-07-19
+Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
+Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
+Plan: Phase 6 harness complete; strength-run trained (Lichess 2013-01); next `post_train_close_06.py`
+Status: Strength-run net installed into `ance/eval/nnue/net.safetensors` — probe/TOOL-04 re-gate pending
+Last activity: 2026-07-20 — resolved merge with main; kept Phase-6 STATE + scale-run metrics; installed quiet-data net
 
 Progress: [██████████] 97%
 
@@ -83,28 +85,24 @@ Recent decisions affecting current work:
 - [Phase 05]: D-14 exact-0 golden uses startpos (Phase 4 net bias on king-only) — Approved net scores ~-20 on king-only; startpos is exact 0 for both STMs
 - [Phase 05]: Acceptance depth N=3 for TOOL-04 overnight gauntlet — 05-RESEARCH wall-clock projection (~4-8h with NNUE at d3)
 - [Phase 05]: Phase 3 popen_uci mocks accept **kwargs for EngineSpec.env merge — Required so env= kwarg does not break clock-mode harness tests
-- [Phase 05 / 2026-07-19]: Cloud resume used HF-primary train (`--fresh-n-games 0`, 250k positions) as scale-label substitute; resulting net failed D-14/D-16 goldens and lost 4/4 smoke games. Restored Phase-4 `run-output/net.safetensors` for 05-03 evidence run. Incremental NNUE vs fresh parity checked clean (0 mismatches / 2111). Early gauntlet score 0–5 NNUE.
+- [Phase 05 / 2026-07-19]: Cloud resume used HF-primary train (`--fresh-n-games 0`, 250k positions) as scale-label substitute; resulting net failed D-14/D-16 goldens and lost 4/4 smoke games. Restored Phase-4 / later scale-run nets for evidence. Expect honest `gates_failed` without quiet/result-bearing data (Phase 6).
+- [Phase 06]: Quiet-data strength gap — Lichess primary + quiet filter + λ schedule; re-gate TOOL-04 after strength-run.
 
 ### Pending Todos
 
-See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
+See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md` (superseded — 05-03 closed; Phase 6 closer next)
 
-1. ~~Resume scale labeling / train+export / install net~~ — done via HF-primary cloud run (250k ingest → 36.7k unique; 50 epochs; best val 0.02422).
-2. Complete 05-03 ≥1000-game D-12 gauntlet evidence (honest `gates_failed` if Elo still bad).
-3. Write `05-03-SUMMARY.md` + sync ROADMAP/STATE; gap plan if D-12 fails.
+1. ~~05-03 evidence~~ — committed with `gates_failed` (honest).
+2. ~~Phase 6 harness + strength-run train~~ — `strength-run/net.safetensors` installed.
+3. **Run `post_train_close_06.py`** — diagnostics → 200-game probe → ≥1000 TOOL-04.
+4. Write `06-*-SUMMARY` / evidence; sync ROADMAP when gates settle.
 
 ### Blockers/Concerns
 
 - [Phase 4] MPS `torch.backends.mps.is_available()` has regressed on recent macOS majors — a smoke test + CPU-vs-MPS numeric parity check must be the first task of the training harness (CPU training is a viable fallback for this tiny net).
 - [Phase 4/5] WDL scaling constant K (~360–400) and the exact Stockfish labeling command (normalized UCI cp ≠ internal eval) must be pinned/measured before generating the dataset.
-- [Phase 5] Current Phase-4 net is too weak for D-12 at depth 3 (early gauntlet 0–N). Cloud HF retrain did not produce a stronger installable net. Expect honest `gates_failed` unless a stronger net lands mid-run (would require restart).
-- [Phase 5] Depth-3 NNUE vs HC wall-clock on this host ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260718-tpm | Add Hugging Face Lichess chess-position-evaluations parquet ingest path as pre-labeled NNUE training data stream | 2026-07-18 | 68751ee | [260718-tpm-add-hugging-face-lichess-chess-position-](./quick/260718-tpm-add-hugging-face-lichess-chess-position-/) |
+- [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus is the recovery path.
+- [Phase 5] Depth-3 NNUE vs HC wall-clock on some hosts ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
 
 ## Deferred Items
 
@@ -116,8 +114,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T16:50:00.000Z
-Stopped at: HF scale train complete; net installed into `ance/eval/nnue/`; 05-03 gauntlet remaining
-Resume file: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md`
-Gauntlet checkpoint: `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json`
-Gauntlet runner: `.planning/phases/05-nnue-swap-in-elo-gauntlet/run_gauntlet_05_03.py`
+Last session: 2026-07-20T12:52:00.000Z
+Stopped at: Merge conflicts with main resolved; Phase 6 strength net installed; `post_train_close_06` remaining
+Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-NOTES.md`
+Gauntlet checkpoint: `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json` (Phase 5; historical)
+Phase 6 closer: `.planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py`

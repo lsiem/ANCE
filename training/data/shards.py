@@ -42,20 +42,42 @@ def build_shard(samples: list[dict], out_path: str) -> None:
 
 
 class ShardDataset(Dataset):
-    def __init__(self, shard_path: str) -> None:
+    def __init__(
+        self,
+        shard_path: str,
+        *,
+        random_fen_skipping: int = 0,
+        seed: int | None = None,
+    ) -> None:
         data = np.load(Path(shard_path))
         self._stm = data["stm_features"]
         self._opp = data["opp_features"]
         self._cp = data["cp"]
         self._game_result = data["game_result"]
         self._has_result = data["has_result"]
+        # nnue-pytorch: skip probability = N / (N + 1)
+        self._skip_n = max(0, int(random_fen_skipping))
+        self._rng = np.random.default_rng(seed)
 
     def __len__(self) -> int:
         return int(self._stm.shape[0])
 
+    def _maybe_skip_index(self, idx: int) -> int:
+        if self._skip_n <= 0:
+            return idx
+        # Resample until kept (bounded attempts to avoid infinite loops).
+        n = len(self)
+        for _ in range(32):
+            # Keep with probability 1/(N+1)
+            if self._rng.random() < 1.0 / (self._skip_n + 1):
+                return idx
+            idx = int(self._rng.integers(0, n))
+        return idx
+
     def __getitem__(
         self, idx: int
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        idx = self._maybe_skip_index(idx)
         return (
             torch.from_numpy(self._stm[idx].copy()),
             torch.from_numpy(self._opp[idx].copy()),

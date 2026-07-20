@@ -10,6 +10,8 @@ import chess
 import chess.pgn
 import zstandard
 
+from training.data.cp_clamp import DEFAULT_CP_CLAMP, clamp_training_cp
+
 _RESULT_MAP = {"1-0": 1.0, "0-1": 0.0, "1/2-1/2": 0.5}
 
 
@@ -59,6 +61,7 @@ def extract_samples(game: chess.pgn.Game, game_id: str) -> list[dict]:
             continue
         if not stm_is_white:
             cp = -cp
+        cp = clamp_training_cp(float(cp), DEFAULT_CP_CLAMP)
 
         game_result_stm = (
             game_result_white if stm_is_white else (1.0 - game_result_white)

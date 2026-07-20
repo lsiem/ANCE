@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "git_commit": "38a0695955e6e9f0ac61fa683cddb3a35f985d49",
+  "captured_utc": "2026-07-20T12:12:47.076860+00:00",
+  "gauntlet": {
+    "games": 17,
+    "mode": "fixed_depth",
+    "depth": 3,
+    "wins": 2,
+    "losses": 15,
+    "draws": 0,
+    "score_rate": 0.11764705882352941,
+    "wilson_low": 0.03287908001292092,
+    "wilson_high": 0.3433684249770991,
+    "elo": -350.02450535668004,
+    "elo_ci_low": -587.4244482503423,
+    "elo_ci_high": -112.6245624630178,
+    "runner": "arbiter",
+    "command_line": "/Users/lasse/ANCE/.venv/bin/python -m ance.tools.gauntlet --games 1000 --tc 30+0.3 --depth 3 --openings /Users/lasse/ANCE/ance/tools/openings.epd --output /Users/lasse/ANCE/.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json --max-halfmoves 160 --engine-a '/Users/lasse/ANCE/.venv/bin/python -m ance' --engine-b '/Users/lasse/ANCE/.venv/bin/python -m ance' --engine-a-name nnue --engine-b-name handcrafted --runner arbiter --budget-seconds 172800",
+    "elapsed_s": 3945.035469626193,
+    "wall_clock_elapsed_s": null,
+    "status": "running",
+    "checkpoint": "/workspace/.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json.pre-scale-20260720T112209Z.bak",
+    "engine_a_env": {
+      "ANCE_EVAL": "nnue"
+    },
+    "engine_b_env": {
+      "ANCE_EVAL": "handcrafted"
+    },
+    "net_source": "/workspace/.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors",
+    "note": "Gauntlet incomplete in cloud workspace (17/1000). Honest gates_failed; strength gap drives Phase 6."
+  },
+  "gates_passed": [],
+  "gates_failed": [
+    "D-12",
+    "TOOL-04"
+  ]
+}

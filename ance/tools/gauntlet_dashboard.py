@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import math
 import time
@@ -93,8 +94,8 @@ def _format_moves(sans: list[str]) -> str:
     rows: list[str] = []
     for i in range(0, len(sans), 2):
         num = i // 2 + 1
-        white = sans[i]
-        black = sans[i + 1] if i + 1 < len(sans) else ""
+        white = html.escape(sans[i])
+        black = html.escape(sans[i + 1]) if i + 1 < len(sans) else ""
         rows.append(
             f"<div class='ply'><span class='n'>{num}.</span> "
             f"<span class='w'>{white}</span> "
@@ -141,7 +142,7 @@ def render_html(
     source_ckpt: Path,
     source_live: Path | None,
     sf_eval: dict | None = None,
-) -> str:
+) -> tuple[str, dict]:
     agg = checkpoint.get("aggregate") or {}
     params = checkpoint.get("parameters") or {}
     sf = sf_eval or {}
@@ -193,7 +194,10 @@ def render_html(
     )
     n_games_live = live.get("n_games") or n_target
     halfmoves = live.get("halfmoves") or 0
-    last_san = live.get("last_san") or "—"
+    last_san = live.get("last_san")
+    if not last_san:
+        sans = list(live.get("san_moves") or [])
+        last_san = sans[-1] if sans else "—"
     last_think = live.get("last_think_s")
     last_think_s = f"{float(last_think):.1f}s" if last_think is not None else "—"
     in_check = bool(live.get("in_check"))
@@ -211,6 +215,25 @@ def render_html(
     check_badge = '<span class="badge check">CHECK</span>' if in_check else ""
     live_note = live.get("note") or ""
 
+    change_key = "|".join(
+        [
+            str(status),
+            str(n_done),
+            str(wins),
+            str(draws),
+            str(losses),
+            str(elo),
+            str(elo_lo),
+            str(game_index),
+            str(halfmoves),
+            str(fen),
+            str(last_san),
+            str(thinking),
+            str(sf_label),
+            str(live_updated),
+            str(series.get("n")),
+        ]
+    )
     payload = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source": str(source_ckpt),
@@ -237,14 +260,55 @@ def render_html(
         "env_b": env_b,
         "series": series,
         "d12_pass": d12_pass,
+        "change_key": change_key,
+        "board_svg": board_svg,
+        "moves_html": moves_block,
+        "fen": fen,
+        "white": white,
+        "black": black,
+        "turn": turn,
+        "thinker": thinker,
+        "game_label": game_label,
+        "n_games_live": n_games_live,
+        "halfmoves": halfmoves,
+        "last_san": last_san,
+        "last_think_s": last_think_s,
+        "in_check": in_check,
+        "material_balance": _fmt_material(bal) if isinstance(bal, int) else "—",
+        "material_white": (material.get("white_cp") or 0) / 100.0,
+        "material_black": (material.get("black_cp") or 0) / 100.0,
+        "piece_count": live.get("piece_count") or "—",
+        "opening_index": live.get("opening_index", "—"),
+        "live_updated": live_updated,
+        "live_note": live_note,
+        "live_missing": not bool(live.get("fen")),
+        "white_clock_s": w_clock_s,
+        "black_clock_s": b_clock_s,
+        "thinking": thinking,
+        "think_elapsed_s": think_elapsed,
+        "white_env": live.get("white_env") or env_a,
+        "black_env": live.get("black_env") or env_b,
+        "sf_available": sf_available,
+        "sf_label": sf_label,
+        "sf_pct": sf_pct,
+        "sf_depth": sf_depth,
+        "sf_pv": sf_pv,
+        "sf_best": sf_best,
+        "env_a_eval": env_a.get("ANCE_EVAL", "?"),
+        "env_b_eval": env_b.get("ANCE_EVAL", "?"),
+        "elapsed_hms": _fmt_hms(elapsed),
+        "eta_hms": _fmt_hms(eta_s),
+        "elo_fmt": _fmt_elo(elo),
+        "elo_lo_fmt": _fmt_elo(elo_lo),
+        "elo_hi_fmt": _fmt_elo(elo_hi),
+        "score_rate_pct": f"{score_rate:.1%}",
     }
     data_json = json.dumps(payload, allow_nan=False)
 
-    return f"""<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="refresh" content="4" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ANCE · {engine_a} vs {engine_b}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -369,7 +433,7 @@ def render_html(
     position: relative;
     z-index: 1;
     width: 100%;
-    height: {sf_pct:.2f}%;
+    height: 50%;
     background: #f0f0f0;
     transition: height 0.35s ease;
   }}
@@ -383,9 +447,8 @@ def render_html(
     letter-spacing: -0.02em;
     writing-mode: horizontal-tb;
     padding: 2px 0;
-    color: {'#111' if sf_pct >= 50 else '#f0f0f0'};
-    top: {'auto' if sf_pct >= 50 else '6px'};
-    bottom: {'6px' if sf_pct >= 50 else 'auto'};
+    color: #111;
+    bottom: 6px;
   }}
   .eval-meta {{
     margin-top: 8px;
@@ -533,7 +596,7 @@ def render_html(
   .bar > i {{
     display: block;
     height: 100%;
-    width: {pct:.3f}%;
+    width: 0%;
     background: linear-gradient(90deg, #1f7a6e, var(--nnue));
     transition: width 0.6s ease;
   }}
@@ -623,19 +686,8 @@ def render_html(
   <div class="wrap">
     <header class="hero">
       <div class="brand">ANCE <span>· live match</span></div>
-      <div class="match-line">
-        <strong>{engine_a}</strong> vs <strong>{engine_b}</strong>
-        · {mode} · depth {depth}
-        · score from {engine_a} perspective
-      </div>
-      <div class="status-row">
-        <span class="pill {'live' if status == 'running' else ''}">{status}</span>
-        <span class="pill">{env_a.get('ANCE_EVAL', '?')} vs {env_b.get('ANCE_EVAL', '?')}</span>
-        <span class="pill">python-chess board</span>
-        <span class="pill">{'Stockfish ' + sf_label if sf_available else 'Stockfish off'}</span>
-        <span class="pill">refresh 4s</span>
-        {'<span class="pill warn">live sidecar stale / missing</span>' if not live.get('fen') else ''}
-      </div>
+      <div class="match-line" id="match-line"></div>
+      <div class="status-row" id="status-row"></div>
     </header>
 
     <section class="stage" aria-label="Live game">
@@ -643,112 +695,84 @@ def render_html(
         <div class="board-with-eval">
           <div class="eval-bar" title="Stockfish eval (white POV)">
             <div class="black-fill"></div>
-            <div class="white-fill"></div>
-            <div class="eval-label">{sf_label if sf_available else '—'}</div>
+            <div class="white-fill" id="eval-white-fill"></div>
+            <div class="eval-label" id="eval-label">—</div>
           </div>
-          <div>
-            {board_svg}
-          </div>
+          <div id="board-svg">{board_svg}</div>
         </div>
-        <div class="board-caption">
-          Game {game_label} / {n_games_live} · ply {halfmoves}
-          · rendered with chess.svg.board
-        </div>
-        <div class="eval-meta">
-          {'Stockfish d' + str(sf_depth) + ' · ' + sf_label
-            + (' · best ' + str(sf_best) if sf_best != '—' else '')
-            + (' · ' + sf_pv if sf_pv else '')
-            if sf_available else
-            'Stockfish unavailable — install stockfish or set ANCE_STOCKFISH'}
-        </div>
+        <div class="board-caption" id="board-caption"></div>
+        <div class="eval-meta" id="eval-meta"></div>
       </div>
       <aside class="instrument">
-        <h2>Game {game_label}</h2>
+        <h2 id="game-title">Game —</h2>
         <div class="seats">
-          <div class="seat {'active' if turn == 'black' else ''}">
+          <div class="seat" id="seat-black">
             <div>
-              <div class="name">{black}</div>
-              <div class="tag">Black · {json.dumps(live.get('black_env') or env_b)}</div>
+              <div class="name" id="name-black">{black}</div>
+              <div class="tag" id="tag-black"></div>
             </div>
-            <div class="clock" id="clock-black" data-seconds="{b_clock_s:.3f}" data-side="black">{b_clock}</div>
+            <div class="clock" id="clock-black">{b_clock}</div>
           </div>
-          <div class="seat {'active' if turn == 'white' else ''}">
+          <div class="seat" id="seat-white">
             <div>
-              <div class="name">{white}</div>
-              <div class="tag">White · {json.dumps(live.get('white_env') or env_a)}</div>
+              <div class="name" id="name-white">{white}</div>
+              <div class="tag" id="tag-white"></div>
             </div>
-            <div class="clock" id="clock-white" data-seconds="{w_clock_s:.3f}" data-side="white">{w_clock}</div>
+            <div class="clock" id="clock-white">{w_clock}</div>
           </div>
         </div>
-        <div class="thinking">
-          Thinking: <strong>{thinker}</strong> ({turn}){check_badge}
-          {' · <span id="think-live">searching…</span>' if thinking else ''}<br/>
-          Last: <strong style="color:var(--ink)">{last_san}</strong>
-          · think {last_think_s}
-          · material {_fmt_material(bal) if isinstance(bal, int) else '—'}
-          {' · ' + live_note if live_note else ''}
-        </div>
-        <script type="application/json" id="clock-state">{json.dumps({
-            "turn": turn,
-            "thinking": thinking,
-            "think_elapsed_s": think_elapsed,
-            "white_clock_s": w_clock_s,
-            "black_clock_s": b_clock_s,
-            "updated_utc": live_updated,
-        })}</script>
+        <div class="thinking" id="thinking"></div>
         <div class="meta-grid">
           <div class="meta-cell">
             <div class="k">Material W / B</div>
-            <div class="v">{(material.get('white_cp') or 0) / 100:.0f} / {(material.get('black_cp') or 0) / 100:.0f}</div>
+            <div class="v" id="meta-material">—</div>
           </div>
           <div class="meta-cell">
             <div class="k">Pieces</div>
-            <div class="v">{live.get('piece_count') or '—'}</div>
+            <div class="v" id="meta-pieces">—</div>
           </div>
           <div class="meta-cell">
             <div class="k">Opening #</div>
-            <div class="v">{live.get('opening_index', '—')}</div>
+            <div class="v" id="meta-opening">—</div>
           </div>
           <div class="meta-cell">
             <div class="k">Updated</div>
-            <div class="v" style="font-size:11px">{live_updated}</div>
+            <div class="v" id="meta-updated" style="font-size:11px">—</div>
           </div>
         </div>
-        <div class="moves">{moves_block}</div>
-        <div class="fen">FEN {fen}</div>
+        <div class="moves" id="moves"></div>
+        <div class="fen" id="fen"></div>
       </aside>
     </section>
 
     <div class="progress">
-      <div class="bar"><i></i></div>
+      <div class="bar"><i id="progress-bar"></i></div>
       <div class="meta">
-        <span>{n_done} / {n_target} games ({pct:.1f}%)</span>
-        <span>elapsed {_fmt_hms(elapsed)} · ETA {_fmt_hms(eta_s)} · ~{pace:.0f}s/game</span>
+        <span id="progress-left"></span>
+        <span id="progress-right"></span>
       </div>
     </div>
 
     <div class="grid">
       <div class="stat">
         <div class="label">Elo (point)</div>
-        <div class="value" style="color: var(--accent)">{_fmt_elo(elo)}</div>
-        <div class="hint">95% CI [{_fmt_elo(elo_lo)}, {_fmt_elo(elo_hi)}]</div>
+        <div class="value" id="stat-elo" style="color: var(--accent)">—</div>
+        <div class="hint" id="stat-elo-hint">95% CI</div>
       </div>
       <div class="stat">
         <div class="label">Score rate</div>
-        <div class="value">{score_rate:.1%}</div>
-        <div class="hint">W–D–L = {wins}–{draws}–{losses}</div>
+        <div class="value" id="stat-rate">—</div>
+        <div class="hint" id="stat-wdl">W–D–L</div>
       </div>
       <div class="stat">
         <div class="label">D-12 gate</div>
-        <div class="value" style="color: {'var(--win)' if d12_pass else 'var(--warn)'}">
-          {'PASS' if d12_pass else 'OPEN'}
-        </div>
+        <div class="value" id="stat-d12" style="color: var(--warn)">OPEN</div>
         <div class="hint">Elo&gt;0 and CI<sub>low</sub>&gt;0 at 1000</div>
       </div>
       <div class="stat">
         <div class="label">Sample</div>
-        <div class="value">{n_done}</div>
-        <div class="hint">target {n_target} · depth {depth}</div>
+        <div class="value" id="stat-sample">0</div>
+        <div class="hint" id="stat-sample-hint">target</div>
       </div>
     </div>
 
@@ -769,192 +793,384 @@ def render_html(
       <canvas id="rateChart" height="90"></canvas>
     </div>
 
-    <footer>
-      Checkpoint: {source_ckpt}<br/>
-      Live: {source_live or '—'} · generated {payload['generated_at']} UTC<br/>
-      <code>python -m ance.tools.gauntlet_dashboard --watch --open</code>
-    </footer>
+    <footer id="footer"></footer>
   </div>
 
 <script>
-const DATA = {data_json};
+let DATA = {data_json};
+let lastChangeKey = null;
+let lastChartsKey = null;
+let eloChart = null;
+let mixChart = null;
+let rateChart = null;
+let clockState = {{
+  turn: 'white', thinking: false, think_elapsed_s: 0,
+  white_clock_s: 0, black_clock_s: 0,
+}};
+let clockPageLoaded = Date.now();
+
+function escapeHtml(v) {{
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}}
 
 function finiteOrNull(v) {{
   return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
 }}
 
-const labels = Array.from({{length: DATA.n_done}}, (_, i) => i + 1);
-const elo = DATA.series.elo_point.map(finiteOrNull);
-const eloLo = DATA.series.elo_low.map(finiteOrNull);
-const eloHi = DATA.series.elo_high.map(finiteOrNull);
+function fmtClock(sec) {{
+  sec = Math.max(0, Number(sec) || 0);
+  const m = Math.floor(sec / 60);
+  const s = sec - m * 60;
+  return m + ':' + s.toFixed(1).padStart(4, '0');
+}}
 
-new Chart(document.getElementById('eloChart'), {{
-  type: 'line',
-  data: {{
+function seriesFrom(d) {{
+  const n = Number(d.n_done || 0);
+  const labels = Array.from({{length: n}}, (_, i) => i + 1);
+  const series = d.series || {{}};
+  return {{
+    n,
     labels,
-    datasets: [
-      {{
-        label: 'Elo CI high',
-        data: eloHi,
-        borderColor: 'rgba(110,168,224,0.35)',
-        backgroundColor: 'rgba(110,168,224,0.12)',
-        fill: '+1',
-        pointRadius: 0,
-        borderWidth: 1,
-        tension: 0.2,
+    elo: (series.elo_point || []).map(finiteOrNull),
+    eloLo: (series.elo_low || []).map(finiteOrNull),
+    eloHi: (series.elo_high || []).map(finiteOrNull),
+    rates: series.score_rates || [],
+    outcomes: series.outcomes || [],
+  }};
+}}
+
+function chartsKey(d) {{
+  return [
+    d.n_done, d.wins, d.draws, d.losses,
+    (d.series && d.series.n) || 0,
+  ].join('|');
+}}
+
+function ensureCharts(d) {{
+  if (typeof Chart === 'undefined') {{
+    console.warn('Chart.js failed to load; charts skipped');
+    return;
+  }}
+  const s = seriesFrom(d);
+  if (!eloChart) {{
+    eloChart = new Chart(document.getElementById('eloChart'), {{
+      type: 'line',
+      data: {{
+        labels: s.labels,
+        datasets: [
+          {{
+            label: 'Elo CI high',
+            data: s.eloHi,
+            borderColor: 'rgba(110,168,224,0.35)',
+            backgroundColor: 'rgba(110,168,224,0.12)',
+            fill: '+1',
+            pointRadius: 0,
+            borderWidth: 1,
+            tension: 0.2,
+          }},
+          {{
+            label: 'Elo CI low',
+            data: s.eloLo,
+            borderColor: 'rgba(110,168,224,0.35)',
+            backgroundColor: 'transparent',
+            fill: false,
+            pointRadius: 0,
+            borderWidth: 1,
+            tension: 0.2,
+          }},
+          {{
+            label: 'Elo point',
+            data: s.elo,
+            borderColor: '#2fbfa8',
+            backgroundColor: '#2fbfa8',
+            pointRadius: s.n < 40 ? 3 : 0,
+            borderWidth: 2,
+            tension: 0.15,
+          }},
+        ]
       }},
-      {{
-        label: 'Elo CI low',
-        data: eloLo,
-        borderColor: 'rgba(110,168,224,0.35)',
-        backgroundColor: 'transparent',
-        fill: false,
-        pointRadius: 0,
-        borderWidth: 1,
-        tension: 0.2,
-      }},
-      {{
-        label: 'Elo point',
-        data: elo,
-        borderColor: '#2fbfa8',
-        backgroundColor: '#2fbfa8',
-        pointRadius: DATA.n_done < 40 ? 3 : 0,
-        borderWidth: 2,
-        tension: 0.15,
-      }},
-    ]
-  }},
-  options: {{
-    responsive: true,
-    interaction: {{ mode: 'index', intersect: false }},
-    plugins: {{
-      legend: {{ labels: {{ color: '#8d9aab' }} }},
-      tooltip: {{
-        callbacks: {{
-          label: (c) => {{
-            const v = c.parsed.y;
-            return c.dataset.label + ': ' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1));
+      options: {{
+        responsive: true,
+        animation: false,
+        interaction: {{ mode: 'index', intersect: false }},
+        plugins: {{
+          legend: {{ labels: {{ color: '#8d9aab' }} }},
+          tooltip: {{
+            callbacks: {{
+              label: (c) => {{
+                const v = c.parsed.y;
+                return c.dataset.label + ': ' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1));
+              }}
+            }}
+          }}
+        }},
+        scales: {{
+          x: {{
+            title: {{ display: true, text: 'Games', color: '#8d9aab' }},
+            ticks: {{ color: '#8d9aab', maxTicksLimit: 10 }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }}
+          }},
+          y: {{
+            title: {{ display: true, text: 'Elo', color: '#8d9aab' }},
+            ticks: {{ color: '#8d9aab' }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }},
+            suggestedMin: -400,
+            suggestedMax: 400,
           }}
         }}
       }}
-    }},
-    scales: {{
-      x: {{
-        title: {{ display: true, text: 'Games', color: '#8d9aab' }},
-        ticks: {{ color: '#8d9aab', maxTicksLimit: 10 }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }}
+    }});
+  }}
+  if (!mixChart) {{
+    mixChart = new Chart(document.getElementById('mixChart'), {{
+      type: 'doughnut',
+      data: {{
+        labels: ['Wins', 'Draws', 'Losses'],
+        datasets: [{{
+          data: [d.wins || 0, d.draws || 0, d.losses || 0],
+          backgroundColor: ['#5cb87a', '#8d9aab', '#d65a5a'],
+          borderWidth: 0,
+        }}]
       }},
-      y: {{
-        title: {{ display: true, text: 'Elo', color: '#8d9aab' }},
-        ticks: {{ color: '#8d9aab' }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }},
-        suggestedMin: -400,
-        suggestedMax: 400,
+      options: {{
+        animation: false,
+        plugins: {{
+          legend: {{ position: 'bottom', labels: {{ color: '#8d9aab' }} }}
+        }}
       }}
-    }}
+    }});
   }}
-}});
-
-new Chart(document.getElementById('mixChart'), {{
-  type: 'doughnut',
-  data: {{
-    labels: ['Wins', 'Draws', 'Losses'],
-    datasets: [{{
-      data: [DATA.wins, DATA.draws, DATA.losses],
-      backgroundColor: ['#5cb87a', '#8d9aab', '#d65a5a'],
-      borderWidth: 0,
-    }}]
-  }},
-  options: {{
-    plugins: {{
-      legend: {{ position: 'bottom', labels: {{ color: '#8d9aab' }} }}
-    }}
-  }}
-}});
-
-new Chart(document.getElementById('rateChart'), {{
-  type: 'line',
-  data: {{
-    labels,
-    datasets: [{{
-      label: 'Score rate',
-      data: DATA.series.score_rates,
-      borderColor: '#d4a35c',
-      backgroundColor: 'rgba(212,163,92,0.14)',
-      fill: true,
-      pointRadius: 0,
-      borderWidth: 2,
-      tension: 0.2,
-    }}]
-  }},
-  options: {{
-    plugins: {{ legend: {{ display: false }} }},
-    scales: {{
-      x: {{
-        ticks: {{ color: '#8d9aab', maxTicksLimit: 10 }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }}
+  if (!rateChart) {{
+    rateChart = new Chart(document.getElementById('rateChart'), {{
+      type: 'line',
+      data: {{
+        labels: s.labels,
+        datasets: [{{
+          label: 'Score rate',
+          data: s.rates,
+          borderColor: '#d4a35c',
+          backgroundColor: 'rgba(212,163,92,0.14)',
+          fill: true,
+          pointRadius: 0,
+          borderWidth: 2,
+          tension: 0.2,
+        }}]
       }},
-      y: {{
-        min: 0, max: 1,
-        ticks: {{
-          color: '#8d9aab',
-          callback: (v) => (v * 100).toFixed(0) + '%'
-        }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }}
+      options: {{
+        animation: false,
+        plugins: {{ legend: {{ display: false }} }},
+        scales: {{
+          x: {{
+            ticks: {{ color: '#8d9aab', maxTicksLimit: 10 }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }}
+          }},
+          y: {{
+            min: 0, max: 1,
+            ticks: {{
+              color: '#8d9aab',
+              callback: (v) => (v * 100).toFixed(0) + '%'
+            }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }}
+          }}
+        }}
       }}
-    }}
+    }});
   }}
-}});
+}}
 
-const strip = document.getElementById('strip');
-DATA.series.outcomes.forEach((o) => {{
-  const s = document.createElement('span');
-  s.className = o;
-  s.title = o;
-  strip.appendChild(s);
-}});
-
-(function tickClocks() {{
-  const el = document.getElementById('clock-state');
-  if (!el) return;
-  let state;
-  try {{ state = JSON.parse(el.textContent || '{{}}'); }} catch (_) {{ return; }}
-  const pageLoaded = Date.now();
-  const baseThink = Number(state.think_elapsed_s || 0);
-  const thinking = !!state.thinking;
-  const turn = state.turn;
-
-  function fmt(sec) {{
-    sec = Math.max(0, Number(sec) || 0);
-    const m = Math.floor(sec / 60);
-    const s = sec - m * 60;
-    return m + ':' + s.toFixed(1).padStart(4, '0');
+function updateCharts(d) {{
+  const key = chartsKey(d);
+  if (key === lastChartsKey && eloChart && mixChart && rateChart) return;
+  lastChartsKey = key;
+  const created = !eloChart || !mixChart || !rateChart;
+  if (created) ensureCharts(d);
+  const s = seriesFrom(d);
+  if (!created) {{
+    eloChart.data.labels = s.labels;
+    eloChart.data.datasets[0].data = s.eloHi;
+    eloChart.data.datasets[1].data = s.eloLo;
+    eloChart.data.datasets[2].data = s.elo;
+    eloChart.data.datasets[2].pointRadius = s.n < 40 ? 3 : 0;
+    mixChart.data.datasets[0].data = [d.wins || 0, d.draws || 0, d.losses || 0];
+    rateChart.data.labels = s.labels;
+    rateChart.data.datasets[0].data = s.rates;
+    eloChart.update('none');
+    mixChart.update('none');
+    rateChart.update('none');
   }}
 
-  function paint() {{
-    const drift = thinking ? (Date.now() - pageLoaded) / 1000 : 0;
-    let w = Number(state.white_clock_s) || 0;
-    let b = Number(state.black_clock_s) || 0;
-    // Server already deducted think_elapsed into clock_* when thinking;
-    // keep ticking the active side locally between refreshes.
-    if (thinking) {{
-      if (turn === 'white') w = Math.max(0, w - drift);
-      else b = Math.max(0, b - drift);
-    }}
-    const cw = document.getElementById('clock-white');
-    const cb = document.getElementById('clock-black');
-    if (cw) cw.textContent = fmt(w);
-    if (cb) cb.textContent = fmt(b);
-    const tl = document.getElementById('think-live');
-    if (tl && thinking) tl.textContent = 'thinking ' + (baseThink + drift).toFixed(1) + 's';
-    requestAnimationFrame(paint);
+  const strip = document.getElementById('strip');
+  strip.innerHTML = '';
+  s.outcomes.forEach((o) => {{
+    const el = document.createElement('span');
+    el.className = o;
+    el.title = o;
+    strip.appendChild(el);
+  }});
+}}
+
+function applyData(d) {{
+  if (!d || d.change_key === lastChangeKey) return;
+  lastChangeKey = d.change_key;
+  DATA = d;
+
+  document.getElementById('match-line').innerHTML =
+    `<strong>${{escapeHtml(d.engine_a)}}</strong> vs <strong>${{escapeHtml(d.engine_b)}}</strong>`
+    + ` · ${{escapeHtml(d.mode)}} · depth ${{escapeHtml(d.depth)}}`
+    + ` · score from ${{escapeHtml(d.engine_a)}} perspective`;
+
+  let pills = `<span class="pill${{d.status === 'running' ? ' live' : ''}}">${{escapeHtml(d.status)}}</span>`;
+  pills += `<span class="pill">${{escapeHtml(d.env_a_eval)}} vs ${{escapeHtml(d.env_b_eval)}}</span>`;
+  pills += '<span class="pill">python-chess board</span>';
+  pills += `<span class="pill">${{d.sf_available ? ('Stockfish ' + escapeHtml(d.sf_label)) : 'Stockfish off'}}</span>`;
+  pills += '<span class="pill">poll 4s · charts on change</span>';
+  if (d.live_missing) pills += '<span class="pill warn">live sidecar stale / missing</span>';
+  document.getElementById('status-row').innerHTML = pills;
+
+  document.getElementById('board-svg').innerHTML = d.board_svg || '';
+  document.getElementById('board-caption').textContent =
+    `Game ${{d.game_label}} / ${{d.n_games_live}} · ply ${{d.halfmoves}} · rendered with chess.svg.board`;
+
+  const fill = document.getElementById('eval-white-fill');
+  const label = document.getElementById('eval-label');
+  const pct = Number(d.sf_pct);
+  const sfPct = Number.isFinite(pct) ? pct : 50;
+  if (fill) fill.style.height = sfPct.toFixed(2) + '%';
+  if (label) {{
+    label.textContent = d.sf_available ? d.sf_label : '—';
+    label.style.color = sfPct >= 50 ? '#111' : '#f0f0f0';
+    label.style.top = sfPct >= 50 ? 'auto' : '6px';
+    label.style.bottom = sfPct >= 50 ? '6px' : 'auto';
   }}
-  paint();
-}})();
+  const evalMeta = document.getElementById('eval-meta');
+  if (d.sf_available) {{
+    evalMeta.textContent =
+      'Stockfish d' + d.sf_depth + ' · ' + d.sf_label
+      + (d.sf_best && d.sf_best !== '—' ? (' · best ' + d.sf_best) : '')
+      + (d.sf_pv ? (' · ' + d.sf_pv) : '');
+  }} else {{
+    evalMeta.textContent =
+      'Stockfish unavailable — install stockfish or set ANCE_STOCKFISH';
+  }}
+
+  document.getElementById('game-title').textContent = 'Game ' + d.game_label;
+  document.getElementById('name-black').textContent = d.black || '—';
+  document.getElementById('name-white').textContent = d.white || '—';
+  document.getElementById('tag-black').textContent =
+    'Black · ' + JSON.stringify(d.black_env || {{}});
+  document.getElementById('tag-white').textContent =
+    'White · ' + JSON.stringify(d.white_env || {{}});
+  document.getElementById('seat-black').className =
+    'seat' + (d.turn === 'black' ? ' active' : '');
+  document.getElementById('seat-white').className =
+    'seat' + (d.turn === 'white' ? ' active' : '');
+
+  const check = d.in_check ? '<span class="badge check">CHECK</span>' : '';
+  const thinkLive = d.thinking ? ' · <span id="think-live">searching…</span>' : '';
+  const note = d.live_note ? (' · ' + escapeHtml(d.live_note)) : '';
+  document.getElementById('thinking').innerHTML =
+    `Thinking: <strong>${{escapeHtml(d.thinker)}}</strong> (${{escapeHtml(d.turn)}})${{check}}${{thinkLive}}<br/>`
+    + `Last: <strong style="color:var(--ink)">${{escapeHtml(d.last_san)}}</strong>`
+    + ` · think ${{escapeHtml(d.last_think_s)}}`
+    + ` · material ${{escapeHtml(d.material_balance)}}`
+    + note;
+
+  document.getElementById('meta-material').textContent =
+    Number(d.material_white || 0).toFixed(0) + ' / ' + Number(d.material_black || 0).toFixed(0);
+  document.getElementById('meta-pieces').textContent = d.piece_count;
+  document.getElementById('meta-opening').textContent = d.opening_index;
+  document.getElementById('meta-updated').textContent = d.live_updated || '—';
+  document.getElementById('moves').innerHTML = d.moves_html || '';
+  document.getElementById('fen').textContent = 'FEN ' + (d.fen || '');
+
+  document.getElementById('progress-bar').style.width =
+    Number(d.pct || 0).toFixed(3) + '%';
+  document.getElementById('progress-left').textContent =
+    `${{d.n_done || 0}} / ${{d.n_target || 0}} games (${{Number(d.pct || 0).toFixed(1)}}%)`;
+  document.getElementById('progress-right').textContent =
+    `elapsed ${{d.elapsed_hms}} · ETA ${{d.eta_hms}} · ~${{Number(d.pace_s || 0).toFixed(0)}}s/game`;
+
+  document.getElementById('stat-elo').textContent = d.elo_fmt || '—';
+  document.getElementById('stat-elo-hint').textContent =
+    `95% CI [${{d.elo_lo_fmt}}, ${{d.elo_hi_fmt}}]`;
+  document.getElementById('stat-rate').textContent = d.score_rate_pct || '—';
+  document.getElementById('stat-wdl').textContent =
+    `W–D–L = ${{d.wins || 0}}–${{d.draws || 0}}–${{d.losses || 0}}`;
+  const d12 = document.getElementById('stat-d12');
+  d12.textContent = d.d12_pass ? 'PASS' : 'OPEN';
+  d12.style.color = d.d12_pass ? 'var(--win)' : 'var(--warn)';
+  document.getElementById('stat-sample').textContent = d.n_done || 0;
+  document.getElementById('stat-sample-hint').textContent =
+    `target ${{d.n_target || 0}} · depth ${{d.depth}}`;
+
+  document.getElementById('footer').innerHTML =
+    `Checkpoint: ${{escapeHtml(d.source)}}<br/>`
+    + `Live: ${{escapeHtml(d.live_source || '—')}} · generated ${{escapeHtml(d.generated_at)}} UTC<br/>`
+    + `<code>python -m ance.tools.gauntlet_dashboard --serve --open</code>`;
+
+  clockState = {{
+    turn: d.turn || 'white',
+    thinking: !!d.thinking,
+    think_elapsed_s: d.think_elapsed_s || 0,
+    white_clock_s: d.white_clock_s || 0,
+    black_clock_s: d.black_clock_s || 0,
+  }};
+  clockPageLoaded = Date.now();
+  updateCharts(d);
+}}
+
+function paintClocks() {{
+  const drift = clockState.thinking ? (Date.now() - clockPageLoaded) / 1000 : 0;
+  let w = Number(clockState.white_clock_s) || 0;
+  let b = Number(clockState.black_clock_s) || 0;
+  if (clockState.thinking) {{
+    if (clockState.turn === 'white') w = Math.max(0, w - drift);
+    else b = Math.max(0, b - drift);
+  }}
+  const cw = document.getElementById('clock-white');
+  const cb = document.getElementById('clock-black');
+  if (cw) cw.textContent = fmtClock(w);
+  if (cb) cb.textContent = fmtClock(b);
+  const tl = document.getElementById('think-live');
+  if (tl && clockState.thinking) {{
+    tl.textContent = 'thinking ' + (Number(clockState.think_elapsed_s || 0) + drift).toFixed(1) + 's';
+  }}
+  requestAnimationFrame(paintClocks);
+}}
+
+async function pollOnce() {{
+  try {{
+    const res = await fetch('/api.json', {{ cache: 'no-store' }});
+    if (!res.ok) return;
+    const next = await res.json();
+    applyData(next);
+  }} catch (_) {{
+    // file:// or transient errors — keep current view
+  }}
+}}
+
+applyData(DATA);
+paintClocks();
+
+const canPoll = location.protocol === 'http:' || location.protocol === 'https:';
+if (canPoll) {{
+  setInterval(pollOnce, 4000);
+}} else {{
+  const meta = document.createElement('meta');
+  meta.httpEquiv = 'refresh';
+  meta.content = '4';
+  document.head.appendChild(meta);
+}}
 </script>
 </body>
 </html>
 """
+    return html, payload
+
 
 
 def generate(
@@ -990,7 +1206,7 @@ def generate(
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
-    html = render_html(
+    html, payload = render_html(
         checkpoint,
         series,
         live,
@@ -1017,6 +1233,7 @@ def generate(
         "halfmoves": (live or {}).get("halfmoves"),
         "last_san": (live or {}).get("last_san"),
         "sf_eval": sf_eval,
+        "payload": payload,
     }
 
 
@@ -1035,7 +1252,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--watch", action="store_true")
     p.add_argument("--interval", type=float, default=4.0)
     p.add_argument("--serve", action="store_true",
-                   help="HTTP server: regenerate HTML on every request (preferred)")
+                   help="HTTP server: HTML shell + /api.json poll (preferred)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--open", action="store_true")
@@ -1120,7 +1337,7 @@ def _serve(
     open_browser: bool,
     analyzer: StockfishAnalyzer | None = None,
 ) -> int:
-    """Serve a freshly regenerated dashboard on every GET / (no stale file://)."""
+    """Serve HTML shell once; clients poll /api.json every 4s (charts on change)."""
 
     class Handler(BaseHTTPRequestHandler):
         def handle_one_request(self) -> None:
@@ -1131,20 +1348,27 @@ def _serve(
 
         def do_GET(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
-            if path != "/" and path not in ("/index.html", "/dashboard.html"):
+            want_api = path in ("/api.json", "/api")
+            want_html = path in ("/", "/index.html", "/dashboard.html")
+            if not want_api and not want_html:
                 # favicon / chrome probes / anything else - never send_error
                 # with non-latin-1 messages (crashes the handler).
                 self.send_response(204)
                 self.end_headers()
                 return
             if not checkpoint.exists():
-                body = (
-                    "<html><body style='font-family:monospace;background:#12151a;"
-                    "color:#eef2f6;padding:2rem'>"
-                    f"Waiting for checkpoint: {checkpoint}</body></html>"
-                ).encode()
+                if want_api:
+                    body = b'{"status":"waiting","change_key":"waiting","n_done":0}'
+                    ctype = "application/json; charset=utf-8"
+                else:
+                    body = (
+                        "<html><body style='font-family:monospace;background:#12151a;"
+                        "color:#eef2f6;padding:2rem'>"
+                        f"Waiting for checkpoint: {checkpoint}</body></html>"
+                    ).encode()
+                    ctype = "text/html; charset=utf-8"
                 self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Type", ctype)
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
@@ -1158,31 +1382,46 @@ def _serve(
                     board_size=board_size,
                     analyzer=analyzer,
                 )
-                html = out.read_bytes()
+                if want_api:
+                    body = json.dumps(
+                        info["payload"], allow_nan=False
+                    ).encode("utf-8")
+                    ctype = "application/json; charset=utf-8"
+                else:
+                    body = out.read_bytes()
+                    ctype = "text/html; charset=utf-8"
             except Exception as exc:  # noqa: BLE001 - keep server alive
                 msg = f"dashboard generate failed: {type(exc).__name__}: {exc}"
                 print(msg)
-                body = (
-                    "<html><body style='font-family:monospace;background:#12151a;"
-                    f"color:#eef2f6;padding:2rem'>{msg}</body></html>"
-                ).encode()
+                if want_api:
+                    body = json.dumps(
+                        {"error": msg, "change_key": f"error:{msg}"}
+                    ).encode("utf-8")
+                    ctype = "application/json; charset=utf-8"
+                else:
+                    body = (
+                        "<html><body style='font-family:monospace;background:#12151a;"
+                        f"color:#eef2f6;padding:2rem'>{msg}</body></html>"
+                    ).encode()
+                    ctype = "text/html; charset=utf-8"
                 self.send_response(500)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Type", ctype)
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
                 return
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Type", ctype)
             self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(html)))
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            self.wfile.write(html)
+            self.wfile.write(body)
             agg = info.get("aggregate") or {}
             sf = (info.get("sf_eval") or {}).get("label", "—")
+            kind = "api" if want_api else "html"
             print(
-                f"GET / games={info['n_done']} "
+                f"GET /{kind} games={info['n_done']} "
                 f"live={info.get('game_index')} ply={info.get('halfmoves')} "
                 f"last={info.get('last_san')} "
                 f"WDL={agg.get('wins')}-{agg.get('draws')}-{agg.get('losses')} "
@@ -1197,7 +1436,7 @@ def _serve(
     print(f"ANCE dashboard at {url}")
     print(f"  checkpoint: {checkpoint}")
     print(f"  live:       {live}")
-    print("  each browser refresh regenerates from live JSON + checkpoint")
+    print("  /api.json polled every 4s; charts update only when WDL/n_done changes")
     if open_browser:
         webbrowser.open(url)
     try:
