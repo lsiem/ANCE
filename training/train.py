@@ -176,6 +176,10 @@ def run_training(
 
     if resume_from_checkpoint:
         load_checkpoint(model, optimizer, resume_from_checkpoint)
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)
 
     train_loader = DataLoader(
         ShardDataset(
