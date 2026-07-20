@@ -38,10 +38,8 @@ Phase 4 net was too weak / overfit (~13k train). A/B/C upgrades landed:
 ## Resume commands
 
 ```bash
-# Training dashboard
-.venv/bin/python -u -m ance.tools.training_dashboard \
-  --serve --host 127.0.0.1 --port 8766 \
-  --out-dir .planning/phases/04-offline-nnue-training-pipeline/scale-run
+# Gauntlet (resumes checkpoint)
+.venv/bin/python -u .planning/phases/05-nnue-swap-in-elo-gauntlet/run_gauntlet_05_03.py
 
 # Gauntlet dashboard (resume 05-03)
 .venv/bin/python -u -m ance.tools.gauntlet_dashboard \
@@ -56,3 +54,4 @@ Phase 4 net was too weak / overfit (~13k train). A/B/C upgrades landed:
 - `.planning/phases/04-offline-nnue-training-pipeline/scale-run/checkpoints/`
 - `.planning/phases/04-offline-nnue-training-pipeline/scale-run/net.safetensors`
 - `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json`
+- `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-run.log`
