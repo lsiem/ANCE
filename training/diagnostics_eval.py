@@ -51,9 +51,11 @@ def check_material_signs(nnue: NnueEval) -> DiagnosticResult:
 def check_color_flip(nnue: NnueEval, tol: int = 30) -> DiagnosticResult:
     fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
     board = chess.Board(fen)
+    original_turn = board.turn
     a = nnue.evaluate(Position(board))
     flipped = board.mirror()
-    # After color mirror, STM flips; STM-relative score should match.
+    flipped.turn = not original_turn
+    # After color mirror + side-to-move flip, STM-relative score should match.
     b = nnue.evaluate(Position(flipped))
     ok = abs(a - b) <= tol
     return DiagnosticResult("color_flip", ok, f"a={a} b={b} tol={tol}")

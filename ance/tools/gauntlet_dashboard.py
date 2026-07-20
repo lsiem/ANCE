@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import math
 import time
@@ -93,8 +94,8 @@ def _format_moves(sans: list[str]) -> str:
     rows: list[str] = []
     for i in range(0, len(sans), 2):
         num = i // 2 + 1
-        white = sans[i]
-        black = sans[i + 1] if i + 1 < len(sans) else ""
+        white = html.escape(sans[i])
+        black = html.escape(sans[i + 1]) if i + 1 < len(sans) else ""
         rows.append(
             f"<div class='ply'><span class='n'>{num}.</span> "
             f"<span class='w'>{white}</span> "
