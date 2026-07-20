@@ -31,6 +31,12 @@ CHECKPOINT = Path(
         ".planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json",
     )
 )
+LIVE = Path(
+    os.environ.get(
+        "ANCE_GAUNTLET_LIVE_PATH",
+        ".planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-live.json",
+    )
+)
 LOG = Path(
     ".planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-run.log"
 )
@@ -75,9 +81,11 @@ def main() -> int:
         str(BUDGET_SECONDS),
     ]
     LOG.parent.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("ANCE_GAUNTLET_LIVE_PATH", str(LIVE))
     with LOG.open("a", encoding="utf-8") as log:
         log.write(f"runner start {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n")
         log.write(f"command {shlex.join(command)}\n")
+        log.write(f"live {LIVE}\n")
         log.flush()
     report = gauntlet.run_gauntlet(
         spec_nnue,

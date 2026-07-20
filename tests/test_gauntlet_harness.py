@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 from pathlib import Path
@@ -312,6 +313,54 @@ def test_fixed_opening_file_is_balanced_and_parseable() -> None:
             if piece.color == chess.BLACK
         )
         assert white_material == black_material
+
+
+def test_live_sidecar_defaults_beside_checkpoint(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("ANCE_GAUNTLET_LIVE_PATH", raising=False)
+    checkpoint = tmp_path / "05-gauntlet-checkpoint.json"
+    live = gauntlet.default_live_path(checkpoint)
+    assert live == tmp_path / "05-gauntlet-live.json"
+
+    resolved = gauntlet.ensure_live_sidecar_env(checkpoint)
+    assert resolved == live
+    assert os.environ["ANCE_GAUNTLET_LIVE_PATH"] == str(live)
+
+    # Second call keeps an explicit override.
+    custom = tmp_path / "custom-live.json"
+    monkeypatch.setenv("ANCE_GAUNTLET_LIVE_PATH", str(custom))
+    assert gauntlet.ensure_live_sidecar_env(checkpoint) == custom
+
+
+def test_play_gauntlet_game_writes_live_clocks_and_moves(
+    tmp_path: Path, monkeypatch
+) -> None:
+    live = tmp_path / "05-gauntlet-live.json"
+    monkeypatch.setenv("ANCE_GAUNTLET_LIVE_PATH", str(live))
+    white = _ScriptedEngine(["e2e4"])
+    black = _ScriptedEngine(["e7e5"])
+    stop = threading.Event()
+    record = gauntlet.play_gauntlet_game(
+        white,
+        black,
+        chess.STARTING_FEN,
+        tc_base_s=30.0,
+        tc_inc_s=0.3,
+        max_halfmoves=2,
+        game_key=0,
+        stop_event=stop,
+        deadline=None,
+        search_depth=3,
+        live_meta={"game_index": 0, "white": "nnue", "black": "handcrafted"},
+    )
+    assert live.is_file()
+    payload = json.loads(live.read_text(encoding="utf-8"))
+    assert payload["game_index"] == 0
+    assert payload["fen"]
+    assert payload.get("san_moves")
+    assert payload["white_clock_s"] is not None
+    assert payload["black_clock_s"] is not None
+    assert isinstance(payload.get("san_moves"), list)
+    assert record["moves"] >= 1
 
 
 @pytest.mark.slow

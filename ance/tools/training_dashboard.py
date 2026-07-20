@@ -72,15 +72,21 @@ def render_html(
     source_live: Path | None,
     board_caption: str,
     fen: str,
-) -> str:
+) -> tuple[str, dict]:
     m = metrics or {}
     live = live or {}
     phase = str(live.get("phase") or "")
-    is_labeling = phase == "labeling"
-    is_generating = phase == "generating"
+    metrics_status = str(m.get("status") or "")
+    # Prefer metrics once training has started — stale labeling sidecars
+    # otherwise keep the UI frozen on "labeling live" at 100%.
+    training_active = metrics_status in {"running", "completed"} or bool(
+        m.get("train_losses") or m.get("val_losses") or m.get("epoch")
+    )
+    is_labeling = phase == "labeling" and not training_active
+    is_generating = phase == "generating" and not training_active
 
     status = str(
-        m.get("status")
+        metrics_status
         or (phase if phase in {"labeling", "generating"} else "waiting")
     )
     epoch = int(m.get("epoch") or 0)
@@ -114,9 +120,48 @@ def render_html(
     current_lr = learning_rates[-1] if learning_rates else lr
     last_train = _finite(train_losses[-1] if train_losses else None)
     last_val = _finite(val_losses[-1] if val_losses else None)
+    phase_display = str(live.get("phase") or status)
+    position_title = "Labeling position" if is_labeling else "Sample position"
+
+    workers_bit = (
+        f" · {int(label_workers)} workers"
+        if is_labeling and label_workers is not None
+        else ""
+    )
+    label_rate_eta = (
+        f"rate {label_rate:.2f} pos/s{workers_bit} · ETA {_fmt_hms(label_eta)}"
+        if is_labeling
+        else "random-walk FENs"
+    )
+    label_section_title = (
+        f"Labeling (Stockfish depth {label_depth})"
+        if is_labeling
+        else "Generating positions"
+    )
+    early_reason = (
+        f"early stop: {early_stop_reason or 'early stop'}" if stopped_early else ""
+    )
+    change_key = "|".join(
+        [
+            status,
+            str(epoch),
+            str(global_step),
+            str(updated),
+            str(label_done),
+            str(label_total),
+            str(len(train_losses)),
+            str(best_val),
+            str(best_epoch),
+            fen,
+            str(is_labeling),
+            str(is_generating),
+            early_reason,
+        ]
+    )
 
     payload = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "change_key": change_key,
         "source_metrics": str(source_metrics),
         "source_live": str(source_live) if source_live else None,
         "status": status,
@@ -137,6 +182,7 @@ def render_html(
         "device": device,
         "stopped_early": stopped_early,
         "early_stop_reason": early_stop_reason,
+        "early_reason": early_reason,
         "is_labeling": is_labeling,
         "is_generating": is_generating,
         "label_done": label_done,
@@ -146,63 +192,27 @@ def render_html(
         "label_eta": label_eta,
         "label_depth": label_depth,
         "label_workers": label_workers,
+        "label_section_title": label_section_title,
+        "label_rate_eta": label_rate_eta,
         "last_train_loss": last_train,
         "last_val_loss": last_val,
+        "updated": updated,
+        "checkpoint_dir": checkpoint_dir,
+        "best_checkpoint": best_checkpoint,
+        "phase_display": phase_display,
+        "position_title": position_title,
+        "board_caption": board_caption,
+        "board_svg": board_svg,
         "fen": fen,
+        "show_epoch_progress": bool(epochs or train_losses),
+        "show_label_progress": bool(is_labeling or is_generating),
     }
     data_json = json.dumps(payload, allow_nan=False)
 
-    early_pill = ""
-    if stopped_early:
-        reason = early_stop_reason or "early stop"
-        early_pill = f'<span class="pill warn">early stop: {reason}</span>'
-
-    labeling_section = ""
-    if is_labeling or is_generating:
-        section_title = (
-            f"Labeling (Stockfish depth {label_depth})"
-            if is_labeling
-            else "Generating positions"
-        )
-        workers_bit = (
-            f" · {int(label_workers)} workers"
-            if is_labeling and label_workers is not None
-            else ""
-        )
-        rate_eta = (
-            f"rate {label_rate:.2f} pos/s{workers_bit} · ETA {_fmt_hms(label_eta)}"
-            if is_labeling
-            else "random-walk FENs"
-        )
-        labeling_section = f"""
-    <div class="progress">
-      <div class="section-title">{section_title}</div>
-      <div class="bar"><i style="width:{label_pct:.3f}%"></i></div>
-      <div class="progress-meta">
-        <span>{label_done:,} / {label_total:,} positions ({label_pct:.1f}%)</span>
-        <span>{rate_eta}</span>
-      </div>
-    </div>
-"""
-
-    epoch_section = ""
-    if epochs or train_losses:
-        epoch_section = f"""
-    <div class="progress">
-      <div class="section-title">Training epochs</div>
-      <div class="bar"><i style="width:{epoch_pct:.3f}%"></i></div>
-      <div class="progress-meta">
-        <span>epoch {epoch} / {epochs} ({epoch_pct:.1f}%)</span>
-        <span>global step {global_step:,}</span>
-      </div>
-    </div>
-"""
-
-    return f"""<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="refresh" content="4" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ANCE · NNUE training</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -469,90 +479,78 @@ def render_html(
   <div class="wrap">
     <header class="hero">
       <div class="brand">ANCE <span>· training</span></div>
-      <div class="subline">
-        NNUE offline pipeline · <strong>{device}</strong>
-        · K={k_scale if k_scale is not None else '—'}
-        · updated {updated}
-      </div>
-      <div class="status-row">
-        <span class="pill {'live' if status in ('running', 'labeling', 'generating') else ''}">{status}</span>
-        {'<span class="pill live">labeling live</span>' if is_labeling else ''}
-        {'<span class="pill live">generating</span>' if is_generating else ''}
-        <span class="pill">batch {batch_size if batch_size is not None else '—'}</span>
-        <span class="pill">lr {current_lr if current_lr is not None else lr if lr is not None else '—'}</span>
-        {early_pill}
-        <span class="pill">refresh 4s</span>
-      </div>
+      <div class="subline" id="subline"></div>
+      <div class="status-row" id="status-row"></div>
     </header>
 
     <section class="stage" aria-label="Position board">
       <div class="board-stage">
-        {board_svg}
-        <div class="board-caption">{board_caption}</div>
+        <div id="board-svg">{board_svg}</div>
+        <div class="board-caption" id="board-caption">{board_caption}</div>
       </div>
       <aside class="instrument">
-        <h2>{'Labeling position' if is_labeling else 'Sample position'}</h2>
+        <h2 id="position-title">{position_title}</h2>
         <div class="meta-grid">
           <div class="meta-cell">
             <div class="k">Phase</div>
-            <div class="v">{live.get('phase') or status}</div>
+            <div class="v" id="meta-phase">{phase_display}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Epoch</div>
-            <div class="v">{epoch if epoch else '—'} / {epochs if epochs else '—'}</div>
+            <div class="v" id="meta-epoch">{epoch if epoch else '—'} / {epochs if epochs else '—'}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Train loss</div>
-            <div class="v">{_fmt_loss(last_train)}</div>
+            <div class="v" id="meta-train">{_fmt_loss(last_train)}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Val loss</div>
-            <div class="v">{_fmt_loss(last_val)}</div>
+            <div class="v" id="meta-val">{_fmt_loss(last_val)}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Best val</div>
-            <div class="v">{_fmt_loss(best_val)}</div>
+            <div class="v" id="meta-best-val">{_fmt_loss(best_val)}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Best epoch</div>
-            <div class="v">{best_epoch if best_epoch else '—'}</div>
+            <div class="v" id="meta-best-epoch">{best_epoch if best_epoch else '—'}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Weight decay</div>
-            <div class="v">{weight_decay if weight_decay is not None else '—'}</div>
+            <div class="v" id="meta-wd">{weight_decay if weight_decay is not None else '—'}</div>
           </div>
           <div class="meta-cell">
             <div class="k">Global step</div>
-            <div class="v">{global_step:,}</div>
+            <div class="v" id="meta-step">{global_step:,}</div>
           </div>
         </div>
-        <div class="fen">FEN {fen}</div>
+        <div class="fen" id="fen">FEN {fen}</div>
       </aside>
     </section>
 
-    {labeling_section}
-    {epoch_section}
+    <div id="label-progress" class="progress" style="display:none"></div>
+    <div id="epoch-progress" class="progress" style="display:none"></div>
 
     <div class="grid">
       <div class="stat">
         <div class="label">Best val loss</div>
-        <div class="value" style="color: var(--val)">{_fmt_loss(best_val)}</div>
-        <div class="hint">epoch {best_epoch if best_epoch else '—'}</div>
+        <div class="value" style="color: var(--val)" id="stat-best-val">{_fmt_loss(best_val)}</div>
+        <div class="hint" id="stat-best-epoch">epoch {best_epoch if best_epoch else '—'}</div>
       </div>
       <div class="stat">
         <div class="label">Last train loss</div>
-        <div class="value" style="color: var(--hc)">{_fmt_loss(last_train)}</div>
-        <div class="hint">{len(train_losses)} epochs logged</div>
+        <div class="value" style="color: var(--hc)" id="stat-train">{_fmt_loss(last_train)}</div>
+        <div class="hint" id="stat-train-hint">{len(train_losses)} epochs logged</div>
       </div>
       <div class="stat">
         <div class="label">Last val loss</div>
-        <div class="value" style="color: var(--loss)">{_fmt_loss(last_val)}</div>
-        <div class="hint">{len(val_losses)} val points</div>
+        <div class="value" style="color: var(--loss)" id="stat-val">{_fmt_loss(last_val)}</div>
+        <div class="hint" id="stat-val-hint">{len(val_losses)} val points</div>
       </div>
       <div class="stat">
         <div class="label">Device</div>
-        <div class="value" style="font-size:1.1rem">{device}</div>
-        <div class="hint">batch {batch_size if batch_size is not None else '—'}</div>
+        <div class="value" style="font-size:1.1rem" id="stat-device">{device}</div>
+        <div class="hint" id="stat-batch">batch {batch_size if batch_size is not None else '—'}</div>
       </div>
     </div>
 
@@ -567,117 +565,284 @@ def render_html(
       </div>
     </div>
 
-    <footer>
-      Metrics: {source_metrics}<br/>
-      Live: {source_live or '—'} · generated {payload['generated_at']} UTC<br/>
-      Checkpoint dir: {checkpoint_dir}<br/>
-      Best checkpoint: {best_checkpoint}<br/>
-      <code>python -m ance.tools.training_dashboard --serve --open</code>
-    </footer>
+    <footer id="footer"></footer>
   </div>
 
 <script>
-const DATA = {data_json};
+let DATA = {data_json};
+let lastChangeKey = null;
+let lossChart = null;
+let lrChart = null;
 
 function finiteOrNull(v) {{
   return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
 }}
 
-const nEpochs = Math.max(DATA.train_losses.length, DATA.val_losses.length);
-const labels = Array.from({{length: nEpochs}}, (_, i) => i + 1);
-const trainLoss = DATA.train_losses.map(finiteOrNull);
-const valLoss = DATA.val_losses.map(finiteOrNull);
-const lrs = DATA.learning_rates.map(finiteOrNull);
+function fmtLoss(v) {{
+  return finiteOrNull(v) == null ? '—' : Number(v).toFixed(6);
+}}
 
-new Chart(document.getElementById('lossChart'), {{
-  type: 'line',
-  data: {{
-    labels,
-    datasets: [
-      {{
-        label: 'Train loss',
-        data: trainLoss,
-        borderColor: '#d4a35c',
-        backgroundColor: 'rgba(212,163,92,0.12)',
-        fill: false,
-        pointRadius: nEpochs < 40 ? 3 : 0,
-        borderWidth: 2,
-        tension: 0.15,
+function fmtInt(v) {{
+  return (typeof v === 'number' && Number.isFinite(v))
+    ? Math.trunc(v).toLocaleString('en-US')
+    : '—';
+}}
+
+function escapeHtml(s) {{
+  return String(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}}
+
+function seriesFrom(d) {{
+  const nEpochs = Math.max(d.train_losses.length, d.val_losses.length);
+  const labels = Array.from({{length: nEpochs}}, (_, i) => i + 1);
+  const trainLoss = d.train_losses.map(finiteOrNull);
+  const valLoss = d.val_losses.map(finiteOrNull);
+  const lrs = d.learning_rates.map(finiteOrNull);
+  const lrData = lrs.length
+    ? lrs
+    : (d.lr != null ? Array(nEpochs).fill(d.lr) : []);
+  return {{ nEpochs, labels, trainLoss, valLoss, lrData }};
+}}
+
+function ensureCharts(d) {{
+  if (typeof Chart === 'undefined') {{
+    console.warn('Chart.js failed to load; loss charts skipped');
+    return;
+  }}
+  const s = seriesFrom(d);
+  if (!lossChart) {{
+    lossChart = new Chart(document.getElementById('lossChart'), {{
+      type: 'line',
+      data: {{
+        labels: s.labels,
+        datasets: [
+          {{
+            label: 'Train loss',
+            data: s.trainLoss,
+            borderColor: '#d4a35c',
+            backgroundColor: 'rgba(212,163,92,0.12)',
+            fill: false,
+            pointRadius: s.nEpochs < 40 ? 3 : 0,
+            borderWidth: 2,
+            tension: 0.15,
+          }},
+          {{
+            label: 'Val loss',
+            data: s.valLoss,
+            borderColor: '#6ea8e0',
+            backgroundColor: 'rgba(110,168,224,0.12)',
+            fill: false,
+            pointRadius: s.nEpochs < 40 ? 3 : 0,
+            borderWidth: 2,
+            tension: 0.15,
+          }},
+        ]
       }},
-      {{
-        label: 'Val loss',
-        data: valLoss,
-        borderColor: '#6ea8e0',
-        backgroundColor: 'rgba(110,168,224,0.12)',
-        fill: false,
-        pointRadius: nEpochs < 40 ? 3 : 0,
-        borderWidth: 2,
-        tension: 0.15,
-      }},
-    ]
-  }},
-  options: {{
-    responsive: true,
-    interaction: {{ mode: 'index', intersect: false }},
-    plugins: {{
-      legend: {{ labels: {{ color: '#8d9aab' }} }},
-      tooltip: {{
-        callbacks: {{
-          label: (c) => {{
-            const v = c.parsed.y;
-            return c.dataset.label + ': ' + (v == null ? '—' : v.toFixed(6));
+      options: {{
+        responsive: true,
+        animation: false,
+        interaction: {{ mode: 'index', intersect: false }},
+        plugins: {{
+          legend: {{ labels: {{ color: '#8d9aab' }} }},
+          tooltip: {{
+            callbacks: {{
+              label: (c) => {{
+                const v = c.parsed.y;
+                return c.dataset.label + ': ' + (v == null ? '—' : v.toFixed(6));
+              }}
+            }}
+          }}
+        }},
+        scales: {{
+          x: {{
+            title: {{ display: true, text: 'Epoch', color: '#8d9aab' }},
+            ticks: {{ color: '#8d9aab', maxTicksLimit: 12 }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }}
+          }},
+          y: {{
+            title: {{ display: true, text: 'Loss', color: '#8d9aab' }},
+            ticks: {{ color: '#8d9aab' }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }},
           }}
         }}
       }}
-    }},
-    scales: {{
-      x: {{
-        title: {{ display: true, text: 'Epoch', color: '#8d9aab' }},
-        ticks: {{ color: '#8d9aab', maxTicksLimit: 12 }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }}
-      }},
-      y: {{
-        title: {{ display: true, text: 'Loss', color: '#8d9aab' }},
-        ticks: {{ color: '#8d9aab' }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }},
-      }}
-    }}
+    }});
   }}
-}});
+  if (!lrChart) {{
+    lrChart = new Chart(document.getElementById('lrChart'), {{
+      type: 'line',
+      data: {{
+        labels: s.labels,
+        datasets: [{{
+          label: 'LR',
+          data: s.lrData,
+          borderColor: '#2fbfa8',
+          backgroundColor: 'rgba(47,191,168,0.14)',
+          fill: true,
+          pointRadius: 0,
+          borderWidth: 2,
+          tension: 0.2,
+        }}]
+      }},
+      options: {{
+        animation: false,
+        plugins: {{ legend: {{ display: false }} }},
+        scales: {{
+          x: {{
+            ticks: {{ color: '#8d9aab', maxTicksLimit: 12 }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }}
+          }},
+          y: {{
+            ticks: {{ color: '#8d9aab' }},
+            grid: {{ color: 'rgba(44,53,66,0.7)' }}
+          }}
+        }}
+      }}
+    }});
+  }}
+}}
 
-new Chart(document.getElementById('lrChart'), {{
-  type: 'line',
-  data: {{
-    labels,
-    datasets: [{{
-      label: 'LR',
-      data: lrs.length ? lrs : (DATA.lr != null ? Array(nEpochs).fill(DATA.lr) : []),
-      borderColor: '#2fbfa8',
-      backgroundColor: 'rgba(47,191,168,0.14)',
-      fill: true,
-      pointRadius: 0,
-      borderWidth: 2,
-      tension: 0.2,
-    }}]
-  }},
-  options: {{
-    plugins: {{ legend: {{ display: false }} }},
-    scales: {{
-      x: {{
-        ticks: {{ color: '#8d9aab', maxTicksLimit: 12 }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }}
-      }},
-      y: {{
-        ticks: {{ color: '#8d9aab' }},
-        grid: {{ color: 'rgba(44,53,66,0.7)' }}
-      }}
-    }}
+function updateCharts(d) {{
+  if (!lossChart || !lrChart) {{
+    ensureCharts(d);
+    return;
   }}
-}});
+  const s = seriesFrom(d);
+  lossChart.data.labels = s.labels;
+  lossChart.data.datasets[0].data = s.trainLoss;
+  lossChart.data.datasets[1].data = s.valLoss;
+  lossChart.data.datasets[0].pointRadius = s.nEpochs < 40 ? 3 : 0;
+  lossChart.data.datasets[1].pointRadius = s.nEpochs < 40 ? 3 : 0;
+  lrChart.data.labels = s.labels;
+  lrChart.data.datasets[0].data = s.lrData;
+  lossChart.update('none');
+  lrChart.update('none');
+}}
+
+function applyData(d) {{
+  if (!d || d.change_key === lastChangeKey) return;
+  lastChangeKey = d.change_key;
+  DATA = d;
+
+  const liveStatuses = ['running', 'labeling', 'generating'];
+  const statusLive = liveStatuses.includes(d.status) ? ' live' : '';
+  let pills = `<span class="pill${{statusLive}}">${{escapeHtml(d.status)}}</span>`;
+  if (d.is_labeling) pills += '<span class="pill live">labeling live</span>';
+  if (d.is_generating) pills += '<span class="pill live">generating</span>';
+  pills += `<span class="pill">batch ${{d.batch_size != null ? escapeHtml(d.batch_size) : '—'}}</span>`;
+  const lrShow = d.current_lr != null ? d.current_lr : d.lr;
+  pills += `<span class="pill">lr ${{lrShow != null ? escapeHtml(lrShow) : '—'}}</span>`;
+  if (d.early_reason) pills += `<span class="pill warn">${{escapeHtml(d.early_reason)}}</span>`;
+  pills += '<span class="pill">poll 4s · charts on change</span>';
+  document.getElementById('status-row').innerHTML = pills;
+
+  document.getElementById('subline').innerHTML =
+    `NNUE offline pipeline · <strong>${{escapeHtml(d.device)}}</strong>`
+    + ` · K=${{d.k != null ? escapeHtml(d.k) : '—'}}`
+    + ` · updated ${{escapeHtml(d.updated || '—')}}`;
+
+  document.getElementById('board-svg').innerHTML = d.board_svg || '';
+  document.getElementById('board-caption').textContent = d.board_caption || '';
+  document.getElementById('position-title').textContent = d.position_title || 'Sample position';
+  document.getElementById('meta-phase').textContent = d.phase_display || d.status || '—';
+  document.getElementById('meta-epoch').textContent =
+    `${{d.epoch || '—'}} / ${{d.epochs || '—'}}`;
+  document.getElementById('meta-train').textContent = fmtLoss(d.last_train_loss);
+  document.getElementById('meta-val').textContent = fmtLoss(d.last_val_loss);
+  document.getElementById('meta-best-val').textContent = fmtLoss(d.best_val_loss);
+  document.getElementById('meta-best-epoch').textContent = d.best_epoch || '—';
+  document.getElementById('meta-wd').textContent =
+    d.weight_decay != null ? d.weight_decay : '—';
+  document.getElementById('meta-step').textContent = fmtInt(d.global_step);
+  document.getElementById('fen').textContent = 'FEN ' + (d.fen || '');
+
+  const labelEl = document.getElementById('label-progress');
+  if (d.show_label_progress) {{
+    labelEl.style.display = '';
+    labelEl.innerHTML =
+      `<div class="section-title">${{escapeHtml(d.label_section_title)}}</div>`
+      + `<div class="bar"><i style="width:${{Number(d.label_pct || 0).toFixed(3)}}%"></i></div>`
+      + `<div class="progress-meta">`
+      + `<span>${{fmtInt(d.label_done)}} / ${{fmtInt(d.label_total)}} positions`
+      + ` (${{Number(d.label_pct || 0).toFixed(1)}}%)</span>`
+      + `<span>${{escapeHtml(d.label_rate_eta || '')}}</span>`
+      + `</div>`;
+  }} else {{
+    labelEl.style.display = 'none';
+    labelEl.innerHTML = '';
+  }}
+
+  const epochEl = document.getElementById('epoch-progress');
+  if (d.show_epoch_progress) {{
+    epochEl.style.display = '';
+    epochEl.innerHTML =
+      `<div class="section-title">Training epochs</div>`
+      + `<div class="bar"><i style="width:${{Number(d.epoch_pct || 0).toFixed(3)}}%"></i></div>`
+      + `<div class="progress-meta">`
+      + `<span>epoch ${{d.epoch || 0}} / ${{d.epochs || 0}}`
+      + ` (${{Number(d.epoch_pct || 0).toFixed(1)}}%)</span>`
+      + `<span>global step ${{fmtInt(d.global_step)}}</span>`
+      + `</div>`;
+  }} else {{
+    epochEl.style.display = 'none';
+    epochEl.innerHTML = '';
+  }}
+
+  document.getElementById('stat-best-val').textContent = fmtLoss(d.best_val_loss);
+  document.getElementById('stat-best-epoch').textContent =
+    'epoch ' + (d.best_epoch || '—');
+  document.getElementById('stat-train').textContent = fmtLoss(d.last_train_loss);
+  document.getElementById('stat-train-hint').textContent =
+    (d.train_losses || []).length + ' epochs logged';
+  document.getElementById('stat-val').textContent = fmtLoss(d.last_val_loss);
+  document.getElementById('stat-val-hint').textContent =
+    (d.val_losses || []).length + ' val points';
+  document.getElementById('stat-device').textContent = d.device || '—';
+  document.getElementById('stat-batch').textContent =
+    'batch ' + (d.batch_size != null ? d.batch_size : '—');
+
+  document.getElementById('footer').innerHTML =
+    `Metrics: ${{escapeHtml(d.source_metrics)}}<br/>`
+    + `Live: ${{escapeHtml(d.source_live || '—')}} · generated ${{escapeHtml(d.generated_at)}} UTC<br/>`
+    + `Checkpoint dir: ${{escapeHtml(d.checkpoint_dir || '—')}}<br/>`
+    + `Best checkpoint: ${{escapeHtml(d.best_checkpoint || '—')}}<br/>`
+    + `<code>python -m ance.tools.training_dashboard --serve --open</code>`;
+
+  updateCharts(d);
+}}
+
+async function pollOnce() {{
+  try {{
+    const res = await fetch('/api.json', {{ cache: 'no-store' }});
+    if (!res.ok) return;
+    const next = await res.json();
+    applyData(next);
+  }} catch (_) {{
+    // file:// or transient errors — keep current view
+  }}
+}}
+
+applyData(DATA);
+
+const canPoll = location.protocol === 'http:' || location.protocol === 'https:';
+if (canPoll) {{
+  setInterval(pollOnce, 4000);
+}} else {{
+  // Static file fallback ( --watch without --serve )
+  const meta = document.createElement('meta');
+  meta.httpEquiv = 'refresh';
+  meta.content = '4';
+  document.head.appendChild(meta);
+}}
 </script>
 </body>
 </html>
 """
+    return html, payload
 
 
 def generate(
@@ -695,12 +860,17 @@ def generate(
     if live_path is not None and live_path.exists():
         live = json.loads(live_path.read_text(encoding="utf-8"))
 
+    m = metrics or {}
     phase = str((live or {}).get("phase") or "")
-    is_labeling = phase == "labeling"
-    is_generating = phase == "generating"
+    metrics_status = str(m.get("status") or "")
+    training_active = metrics_status in {"running", "completed"} or bool(
+        m.get("train_losses") or m.get("val_losses") or m.get("epoch")
+    )
+    is_labeling = phase == "labeling" and not training_active
+    is_generating = phase == "generating" and not training_active
     fen = chess.STARTING_FEN
     board_caption = "Starting position (no live data yet)"
-    if is_labeling and live.get("fen"):
+    if is_labeling and live and live.get("fen"):
         fen = str(live["fen"])
         board_caption = f"Labeling · depth {live.get('depth', '?')} · python-chess board"
     elif is_generating:
@@ -710,7 +880,7 @@ def generate(
         board_caption = "Training sample FEN · python-chess board"
 
     board_svg = render_board_svg(fen, size=board_size)
-    html = render_html(
+    html, payload = render_html(
         metrics,
         live,
         board_svg,
@@ -743,6 +913,7 @@ def generate(
         "label_done": (live or {}).get("done"),
         "label_total": (live or {}).get("total"),
         "fen": fen,
+        "payload": payload,
     }
 
 
@@ -859,11 +1030,22 @@ def _serve(
 
         def do_GET(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
-            if path != "/" and path not in ("/index.html", "/dashboard.html"):
+            want_api = path in ("/api.json", "/api")
+            want_html = path in ("/", "/index.html", "/dashboard.html")
+            if not want_api and not want_html:
                 self.send_response(204)
                 self.end_headers()
                 return
             if not metrics.exists() and not live.exists():
+                if want_api:
+                    body = b'{"status":"waiting","change_key":"waiting"}'
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
                 body = (
                     "<html><body style='font-family:monospace;background:#12151a;"
                     "color:#eef2f6;padding:2rem'>"
@@ -883,10 +1065,20 @@ def _serve(
                     live_path=live,
                     board_size=board_size,
                 )
-                html = out.read_bytes()
             except Exception as exc:  # noqa: BLE001
                 msg = f"dashboard generate failed: {type(exc).__name__}: {exc}"
                 print(msg)
+                if want_api:
+                    body = json.dumps(
+                        {"error": msg, "change_key": f"error:{msg}"}
+                    ).encode()
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
                 body = (
                     "<html><body style='font-family:monospace;background:#12151a;"
                     f"color:#eef2f6;padding:2rem'>{msg}</body></html>"
@@ -898,6 +1090,16 @@ def _serve(
                 self.end_headers()
                 self.wfile.write(body)
                 return
+            if want_api:
+                body = json.dumps(info["payload"], allow_nan=False).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            html = out.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
@@ -919,7 +1121,7 @@ def _serve(
     print(f"ANCE training dashboard at {url}")
     print(f"  metrics: {metrics}")
     print(f"  live:    {live}")
-    print("  each browser refresh regenerates from metrics + live JSON")
+    print("  /api.json polled every 4s; charts update only on change_key")
     if open_browser:
         webbrowser.open(url)
     try:

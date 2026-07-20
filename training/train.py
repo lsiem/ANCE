@@ -103,6 +103,24 @@ def _write_metrics(path: Path, payload: dict) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     tmp.replace(path)
+    # Keep training-live.json in sync so the dashboard does not stay stuck
+    # on a completed labeling sidecar after training starts.
+    live_path = path.parent / "training-live.json"
+    live_tmp = live_path.with_suffix(live_path.suffix + ".tmp")
+    live_payload = {
+        "phase": "training",
+        "status": payload.get("status"),
+        "fen": payload.get("sample_fen"),
+        "epoch": payload.get("epoch"),
+        "epochs": payload.get("epochs"),
+        "global_step": payload.get("global_step"),
+        "best_val_loss": payload.get("best_val_loss"),
+        "best_epoch": payload.get("best_epoch"),
+        "device": payload.get("device"),
+        "updated_utc": payload.get("updated_utc"),
+    }
+    live_tmp.write_text(json.dumps(live_payload, indent=2) + "\n", encoding="utf-8")
+    live_tmp.replace(live_path)
 
 
 def run_training(
