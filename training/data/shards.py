@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import Dataset
 
 from training.data.features import encode_position
+from training.progress import progress_bar
 
 
 def build_shard(samples: list[dict], out_path: str) -> None:
@@ -18,7 +19,7 @@ def build_shard(samples: list[dict], out_path: str) -> None:
     game_result_rows: list[float] = []
     has_result_rows: list[bool] = []
 
-    for sample in samples:
+    for sample in progress_bar(samples, desc=f"shard {Path(out_path).name}", unit="pos"):
         stm, opp = encode_position(sample["fen"])
         stm_rows.append(stm)
         opp_rows.append(opp)

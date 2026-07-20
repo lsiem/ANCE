@@ -20,6 +20,7 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 from training import mps_gate
 from training.data.shards import ShardDataset
 from training.model import NNUE, NUM_FEATURES
+from training.progress import progress_bar
 
 
 def wdl_loss(
@@ -255,6 +256,7 @@ def run_training(
             "best_elo_checkpoint": str(best_elo_path) if best_elo_path.exists() else None,
         }
 
+    epoch_bar = progress_bar(total=epochs, desc="train epochs", unit="epoch")
     for epoch in range(epochs):
         if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
             stopped_early = True
@@ -266,7 +268,13 @@ def run_training(
 
         model.train()
         epoch_losses: list[float] = []
-        for stm, opp, eval_cp, game_result, has_result in train_loader:
+        batch_bar = progress_bar(
+            train_loader,
+            desc=f"epoch {epoch + 1}/{epochs}",
+            unit="batch",
+            leave=False,
+        )
+        for stm, opp, eval_cp, game_result, has_result in batch_bar:
             if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
                 stopped_early = True
                 early_stop_reason = "deadline"
@@ -285,8 +293,10 @@ def run_training(
             )
             loss.backward()
             optimizer.step()
-            epoch_losses.append(float(loss.detach().cpu()))
+            loss_f = float(loss.detach().cpu())
+            epoch_losses.append(loss_f)
             global_step += 1
+            batch_bar.set_postfix(loss=f"{loss_f:.4f}", lambda_=f"{lam:.3f}")
 
             if global_step % checkpoint_every_n_steps == 0:
                 save_checkpoint(
@@ -333,6 +343,12 @@ def run_training(
         val_losses.append(val_loss)
         learning_rates.append(float(optimizer.param_groups[0]["lr"]))
         scheduler.step()
+        epoch_bar.update(1)
+        epoch_bar.set_postfix(
+            train=f"{train_loss:.4f}",
+            val=f"{val_loss:.4f}",
+            best=f"{best_val if best_epoch > 0 else val_loss:.4f}",
+        )
 
         save_checkpoint(
             model,
@@ -423,6 +439,8 @@ def run_training(
 
         if stopped_early:
             break
+
+    epoch_bar.close()
 
     # Prefer best-Elo weights when probes produced a champion.
     if best_elo_path.exists():

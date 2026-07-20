@@ -21,6 +21,7 @@ from pathlib import Path
 import chess
 import chess.engine
 
+from training.progress import progress_bar
 from training.run_manifest import record_event
 
 _DEFAULT_HASH_MB = 64
@@ -262,6 +263,12 @@ def run_labeling_resumable(
     flush_buffer: list[dict] = []
     last_fen = fens[start_index]
     done = start_index
+    bar = progress_bar(
+        total=len(fens),
+        desc=f"stockfish d{depth}",
+        unit="fen",
+        initial=start_index,
+    )
 
     def _flush(force: bool = False) -> None:
         nonlocal flush_buffer
@@ -278,6 +285,7 @@ def run_labeling_resumable(
         flush_buffer.append(label)
         last_fen = str(label["fen"])
         done += 1
+        bar.update(1)
         _flush(force=False)
         if live is not None:
             elapsed = time.monotonic() - started
@@ -292,19 +300,23 @@ def run_labeling_resumable(
                 rate=rate,
                 workers=workers,
             )
+            bar.set_postfix(rate=f"{rate:.1f}/s", workers=workers)
         if done == len(fens):
             _flush(force=True)
 
     remaining = [(i, fens[i]) for i in range(start_index, len(fens))]
-    _label_indexed(
-        stockfish_path,
-        remaining,
-        depth,
-        workers=workers,
-        threads=threads,
-        hash_mb=hash_mb,
-        on_label=_on_label,
-    )
+    try:
+        _label_indexed(
+            stockfish_path,
+            remaining,
+            depth,
+            workers=workers,
+            threads=threads,
+            hash_mb=hash_mb,
+            on_label=_on_label,
+        )
+    finally:
+        bar.close()
     return results
 
 

@@ -20,6 +20,7 @@ from ance.board.position import Position
 from ance.eval.handcrafted import HandcraftedEval
 from ance.search.negamax import quiescence_search
 from ance.search.types import SearchContext
+from training.progress import progress_bar
 
 DEFAULT_QSEARCH_MARGIN = 60
 DEFAULT_MIN_PLY = 8
@@ -147,7 +148,7 @@ def filter_quiet_samples(
     capture_fn = None if skip_capture_filter else bestmove_capture_fn
     eng = None if skip_capture_filter else engine
 
-    for sample in samples:
+    for sample in progress_bar(samples, desc="quiet filter", unit="fen"):
         fen = sample.get("fen")
         if not fen:
             rejected_illegal += 1

@@ -33,6 +33,7 @@ from training.label.stockfish_labeler import (
     run_and_record_labeling,
     run_depth_benchmark,
 )
+from training.progress import progress_bar
 from training.run_manifest import record_event
 from training.train import preflight_mps_gate, run_training
 
@@ -168,13 +169,23 @@ def _ingest_lichess(
     deadline_monotonic: float,
 ) -> list[dict]:
     samples: list[dict] = []
-    for index, game in enumerate(iter_games(zst_path)):
-        if time.monotonic() >= deadline_monotonic or len(samples) >= sample_cap:
-            break
-        samples.extend(extract_samples(game, game_id=f"lichess-{index}"))
-        if len(samples) >= sample_cap:
-            del samples[sample_cap:]
-            break
+    bar = progress_bar(
+        desc="lichess ingest",
+        unit="game",
+        total=None,
+    )
+    try:
+        for index, game in enumerate(iter_games(zst_path)):
+            if time.monotonic() >= deadline_monotonic or len(samples) >= sample_cap:
+                break
+            samples.extend(extract_samples(game, game_id=f"lichess-{index}"))
+            bar.update(1)
+            bar.set_postfix(samples=len(samples), refresh=False)
+            if len(samples) >= sample_cap:
+                del samples[sample_cap:]
+                break
+    finally:
+        bar.close()
     return samples
 
 
@@ -189,19 +200,28 @@ def _ingest_hf(
     """Ingest HF samples; returns (samples, truncated_by_deadline)."""
     samples: list[dict] = []
     truncated = False
-    for sample in iter_hf_samples(
-        repo_id,
-        max_positions=max_positions,
-        min_depth=min_depth,
-        min_knodes=min_knodes,
-        deadline_monotonic=deadline_monotonic,
-    ):
-        if time.monotonic() >= deadline_monotonic:
-            truncated = True
-            break
-        samples.append(sample)
-        if len(samples) >= max_positions:
-            break
+    bar = progress_bar(
+        total=max_positions,
+        desc="hf ingest",
+        unit="pos",
+    )
+    try:
+        for sample in iter_hf_samples(
+            repo_id,
+            max_positions=max_positions,
+            min_depth=min_depth,
+            min_knodes=min_knodes,
+            deadline_monotonic=deadline_monotonic,
+        ):
+            if time.monotonic() >= deadline_monotonic:
+                truncated = True
+                break
+            samples.append(sample)
+            bar.update(1)
+            if len(samples) >= max_positions:
+                break
+    finally:
+        bar.close()
     if not truncated and time.monotonic() >= deadline_monotonic:
         # iter_hf_samples stopped because the deadline passed, not because
         # the position budget was met.
