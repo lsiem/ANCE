@@ -20,6 +20,7 @@ def generate_position_set(
     target_positions: int | None = None,
     skip_checks: bool = True,
     max_games: int | None = None,
+    min_sample_ply: int = 8,
     progress_callback: Callable[[int, int | None], None] | None = None,
 ) -> list[dict[str, str]]:
     """Generate FENs via random legal play.
@@ -29,10 +30,12 @@ def generate_position_set(
     ``target_positions`` is None.
 
     ``progress_callback(done, total)`` is invoked periodically when provided.
+    Samples are taken only at ``ply >= min_sample_ply`` (default 8).
     """
     rng = random.Random(seed)
     samples: list[dict[str, str]] = []
     sample_interval = max(1, plies_per_game // 8)
+    min_ply = max(1, min_sample_ply)
 
     if target_positions is not None:
         game_limit = max_games if max_games is not None else max(n_games, target_positions)
@@ -54,10 +57,10 @@ def generate_position_set(
                 break
 
             take = (
-                ply > 4
+                ply >= min_ply
                 and (
                     target_positions is not None
-                    or (ply - 4) % sample_interval == 0
+                    or (ply - min_ply) % sample_interval == 0
                 )
             )
             if take:

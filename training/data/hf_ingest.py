@@ -29,6 +29,8 @@ from collections.abc import Iterator
 # Mirrors training.run_pipeline._MATE_SCORE / _cp_from_label arithmetic.
 # Not imported from run_pipeline: run_pipeline imports training.data.*,
 # so importing it here would be circular.
+from training.data.cp_clamp import DEFAULT_CP_CLAMP, clamp_training_cp
+
 _MATE_SCORE = 100_000
 
 _HF_DEFAULT_REPO = "Lichess/chess-position-evaluations"
@@ -81,6 +83,7 @@ def row_to_sample(
     if fields[1] == "b":
         # Lichess evals are white-relative; the sample contract is STM-relative.
         score = -score
+    score = clamp_training_cp(score, DEFAULT_CP_CLAMP)
 
     bucket = zlib.crc32(fen.encode("utf-8")) % n_buckets
     return {

@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "name": "startpos_near_zero",
+      "ok": true,
+      "detail": "cp=10 tol=50"
+    },
+    {
+      "name": "material_signs",
+      "ok": true,
+      "detail": "rook_up=1018 queen_up=1559"
+    },
+    {
+      "name": "color_flip",
+      "ok": true,
+      "detail": "a=65 b=65 tol=30"
+    }
+  ],
+  "ok": true
+}

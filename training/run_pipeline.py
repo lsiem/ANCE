@@ -17,10 +17,12 @@ from pathlib import Path
 import chess
 import numpy as np
 
+from training.data.cp_clamp import DEFAULT_CP_CLAMP, cp_from_label, clamp_training_cp
 from training.data.hf_ingest import iter_hf_samples
 from training.data.kfit import fit_k_from_samples, sigmoid
 from training.data.lichess_ingest import extract_samples, iter_games
 from training.data.merge import merge_and_dedup
+from training.data.quiet_filter import enforce_corpus_mix, filter_quiet_samples
 from training.data.shards import build_shard
 from training.data.split import assert_no_fen_leakage, split_by_game
 from training.export import export_checkpoint
@@ -37,6 +39,7 @@ from training.train import preflight_mps_gate, run_training
 _CANDIDATE_DEPTHS = [10, 14, 18]
 _DEFAULT_K = 400.0
 _MATE_SCORE = 100_000
+_STRENGTH_DEFAULT_DEPTH = 9
 
 
 def _git_sha() -> str:
@@ -142,15 +145,7 @@ def _invalidate_hf_derived_outputs(out_dir: Path) -> None:
 
 
 def _cp_from_label(label: dict, mate_score: int = _MATE_SCORE) -> float | None:
-    if label.get("cp") is not None:
-        return float(label["cp"])
-    mate = label.get("mate")
-    if mate is None:
-        return None
-    mate_n = int(mate)
-    if mate_n > 0:
-        return float(mate_score - mate_n)
-    return float(-mate_score - mate_n)
+    return cp_from_label(label, mate_score=mate_score, clamp_limit=DEFAULT_CP_CLAMP)
 
 
 def _pick_depth(
@@ -284,10 +279,26 @@ def run_bounded(
     label_workers: int | None = None,
     sf_threads: int = 1,
     sf_hash_mb: int = 64,
+    quiet_filter: bool = True,
+    strength_corpus: bool = False,
+    max_fresh_share: float = 0.10,
+    min_has_result_rate: float = 0.50,
+    start_lambda: float = 1.0,
+    end_lambda: float = 0.75,
+    random_fen_skipping: int = 3,
+    resume_from_checkpoint: str | None = None,
+    elo_probe_every: int = 5,
+    elo_probe_games: int = 100,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest = out_dir / "run_manifest.json"
     deadline = time.monotonic() + max_hours * 3600.0
+
+    if strength_corpus and not lichess_zst:
+        raise RuntimeError(
+            "--strength-corpus requires --lichess-zst "
+            "(see .planning/phases/06-quiet-data-nnue-strength-gap/06-NOTES.md)"
+        )
 
     device = preflight_mps_gate()
     print(f"device={device}", flush=True)
@@ -301,6 +312,11 @@ def run_bounded(
         max_hours=max_hours,
         seed=seed,
         batch_size=batch_size,
+        quiet_filter=quiet_filter,
+        strength_corpus=strength_corpus,
+        start_lambda=start_lambda,
+        end_lambda=end_lambda,
+        random_fen_skipping=random_fen_skipping,
     )
 
     streams: list[list[dict]] = []
@@ -422,6 +438,7 @@ def run_bounded(
                 target_positions=fresh_target_positions,
                 skip_checks=skip_checks,
                 max_games=max_games,
+                min_sample_ply=8,
                 progress_callback=_report_generation,
             )
             fens = [row["fen"] for row in positions]
@@ -430,25 +447,39 @@ def run_bounded(
                 raise RuntimeError("fresh position set is empty")
 
             if depth is None:
-                rates = run_depth_benchmark(
-                    stockfish_path,
-                    fens,
-                    _CANDIDATE_DEPTHS,
-                    workers=workers,
-                    threads=threads,
-                    hash_mb=hash_mb,
-                )
-                resolved_depth = _pick_depth(rates, len(fens), remaining)
-                record_event(
-                    str(manifest),
-                    event="depth_benchmark",
-                    rates=rates,
-                    chosen_depth=resolved_depth,
-                    n_positions=len(fens),
-                    workers=workers,
-                    threads=threads,
-                    hash_mb=hash_mb,
-                )
+                if strength_corpus:
+                    resolved_depth = _STRENGTH_DEFAULT_DEPTH
+                    record_event(
+                        str(manifest),
+                        event="depth_benchmark",
+                        rates={},
+                        chosen_depth=resolved_depth,
+                        n_positions=len(fens),
+                        workers=workers,
+                        threads=threads,
+                        hash_mb=hash_mb,
+                        note="strength_corpus default depth 9",
+                    )
+                else:
+                    rates = run_depth_benchmark(
+                        stockfish_path,
+                        fens,
+                        _CANDIDATE_DEPTHS,
+                        workers=workers,
+                        threads=threads,
+                        hash_mb=hash_mb,
+                    )
+                    resolved_depth = _pick_depth(rates, len(fens), remaining)
+                    record_event(
+                        str(manifest),
+                        event="depth_benchmark",
+                        rates=rates,
+                        chosen_depth=resolved_depth,
+                        n_positions=len(fens),
+                        workers=workers,
+                        threads=threads,
+                        hash_mb=hash_mb,
+                    )
             else:
                 resolved_depth = depth
 
@@ -497,8 +528,58 @@ def run_bounded(
         merged = _load_json(merged_path)
     else:
         merged = merge_and_dedup(streams)
+        for sample in merged:
+            if "cp" in sample:
+                sample["cp"] = clamp_training_cp(float(sample["cp"]), DEFAULT_CP_CLAMP)
+
+        if quiet_filter:
+            import chess.engine
+
+            sf_path = shutil.which("stockfish")
+            engine = None
+            try:
+                if sf_path is not None:
+                    engine = chess.engine.SimpleEngine.popen_uci(sf_path)
+                    engine.configure({"Threads": 1, "Hash": 16})
+                merged, qstats = filter_quiet_samples(
+                    merged,
+                    engine=engine,
+                    skip_capture_filter=engine is None,
+                )
+                record_event(
+                    str(manifest),
+                    event="quiet_filter",
+                    kept=qstats.kept,
+                    rejected_check=qstats.rejected_check,
+                    rejected_early_ply=qstats.rejected_early_ply,
+                    rejected_capture_bestmove=qstats.rejected_capture_bestmove,
+                    rejected_qsearch=qstats.rejected_qsearch,
+                    capture_filter=engine is not None,
+                )
+            finally:
+                if engine is not None:
+                    engine.quit()
+
+        merged = enforce_corpus_mix(
+            merged,
+            max_fresh_share=max_fresh_share,
+            min_has_result_rate=min_has_result_rate,
+            strength_corpus=strength_corpus,
+        )
         _save_json(merged_path, merged)
-        record_event(str(manifest), event="merge", n_samples=len(merged))
+        n_result = sum(1 for s in merged if s.get("game_result") is not None)
+        record_event(
+            str(manifest),
+            event="merge",
+            n_samples=len(merged),
+            has_result=n_result,
+            has_result_rate=(n_result / len(merged) if merged else 0.0),
+            fresh_share=(
+                sum(1 for s in merged if s.get("source") == "fresh") / len(merged)
+                if merged
+                else 0.0
+            ),
+        )
 
     if not merged:
         raise RuntimeError("merged sample set is empty")
@@ -563,6 +644,13 @@ def run_bounded(
         early_stop_patience=early_stop_patience,
         metrics_path=str(out_dir / "metrics.json"),
         sample_fen=sample_fen,
+        start_lambda=start_lambda,
+        end_lambda=end_lambda,
+        random_fen_skipping=random_fen_skipping,
+        resume_from_checkpoint=resume_from_checkpoint,
+        elo_probe_every=elo_probe_every,
+        elo_probe_games=elo_probe_games,
+        export_dir=str(out_dir),
     )
     record_event(
         str(manifest),
@@ -574,8 +662,12 @@ def run_bounded(
         global_step=result["global_step"],
         best_epoch=result.get("best_epoch"),
         best_val_loss=result.get("best_val_loss"),
+        best_elo=result.get("best_elo"),
+        best_elo_epoch=result.get("best_elo_epoch"),
         early_stop_reason=result.get("early_stop_reason"),
         batch_size=result.get("batch_size"),
+        start_lambda=start_lambda,
+        end_lambda=end_lambda,
     )
 
     labeling_command = (
@@ -590,7 +682,19 @@ def run_bounded(
         else "unknown"
     )
     net_path = out_dir / "net.safetensors"
-    if not net_path.exists():
+    # Prefer best-by-Elo export when mid-train probes ran.
+    preferred = result.get("export_net_path")
+    if preferred and Path(preferred).is_file() and not net_path.exists():
+        shutil.copy2(preferred, net_path)
+        record_event(
+            str(manifest),
+            event="export",
+            path=str(net_path),
+            source=preferred,
+            best_elo=result.get("best_elo"),
+            best_elo_epoch=result.get("best_elo_epoch"),
+        )
+    elif not net_path.exists():
         export_checkpoint(
             result["model"],
             k_scale=fitted_k,
@@ -605,6 +709,7 @@ def run_bounded(
                 "seed": str(seed),
                 "best_epoch": str(result.get("best_epoch")),
                 "best_val_loss": str(result.get("best_val_loss")),
+                "best_elo": str(result.get("best_elo")),
                 "batch_size": str(batch_size),
             },
         )
@@ -614,6 +719,7 @@ def run_bounded(
             path=str(net_path),
             best_epoch=result.get("best_epoch"),
             best_val_loss=result.get("best_val_loss"),
+            best_elo=result.get("best_elo"),
         )
 
     return {
@@ -621,6 +727,7 @@ def run_bounded(
         "val_losses": result["val_losses"],
         "net_path": str(net_path),
         "device": result["device"],
+        "best_elo": result.get("best_elo"),
     }
 
 
@@ -712,6 +819,55 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Cap random-walk games when using --fresh-target-positions",
     )
+    parser.add_argument(
+        "--quiet-filter",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Apply quiet-position filter after merge (default: on; disabled in --smoke)",
+    )
+    parser.add_argument(
+        "--strength-corpus",
+        action="store_true",
+        help="Require --lichess-zst, ≥50%% has_result, fresh≤10%%, default fresh depth 9",
+    )
+    parser.add_argument(
+        "--max-fresh-share",
+        type=float,
+        default=0.10,
+        help="Max fraction of merged rows from fresh random-walk (default: 0.10)",
+    )
+    parser.add_argument(
+        "--min-has-result-rate",
+        type=float,
+        default=0.50,
+        help="Min fraction with game_result when --strength-corpus (default: 0.50)",
+    )
+    parser.add_argument("--start-lambda", type=float, default=1.0)
+    parser.add_argument("--end-lambda", type=float, default=0.75)
+    parser.add_argument(
+        "--random-fen-skipping",
+        type=int,
+        default=3,
+        help="nnue-pytorch-style train fen skip N (skip prob N/(N+1); 0 disables)",
+    )
+    parser.add_argument(
+        "--resume-from-checkpoint",
+        type=str,
+        default=None,
+        help="Path to a prior .pt checkpoint to warm-start weights",
+    )
+    parser.add_argument(
+        "--elo-probe-every",
+        type=int,
+        default=5,
+        help="Run depth-3 Elo probe every N epochs (0 disables)",
+    )
+    parser.add_argument(
+        "--elo-probe-games",
+        type=int,
+        default=100,
+        help="Games per mid-train Elo probe (default: 100)",
+    )
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out_dir)
@@ -742,6 +898,16 @@ def main(argv: list[str] | None = None) -> int:
             label_workers=args.label_workers,
             sf_threads=args.sf_threads,
             sf_hash_mb=args.sf_hash,
+            quiet_filter=args.quiet_filter,
+            strength_corpus=args.strength_corpus,
+            max_fresh_share=args.max_fresh_share,
+            min_has_result_rate=args.min_has_result_rate,
+            start_lambda=args.start_lambda,
+            end_lambda=args.end_lambda,
+            random_fen_skipping=args.random_fen_skipping,
+            resume_from_checkpoint=args.resume_from_checkpoint,
+            elo_probe_every=args.elo_probe_every,
+            elo_probe_games=args.elo_probe_games,
         )
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)

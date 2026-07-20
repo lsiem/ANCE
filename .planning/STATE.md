@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 05
-current_phase_name: nnue-swap-in-elo-gauntlet
+current_phase: 06
+current_phase_name: quiet-data-nnue-strength-gap
 status: in_progress
 stopped_at: —
-last_updated: "2026-07-18T18:25:00.000Z"
-last_activity: 2026-07-18
-last_activity_desc: "Resumed scale labeling+dashboard; post-train closer armed for 05-03 close"
+last_updated: "2026-07-20T12:13:16.000Z"
+last_activity: 2026-07-20
+last_activity_desc: "05-03 closed with honest gates_failed; Phase 6 quiet-data strength gap started"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
   total_plans: 34
   completed_plans: 33
@@ -24,13 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 05 — nnue-swap-in-elo-gauntlet
+**Current focus:** Phase 06 — quiet-data NNUE strength gap
 
 ## Current Position
 
-Phase: 05 (nnue-swap-in-elo-gauntlet) — IN PROGRESS
-Plan: 3 of 3 (05-03 incomplete; scale labeling restarted under /Users/lasse/ANCE)
-Status: Running — dashboard :8766 + scale pipeline + post-train closer
+Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
+Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
+Plan: Phase 6 workstreams 06-01…06-05
+Status: Implementing quiet corpus + trainer recipe after honest TOOL-04 failure
 Last activity: 2026-07-18 — resumed after pause; prior ~150k progress was on deleted path
 
 Progress: [██████████] 97%

@@ -1,0 +1,19 @@
+{
+  "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+  "depth": 2,
+  "handcrafted": {
+    "nodes": 4169,
+    "elapsed_s": 0.46327703300630674,
+    "nps": 8998.935200707967,
+    "best_move": "b1c3",
+    "score": 10
+  },
+  "nnue": {
+    "nodes": 2763,
+    "elapsed_s": 0.24033313200925477,
+    "nps": 11496.542224122482,
+    "best_move": "d1e2",
+    "score": 50
+  },
+  "nps_ratio_nnue_over_hc": 1.277544728093833
+}

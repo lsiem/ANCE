@@ -1,5 +1,6 @@
 {
-  "phase": "gauntlet_running",
-  "updated_utc": "2026-07-20T11:41:22.267872+00:00",
-  "runner": "arbiter"
+  "phase": "done",
+  "updated_utc": "2026-07-20T12:13:16.315392+00:00",
+  "d12_pass": false,
+  "note": "Closed from incomplete checkpoint with honest gates_failed"
 }

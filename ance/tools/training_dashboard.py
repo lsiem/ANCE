@@ -96,8 +96,12 @@ def render_html(
     train_losses = list(m.get("train_losses") or [])
     val_losses = list(m.get("val_losses") or [])
     learning_rates = list(m.get("learning_rates") or [])
+    lambdas = list(m.get("lambdas") or [])
+    elo_probes = list(m.get("elo_probes") or [])
     best_val = _finite(m.get("best_val_loss"))
     best_epoch = int(m.get("best_epoch") or 0)
+    best_elo = _finite(m.get("best_elo"))
+    best_elo_epoch = int(m.get("best_elo_epoch") or 0)
     batch_size = m.get("batch_size")
     lr = m.get("lr")
     weight_decay = m.get("weight_decay")
@@ -152,6 +156,9 @@ def render_html(
             str(len(train_losses)),
             str(best_val),
             str(best_epoch),
+            str(best_elo),
+            str(best_elo_epoch),
+            str(len(elo_probes)),
             fen,
             str(is_labeling),
             str(is_generating),
@@ -172,8 +179,12 @@ def render_html(
         "train_losses": train_losses,
         "val_losses": val_losses,
         "learning_rates": learning_rates,
+        "lambdas": lambdas,
+        "elo_probes": elo_probes,
         "best_val_loss": best_val,
         "best_epoch": best_epoch,
+        "best_elo": best_elo,
+        "best_elo_epoch": best_elo_epoch,
         "batch_size": batch_size,
         "lr": lr,
         "current_lr": current_lr,
@@ -548,6 +559,11 @@ def render_html(
         <div class="hint" id="stat-val-hint">{len(val_losses)} val points</div>
       </div>
       <div class="stat">
+        <div class="label">Best probe Elo</div>
+        <div class="value" style="color: var(--val)" id="stat-best-elo">{best_elo if best_elo is not None else '—'}</div>
+        <div class="hint" id="stat-best-elo-epoch">epoch {best_elo_epoch if best_elo_epoch else '—'}</div>
+      </div>
+      <div class="stat">
         <div class="label">Device</div>
         <div class="value" style="font-size:1.1rem" id="stat-device">{device}</div>
         <div class="hint" id="stat-batch">batch {batch_size if batch_size is not None else '—'}</div>
@@ -563,6 +579,10 @@ def render_html(
         <h3>Learning rate</h3>
         <canvas id="lrChart" height="160"></canvas>
       </div>
+      <div class="panel">
+        <h3>Probe Elo</h3>
+        <canvas id="eloChart" height="160"></canvas>
+      </div>
     </div>
 
     <footer id="footer"></footer>
@@ -573,6 +593,7 @@ let DATA = {data_json};
 let lastChangeKey = null;
 let lossChart = null;
 let lrChart = null;
+let eloChart = null;
 
 function finiteOrNull(v) {{
   return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
@@ -605,7 +626,10 @@ function seriesFrom(d) {{
   const lrData = lrs.length
     ? lrs
     : (d.lr != null ? Array(nEpochs).fill(d.lr) : []);
-  return {{ nEpochs, labels, trainLoss, valLoss, lrData }};
+  const probes = Array.isArray(d.elo_probes) ? d.elo_probes : [];
+  const eloLabels = probes.map((p) => p && p.epoch != null ? p.epoch : null).filter((x) => x != null);
+  const eloData = probes.map((p) => finiteOrNull(p && p.elo));
+  return {{ nEpochs, labels, trainLoss, valLoss, lrData, eloLabels, eloData }};
 }}
 
 function ensureCharts(d) {{
@@ -704,6 +728,43 @@ function ensureCharts(d) {{
       }}
     }});
   }}
+  if (!eloChart) {{
+    const eloCanvas = document.getElementById('eloChart');
+    if (eloCanvas) {{
+      eloChart = new Chart(eloCanvas, {{
+        type: 'line',
+        data: {{
+          labels: s.eloLabels,
+          datasets: [{{
+            label: 'Probe Elo',
+            data: s.eloData,
+            borderColor: '#7dcea0',
+            backgroundColor: 'rgba(125,206,160,0.14)',
+            fill: false,
+            pointRadius: 3,
+            borderWidth: 2,
+            tension: 0.2,
+          }}]
+        }},
+        options: {{
+          animation: false,
+          plugins: {{ legend: {{ display: false }} }},
+          scales: {{
+            x: {{
+              title: {{ display: true, text: 'Epoch', color: '#8d9aab' }},
+              ticks: {{ color: '#8d9aab', maxTicksLimit: 12 }},
+              grid: {{ color: 'rgba(44,53,66,0.7)' }}
+            }},
+            y: {{
+              title: {{ display: true, text: 'Elo', color: '#8d9aab' }},
+              ticks: {{ color: '#8d9aab' }},
+              grid: {{ color: 'rgba(44,53,66,0.7)' }}
+            }}
+          }}
+        }}
+      }});
+    }}
+  }}
 }}
 
 function updateCharts(d) {{
@@ -719,6 +780,13 @@ function updateCharts(d) {{
   lossChart.data.datasets[1].pointRadius = s.nEpochs < 40 ? 3 : 0;
   lrChart.data.labels = s.labels;
   lrChart.data.datasets[0].data = s.lrData;
+  if (eloChart) {{
+    eloChart.data.labels = s.eloLabels;
+    eloChart.data.datasets[0].data = s.eloData;
+    eloChart.update('none');
+  }} else {{
+    ensureCharts(d);
+  }}
   lossChart.update('none');
   lrChart.update('none');
 }}
@@ -793,6 +861,16 @@ function applyData(d) {{
   }}
 
   document.getElementById('stat-best-val').textContent = fmtLoss(d.best_val_loss);
+  const bestEloEl = document.getElementById('stat-best-elo');
+  if (bestEloEl) {{
+    bestEloEl.textContent = finiteOrNull(d.best_elo) == null
+      ? '—'
+      : Number(d.best_elo).toFixed(1);
+  }}
+  const bestEloEpochEl = document.getElementById('stat-best-elo-epoch');
+  if (bestEloEpochEl) {{
+    bestEloEpochEl.textContent = 'epoch ' + (d.best_elo_epoch || '—');
+  }}
   document.getElementById('stat-best-epoch').textContent =
     'epoch ' + (d.best_epoch || '—');
   document.getElementById('stat-train').textContent = fmtLoss(d.last_train_loss);

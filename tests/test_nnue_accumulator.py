@@ -100,3 +100,21 @@ def test_active_feature_count_startpos() -> None:
     board = chess.Board()
     assert len(active_feature_indices(board, chess.WHITE)) == 32
     assert len(active_feature_indices(board, chess.BLACK)) == 32
+
+
+def test_accumulator_matches_dense_on_random_game(nnue: NnueEval) -> None:
+    """Dense reference vs incremental path over a short random playout."""
+    import random
+
+    rng = random.Random(0)
+    board = chess.Board()
+    nnue.refresh(board)
+    for _ in range(24):
+        if board.is_game_over(claim_draw=True):
+            break
+        move = rng.choice(list(board.legal_moves))
+        board.push(move)
+        nnue.on_make(board, move)
+        pos = Position(board)
+        assert nnue.evaluate(pos) == nnue.evaluate_dense_reference(pos)
+
