@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: "Executing 05-03 — clean gauntlet restart after mid-run net swap"
+status: "Executing 05-03 — clean gauntlet ~169/1000 (0W; D-12 fail expected)"
 stopped_at: null
-last_updated: "2026-07-20T17:56:41.000Z"
-last_activity: 2026-07-20
+last_updated: "2026-07-21T00:01:15.000Z"
+last_activity: 2026-07-21
 progress:
   total_phases: 5
   completed_phases: 4
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 05 (nnue-swap-in-elo-gauntlet) — IN PROGRESS
 Plan: 3 of 3 (05-03 Task 1 complete; Task 2 gauntlet restarted clean)
-Status: Executing 05-03 — clean restart (discarded ~694 mixed-net games)
+Status: Executing 05-03 — clean gauntlet ~169/1000 (0W–169L–0D)
 Last activity: 2026-07-20
 
 Progress: [██████████] 97%
