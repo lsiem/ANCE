@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Core Alpha-Beta Search** - Iterative-deepening negamax + quiescence + draw detection with full `info` output — plays real, tactically sound chess (completed 2026-07-08)
 - [x] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness (completed 2026-07-11)
 - [x] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights (completed 2026-07-18)
-- [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain
+- [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain (05-03 evidence ran: D-12 failed; gap Plan 05-04 open)
 
 ## Phase Details
 
@@ -206,7 +206,7 @@ Plans:
   3. Swapping handcrafted → NNUE changes only the eval; the two gauntlet builds are diff-verified to share identical search configuration.
   4. Over a ≥1000-game fixed-opening-book `cutechess-cli` gauntlet the NNUE build shows a measurable positive Elo gain over the handcrafted build, reported with error bars (CI/SPRT) and reproducible on a rerun.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/4 plans executed (TOOL-04 still open via gap Plan 05-04)
 
 Plans:
 
@@ -220,7 +220,11 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-03-PLAN.md — ≥1000-game depth-3 evidence run + D-12 Elo CI gate + committed evidence JSON (TOOL-04 proof)
+- [x] 05-03-PLAN.md — ≥1000-game depth-3 evidence run + committed evidence JSON — **D-12/TOOL-04 failed** (0–1000–0; honest `gates_failed`)
+
+**Wave 4** *(gap closure — D-12)*
+
+- [ ] 05-04-PLAN.md — Retrain/replace net + re-run D-12 evidence until `elo_ci_low > 0` (TOOL-04 closure)
 
 ## Progress
 
@@ -233,4 +237,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 4 may proceed 
 | 2. Core Alpha-Beta Search | 12/12 | Complete    | 2026-07-10 |
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
-| 5. NNUE Swap-In & Elo Gauntlet | 2/3 | In Progress|  |
+| 5. NNUE Swap-In & Elo Gauntlet | 3/4 | In Progress (gap 05-04) |  |

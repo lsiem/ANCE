@@ -50,7 +50,8 @@ created: 2026-07-18
 | 05-01-3 | 05-01 | 1 | EVAL-03 / D-16 | — | Stockfish sign agreement on won/lost suite | integration | `pytest tests/test_nnue_eval.py::test_stockfish_sign_agreement -x` | ❌ W0 | ⬜ pending |
 | 05-02-2 | 05-02 | 2 | TOOL-04 / D-11 | — | Gauntlet depth mode + per-engine env injection | unit | `pytest tests/test_nnue_gauntlet_depth.py -x` | ❌ W0 | ⬜ pending |
 | 05-02-3 | 05-02 | 2 | TOOL-04 / D-04 | — | Search-config identical except eval env | structural | `pytest tests/test_nnue_eval.py::test_search_config_unchanged_by_eval_env -x` | ❌ W0 | ⬜ pending |
-| 05-03-2 | 05-03 | 3 | TOOL-04 / D-10–D-12 | — | ≥1000-game Elo point estimate > 0 and 95% CI lower bound > 0 | slow e2e | `pytest tests/test_phase5_elo_evidence.py -m slow -x` | ❌ W0 | ⬜ pending |
+| 05-03-2 | 05-03 | 3 | TOOL-04 / D-10–D-12 | — | ≥1000-game Elo point estimate > 0 and 95% CI lower bound > 0 | slow e2e | `pytest tests/test_phase5_elo_evidence.py -m slow -x` | ❌ W0 | ❌ fail (0–1000–0; see 05-04) |
+| 05-04-2 | 05-04 | 4 | TOOL-04 / D-12 | — | Retrain + re-evidence until elo_ci_low > 0 | slow e2e | `pytest tests/test_phase5_elo_evidence.py -m slow -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

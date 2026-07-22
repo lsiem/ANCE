@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "git_commit": "ab288f8aa3c2c175e35a3c6efeb77238326e0e97",
+  "captured_utc": "2026-07-22T05:51:23.601025+00:00",
+  "gauntlet": {
+    "games": 1000,
+    "mode": "fixed_depth",
+    "depth": 3,
+    "wins": 0,
+    "losses": 1000,
+    "draws": 0,
+    "score_rate": 0.0,
+    "wilson_low": 0.0,
+    "wilson_high": 0.003826898586390522,
+    "elo": null,
+    "elo_ci_low": null,
+    "elo_ci_high": -966.1951429148191,
+    "runner": "arbiter",
+    "command_line": "/workspace/.venv/bin/python -m ance.tools.gauntlet --games 1000 --tc 30+0.3 --depth 3 --openings /workspace/ance/tools/openings.epd --output .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json --max-halfmoves 160 --engine-a '/workspace/.venv/bin/python -m ance' --engine-b '/workspace/.venv/bin/python -m ance' --engine-a-name nnue --engine-b-name handcrafted --runner arbiter --budget-seconds 172800",
+    "elapsed_s": 128820.80293431142,
+    "status": "completed",
+    "checkpoint": ".planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json",
+    "engine_a_env": {
+      "ANCE_EVAL": "nnue"
+    },
+    "engine_b_env": {
+      "ANCE_EVAL": "handcrafted"
+    }
+  },
+  "gates_passed": [],
+  "gates_failed": [
+    "D-12",
+    "TOOL-04"
+  ]
+}

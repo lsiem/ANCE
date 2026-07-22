@@ -4,11 +4,19 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+
+def _json_num(value: float) -> float | None:
+    """Serialize inf/nan as null for strict JSON consumers."""
+    if isinstance(value, (int, float)) and (math.isinf(value) or math.isnan(value)):
+        return None
+    return value
 
 ROOT = Path(__file__).resolve().parents[3]
 os.chdir(ROOT)
@@ -59,9 +67,9 @@ def main() -> int:
             "score_rate": aggregate["score_rate"],
             "wilson_low": aggregate["wilson_low"],
             "wilson_high": aggregate["wilson_high"],
-            "elo": aggregate["elo"],
-            "elo_ci_low": aggregate["elo_ci_low"],
-            "elo_ci_high": aggregate["elo_ci_high"],
+            "elo": _json_num(aggregate["elo"]),
+            "elo_ci_low": _json_num(aggregate["elo_ci_low"]),
+            "elo_ci_high": _json_num(aggregate["elo_ci_high"]),
             "runner": runner,
             "command_line": report.get("command_line"),
             "elapsed_s": aggregate["elapsed_s"],

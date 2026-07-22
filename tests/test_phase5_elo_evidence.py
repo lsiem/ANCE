@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import shlex
 import subprocess
@@ -218,9 +219,9 @@ def test_phase5_thousand_game_nnue_vs_handcrafted_evidence(tmp_path: Path) -> No
             "score_rate": aggregate["score_rate"],
             "wilson_low": aggregate["wilson_low"],
             "wilson_high": aggregate["wilson_high"],
-            "elo": aggregate["elo"],
-            "elo_ci_low": aggregate["elo_ci_low"],
-            "elo_ci_high": aggregate["elo_ci_high"],
+            "elo": None if isinstance(aggregate["elo"], float) and math.isinf(aggregate["elo"]) else aggregate["elo"],
+            "elo_ci_low": None if isinstance(aggregate["elo_ci_low"], float) and math.isinf(aggregate["elo_ci_low"]) else aggregate["elo_ci_low"],
+            "elo_ci_high": None if isinstance(aggregate["elo_ci_high"], float) and math.isinf(aggregate["elo_ci_high"]) else aggregate["elo_ci_high"],
             "runner": runner,
             "command_line": report["command_line"],
             "elapsed_s": aggregate["elapsed_s"],
