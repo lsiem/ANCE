@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: "Executing 05-04 — SF 200k depth-12 train started"
+status: "Executing 05-04 — SF200k smoke 0-20; opening-biased SF150k training"
 stopped_at: null
-last_updated: "2026-07-22T05:52:13.000Z"
+last_updated: "2026-07-22T07:04:11.000Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 5
@@ -65,6 +65,7 @@ Progress: [██████████] 97%
 
 ### Decisions
 
+- [Phase 05 / 2026-07-22]: SF 200k depth-12 random-walk net improved material signs but smoke 20-game depth-3 still 0–20; started opening-biased SF 150k retrain.
 - [Phase 05 / 2026-07-22]: Plan 05-03 closed with honest failure — 1000-game depth-3 NNUE vs HC = 0–1000–0; `gates_failed: ["D-12","TOOL-04"]`. Do not claim TOOL-04.
 - [Phase 05 / 2026-07-20]: Discarded mixed-net checkpoint after PR #5 HF net landed mid-run; restarted clean evidence run.
 - [Phase 05]: Acceptance depth N=3 for TOOL-04 overnight gauntlet.
