@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 05
 current_phase_name: nnue-swap-in-elo-gauntlet
-status: "05-03 complete with failed gates; next Plan 05-04 (retrain + re-evidence)"
+status: "Executing 05-04 — SF 200k depth-12 train started"
 stopped_at: null
-last_updated: "2026-07-22T05:50:00.000Z"
+last_updated: "2026-07-22T05:52:13.000Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 5
