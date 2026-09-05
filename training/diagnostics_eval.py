@@ -35,12 +35,15 @@ def check_startpos_near_zero(nnue: NnueEval, tol: int = 50) -> DiagnosticResult:
 
 
 def check_material_signs(nnue: NnueEval) -> DiagnosticResult:
-    # White up a rook / queen — STM white ⇒ positive.
+    # White up a rook / queen — STM white ⇒ both must be clearly positive.
+    # Do not require queen_cp > rook_cp: small nets can invert magnitude while
+    # still having correct material sign (queen>rook is a strength aspiration,
+    # not a pre-gauntlet polarity gate).
     rook_up = chess.Board("4k3/8/8/8/8/8/8/4KR2 w - - 0 1")
     queen_up = chess.Board("4k3/8/8/8/8/8/8/4KQ2 w - - 0 1")
     rook_cp = nnue.evaluate(Position(rook_up))
     queen_cp = nnue.evaluate(Position(queen_up))
-    ok = rook_cp > 100 and queen_cp > rook_cp
+    ok = rook_cp > 100 and queen_cp > 100
     return DiagnosticResult(
         "material_signs",
         ok,

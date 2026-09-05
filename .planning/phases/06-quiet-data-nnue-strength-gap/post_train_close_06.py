@@ -39,6 +39,9 @@ SEARCH_DEPTH = 3
 ENGINE_ARGV = [sys.executable, "-m", "ance"]
 MAX_HALFMOVES = 160
 BUDGET_SECONDS = 172_800
+# Depth-3 Python search has historically been ~150–250 s/game in cloud.
+# 200 games therefore need ~14–18 h; the elo_probe default (4 h) is too short.
+PROBE_BUDGET_SECONDS = 64_800
 
 
 def _log(msg: str) -> None:
@@ -191,6 +194,7 @@ def main() -> int:
         ENGINE_NET,
         n_games=PROBE_GAMES,
         out_dir=PHASE_DIR / "probe-200",
+        budget_seconds=PROBE_BUDGET_SECONDS,
     )
     probe_agg = probe.get("aggregate") or {}
     if not (

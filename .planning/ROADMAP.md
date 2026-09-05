@@ -237,15 +237,19 @@ Plans:
   3. Trainer supports λ 1.0→0.75, random fen-skipping 3, resume-from, and mid-train Elo probes; final net is best-by-Elo when probes ran.
   4. Diagnostics pass; 200-game probe gate then ≥1000-game TOOL-04; accumulator parity + optional clock/nodes note. No HalfKA.
 
-**Plans**: 0/5 planned (implementation tracked in quiet-nnue-strength-gap workstreams)
+**Plans**: 5/6 harness complete; 06-06 measurement closer in flight
 
 Plans:
 
 - [x] 06-01 — Quiet filter + mate clamp + corpus mix guards + tests
 - [x] 06-02 — λ schedule, fen-skip, resume-from CLI
 - [x] 06-03 — Mid-train Elo probes + best_elo export + dashboard
-- [x] 06-04 — Diagnostics + 200→1000 closer + dual TC evidence (harness; overnight run pending Lichess dump)
+- [x] 06-04 — Diagnostics + 200→1000 closer + dual TC evidence (harness)
 - [x] 06-05 — Accumulator parity / nps evidence (no arch change)
+
+**Wave 1** *(measurement — blocked on harness)*
+
+- [ ] 06-06-PLAN.md — Quiet-data net diagnostics → 200-game probe → ≥1000 TOOL-04 evidence
 
 ## Progress
 
@@ -259,4 +263,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
-| 6. Quiet-Data NNUE Strength Gap | 5/5 harness | Harness complete; strength retrain pending | 2026-07-20 |
+| 6. Quiet-Data NNUE Strength Gap | 5/6 | Closer in flight (06-06) | — |

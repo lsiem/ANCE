@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 current_phase_name: quiet-data-nnue-strength-gap
-status: in_progress
+status: "Executing Phase 06 — 06-06 post_train_close_06 TOOL-04 re-gate"
 stopped_at: —
-last_updated: "2026-07-20T12:52:00.000Z"
-last_activity: 2026-07-20
-last_activity_desc: "Merged main; Phase 6 strength-run net installed; 05-03 closed with honest gates_failed"
+last_updated: "2026-09-05T19:30:00.000Z"
+last_activity: 2026-09-05
+last_activity_desc: "Phase 6 closer: polarity diagnostic + 200→1000 re-gate on quiet-data net"
 progress:
   total_phases: 6
   completed_phases: 4
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
 Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
-Plan: Phase 6 harness complete; strength-run trained (Lichess 2013-01); next `post_train_close_06.py`
-Status: Strength-run net installed into `ance/eval/nnue/net.safetensors` — probe/TOOL-04 re-gate pending
-Last activity: 2026-07-20 — resolved merge with main; kept Phase-6 STATE + scale-run metrics; installed quiet-data net
+Plan: 06-06 closer — diagnostics → 200-game probe → ≥1000 TOOL-04
+Status: Quiet-data net installed (`n_merged=19866`); closer in flight
+Last activity: 2026-09-05 — `/gsd-execute-phase 6`; polarity-only material gate; start closer
 
 Progress: [██████████] 97%
 
@@ -90,12 +90,12 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md` (superseded — 05-03 closed; Phase 6 closer next)
+See: `.planning/todos/pending/2026-09-05-phase06-quiet-data-closer.md`
 
 1. ~~05-03 evidence~~ — committed with `gates_failed` (honest).
-2. ~~Phase 6 harness + strength-run train~~ — `strength-run/net.safetensors` installed.
+2. ~~Phase 6 harness + strength-run train~~ — quiet-data net installed.
 3. **Run `post_train_close_06.py`** — diagnostics → 200-game probe → ≥1000 TOOL-04.
-4. Write `06-*-SUMMARY` / evidence; sync ROADMAP when gates settle.
+4. Write `06-06-SUMMARY` / evidence; sync ROADMAP when gates settle.
 
 ### Blockers/Concerns
 
@@ -114,8 +114,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T12:52:00.000Z
-Stopped at: Merge conflicts with main resolved; Phase 6 strength net installed; `post_train_close_06` remaining
+Last session: 2026-09-05T19:30:00.000Z
+Stopped at: Phase 6 closer started (`post_train_close_06.py`)
 Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-NOTES.md`
-Gauntlet checkpoint: `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json` (Phase 5; historical)
 Phase 6 closer: `.planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py`
