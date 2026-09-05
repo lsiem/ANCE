@@ -190,12 +190,26 @@ def main() -> int:
         return 2
 
     _save_state("probe_200")
-    probe = run_elo_probe(
-        ENGINE_NET,
-        n_games=PROBE_GAMES,
-        out_dir=PHASE_DIR / "probe-200",
-        budget_seconds=PROBE_BUDGET_SECONDS,
-    )
+    try:
+        probe = run_elo_probe(
+            ENGINE_NET,
+            n_games=PROBE_GAMES,
+            out_dir=PHASE_DIR / "probe-200",
+            budget_seconds=PROBE_BUDGET_SECONDS,
+        )
+    except Exception as exc:  # noqa: BLE001
+        _log(f"200-game probe raised: {type(exc).__name__}: {exc}")
+        ckpt = PHASE_DIR / "probe-200" / "probe-checkpoint.json"
+        probe = json.loads(ckpt.read_text(encoding="utf-8")) if ckpt.is_file() else {}
+        evidence = _write_evidence(
+            diagnostics=diagnostics,
+            probe=probe,
+            depth_report=None,
+            clock_report=None,
+            corpus_meta={"net_source": str(net_src), "error": str(exc)},
+        )
+        _save_state("probe_error", error=str(exc))
+        return 2 if evidence.get("gates_failed") else 1
     probe_agg = probe.get("aggregate") or {}
     if not (
         probe_agg.get("n_games", 0) >= PROBE_GAMES
