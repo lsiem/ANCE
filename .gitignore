@@ -46,6 +46,7 @@ __pycache__/
 .planning/phases/06-quiet-data-nnue-strength-gap/06-gauntlet-*.html
 .planning/phases/06-quiet-data-nnue-strength-gap/06-gauntlet-*.log
 .planning/phases/06-quiet-data-nnue-strength-gap/post-train-close-state.json
+.planning/phases/06-quiet-data-nnue-strength-gap/post-train-close.log
 .planning/phases/06-quiet-data-nnue-strength-gap/probe-200/
 .planning/phases/06-quiet-data-nnue-strength-gap/strength-run/
 .planning/phases/06-quiet-data-nnue-strength-gap/data/
