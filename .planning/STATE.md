@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 current_phase_name: quiet-data-nnue-strength-gap
-status: in_progress
+status: "Executing Phase 06 — strength-corpus retrain then post_train_close_06"
 stopped_at: —
-last_updated: "2026-07-20T12:52:00.000Z"
-last_activity: 2026-07-20
+last_updated: "2026-09-05T15:00:36.000Z"
+last_activity: 2026-09-05
 last_activity_desc: "Merged main; Phase 6 strength-run net installed; 05-03 closed with honest gates_failed"
 progress:
   total_phases: 6
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
 Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
 Plan: Phase 6 harness complete; strength-run trained (Lichess 2013-01); next `post_train_close_06.py`
-Status: Strength-run net installed into `ance/eval/nnue/net.safetensors` — probe/TOOL-04 re-gate pending
+Status: Strength-corpus retrain started (Lichess 2013-01 + HF 200k, quiet filter); closer pending
 Last activity: 2026-07-20 — resolved merge with main; kept Phase-6 STATE + scale-run metrics; installed quiet-data net
 
 Progress: [██████████] 97%
