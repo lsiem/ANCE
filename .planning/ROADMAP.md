@@ -264,3 +264,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
 | 6. Quiet-Data NNUE Strength Gap | 6/6 | Verified — Gap (TOOL-04 failed) | 2026-09-06 |
+
+### Phase 7: NNUE strength recovery
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 6
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 7 to break down)
