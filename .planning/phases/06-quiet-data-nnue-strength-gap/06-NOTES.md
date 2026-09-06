@@ -37,4 +37,4 @@ python -m training.run_pipeline \
 - Net: installed `ance/eval/nnue/net.safetensors` (quiet-data, `n_merged=19866`, epoch 18, K≈451)
 - Closer: `post_train_close_06.py` (diagnostics polarity-only; probe budget 18h)
 - Prior train: Lichess 2013-01 quiet corpus; no `strength-run/` dir in this checkout (net already copied into the engine package)
-- Probe live: 73/200 after ~3.2 h, NNUE 0–73 (score 0.0), ~139 s/game → ~4.9 h remaining
+- Probe live: 121/200 after ~5.1 h, NNUE 0–121 (score 0.0), ~141 s/game → ~3.1 h remaining
