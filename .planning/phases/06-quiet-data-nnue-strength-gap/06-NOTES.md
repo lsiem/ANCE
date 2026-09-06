@@ -37,4 +37,5 @@ python -m training.run_pipeline \
 - Net: installed `ance/eval/nnue/net.safetensors` (quiet-data, `n_merged=19866`, epoch 18, K≈451)
 - Closer: `post_train_close_06.py` (diagnostics polarity-only; probe budget 18h)
 - Prior train: Lichess 2013-01 quiet corpus; no `strength-run/` dir in this checkout (net already copied into the engine package)
-- Probe live: 174/200 after ~15.1 h wall, NNUE 0–174 (score 0.0), ~141 s/game search → ~26 games remaining
+- Probe **complete**: 200/200, NNUE 0–200 (all checkmate), score 0.0, Elo −∞ / JSON null, CI high −686.6, ~141 s/game, ~16 h wall
+- ≥1000 TOOL-04 skipped; `06-GAUNTLET-EVIDENCE.json` records honest `gates_failed`

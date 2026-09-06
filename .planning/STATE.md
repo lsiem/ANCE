@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 current_phase_name: quiet-data-nnue-strength-gap
-status: "Executing Phase 06 — 06-06 post_train_close_06 TOOL-04 re-gate"
+status: "Phase 06 closed with honest gates_failed (200-game probe 0-200)"
 stopped_at: —
-last_updated: "2026-09-05T19:30:00.000Z"
-last_activity: 2026-09-05
-last_activity_desc: "Phase 6 closer: polarity diagnostic + 200→1000 re-gate on quiet-data net"
+last_updated: "2026-09-06T12:00:00.000Z"
+last_activity: 2026-09-06
+last_activity_desc: "06-06 closer complete: diagnostics pass, probe 0-200, TOOL-04 failed honestly"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 34
-  completed_plans: 33
-  percent: 97
+  total_plans: 35
+  completed_plans: 35
+  percent: 100
 ---
 
 # Project State
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
 Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
-Plan: 06-06 closer — diagnostics → 200-game probe → ≥1000 TOOL-04
-Status: Quiet-data net installed (`n_merged=19866`); closer in flight
-Last activity: 2026-09-05 — `/gsd-execute-phase 6`; polarity-only material gate; start closer
+Plan: 06-06 closer complete — honest `gates_failed`
+Status: Quiet-data net measured 0–200 vs handcrafted at depth 3; TOOL-04 not met
+Last activity: 2026-09-06 — 200-game probe finished; ≥1000 gauntlet skipped
 
 Progress: [██████████] 97%
 
@@ -90,18 +90,19 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-See: `.planning/todos/pending/2026-09-05-phase06-quiet-data-closer.md`
+See: `.planning/todos/done/2026-09-06-phase06-quiet-data-closer.md`
 
 1. ~~05-03 evidence~~ — committed with `gates_failed` (honest).
 2. ~~Phase 6 harness + strength-run train~~ — quiet-data net installed.
-3. **Run `post_train_close_06.py`** — diagnostics → 200-game probe → ≥1000 TOOL-04.
-4. Write `06-06-SUMMARY` / evidence; sync ROADMAP when gates settle.
+3. ~~Run `post_train_close_06.py`~~ — 200-game probe 0–200; ≥1000 skipped.
+4. ~~Write `06-06-SUMMARY` / evidence~~ — honest `gates_failed` (D-12, TOOL-04).
 
 ### Blockers/Concerns
 
 - [Phase 4] MPS `torch.backends.mps.is_available()` has regressed on recent macOS majors — a smoke test + CPU-vs-MPS numeric parity check must be the first task of the training harness (CPU training is a viable fallback for this tiny net).
 - [Phase 4/5] WDL scaling constant K (~360–400) and the exact Stockfish labeling command (normalized UCI cp ≠ internal eval) must be pinned/measured before generating the dataset.
-- [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus is the recovery path.
+- [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus was the recovery path; 200-game probe still 0–200.
+- [Phase 6] Quiet 2013-01 corpus (`n_merged=19866`) is diagnostically signed but far weaker than handcrafted at depth 3. Next strength attempt needs a much larger result-bearing dump or a different recipe.
 - [Phase 5] Depth-3 NNUE vs HC wall-clock on some hosts ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
 
 ## Deferred Items
@@ -114,7 +115,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T19:30:00.000Z
-Stopped at: Phase 6 closer started (`post_train_close_06.py`)
-Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-NOTES.md`
-Phase 6 closer: `.planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py`
+Last session: 2026-09-06T12:00:00.000Z
+Stopped at: Phase 6 closer written; TOOL-04 failed honestly (0–200 probe)
+Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-06-SUMMARY.md`
+Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`

@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Search Acceleration & Time Management** - Transposition table, full move ordering, real clock control, and the self-play gauntlet harness (completed 2026-07-11)
 - [x] **Phase 4: Offline NNUE Training Pipeline** - Stockfish labeling → game-split dataset → PyTorch/MPS `(768→N)×2→1` training → validated exported weights (completed 2026-07-18)
 - [ ] **Phase 5: NNUE Swap-In & Elo Gauntlet** - numpy NnueEval behind the seam, parity + perspective tests, and a ≥1000-game gauntlet proving measurable Elo gain — 05-03 evidence written; gates_failed (honest)
-- [ ] **Phase 6: Quiet-Data NNUE Strength Gap** - Quiet/result-bearing corpus, λ schedule + fen-skipping, Elo-probe checkpoints, 200→1000 re-gate (no HalfKA)
+- [ ] **Phase 6: Quiet-Data NNUE Strength Gap** - Quiet/result-bearing corpus, λ schedule + fen-skipping, Elo-probe checkpoints, 200→1000 re-gate (no HalfKA) — 06-06 evidence written; gates_failed (honest)
 
 ## Phase Details
 
@@ -237,7 +237,7 @@ Plans:
   3. Trainer supports λ 1.0→0.75, random fen-skipping 3, resume-from, and mid-train Elo probes; final net is best-by-Elo when probes ran.
   4. Diagnostics pass; 200-game probe gate then ≥1000-game TOOL-04; accumulator parity + optional clock/nodes note. No HalfKA.
 
-**Plans**: 5/6 harness complete; 06-06 measurement closer in flight
+**Plans**: 6/6 executed (measurement failed honestly)
 
 Plans:
 
@@ -247,9 +247,9 @@ Plans:
 - [x] 06-04 — Diagnostics + 200→1000 closer + dual TC evidence (harness)
 - [x] 06-05 — Accumulator parity / nps evidence (no arch change)
 
-**Wave 1** *(measurement — blocked on harness)*
+**Wave 1** *(measurement)*
 
-- [ ] 06-06-PLAN.md — Quiet-data net diagnostics → 200-game probe → ≥1000 TOOL-04 evidence
+- [x] 06-06-PLAN.md — Quiet-data net diagnostics → 200-game probe → ≥1000 TOOL-04 evidence — probe 0–200; gates_failed (honest)
 
 ## Progress
 
@@ -263,4 +263,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
-| 6. Quiet-Data NNUE Strength Gap | 5/6 | Closer in flight (06-06) | — |
+| 6. Quiet-Data NNUE Strength Gap | 6/6 | Gap (D-12 failed) | 2026-09-06 |
