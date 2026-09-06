@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 import tempfile
@@ -64,17 +65,29 @@ def run_elo_probe(
     return report
 
 
+def json_safe_number(value):
+    """RFC JSON cannot encode NaN/±Inf; shutouts use null + score_rate=0."""
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    return value
+
+
 def probe_summary(report: dict) -> dict:
     agg = report.get("aggregate") or {}
+    elapsed = report.get("_wall_clock_elapsed_s")
+    if elapsed is None:
+        elapsed = agg.get("elapsed_s")
     return {
         "n_games": agg.get("n_games"),
         "wins": agg.get("wins"),
         "losses": agg.get("losses"),
         "draws": agg.get("draws"),
-        "score_rate": agg.get("score_rate"),
-        "elo": agg.get("elo"),
-        "elo_ci_low": agg.get("elo_ci_low"),
-        "elo_ci_high": agg.get("elo_ci_high"),
+        "score_rate": json_safe_number(agg.get("score_rate")),
+        "wilson_low": json_safe_number(agg.get("wilson_low")),
+        "wilson_high": json_safe_number(agg.get("wilson_high")),
+        "elo": json_safe_number(agg.get("elo")),
+        "elo_ci_low": json_safe_number(agg.get("elo_ci_low")),
+        "elo_ci_high": json_safe_number(agg.get("elo_ci_high")),
         "status": report.get("status"),
-        "elapsed_s": report.get("_wall_clock_elapsed_s"),
+        "elapsed_s": json_safe_number(elapsed),
     }

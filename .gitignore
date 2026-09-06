@@ -42,6 +42,14 @@ __pycache__/
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.log
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-*.txt
 .planning/phases/05-nnue-swap-in-elo-gauntlet/05-live-board.png
+.planning/phases/06-quiet-data-nnue-strength-gap/06-gauntlet-*.json
+.planning/phases/06-quiet-data-nnue-strength-gap/06-gauntlet-*.html
+.planning/phases/06-quiet-data-nnue-strength-gap/06-gauntlet-*.log
+.planning/phases/06-quiet-data-nnue-strength-gap/post-train-close-state.json
+.planning/phases/06-quiet-data-nnue-strength-gap/post-train-close.log
+.planning/phases/06-quiet-data-nnue-strength-gap/probe-200/
+.planning/phases/06-quiet-data-nnue-strength-gap/strength-run/
+.planning/phases/06-quiet-data-nnue-strength-gap/data/
 .planning/async-jobs/
 .planning/phases/*/cloud-hf-run-v2/*_samples.json
 .planning/phases/*/cloud-hf-run-v2/*.npz

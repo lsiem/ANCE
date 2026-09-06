@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 from ance.tools import gauntlet  # noqa: E402
 from training.diagnostics_eval import run_diagnostics  # noqa: E402
-from training.elo_probe import probe_summary, run_elo_probe  # noqa: E402
+from training.elo_probe import json_safe_number, probe_summary, run_elo_probe  # noqa: E402
 
 PHASE_DIR = ROOT / ".planning/phases/06-quiet-data-nnue-strength-gap"
 STRENGTH_NET = PHASE_DIR / "strength-run" / "net.safetensors"
@@ -39,6 +39,9 @@ SEARCH_DEPTH = 3
 ENGINE_ARGV = [sys.executable, "-m", "ance"]
 MAX_HALFMOVES = 160
 BUDGET_SECONDS = 172_800
+# Depth-3 Python search has historically been ~150–250 s/game in cloud.
+# 200 games therefore need ~14–18 h; the elo_probe default (4 h) is too short.
+PROBE_BUDGET_SECONDS = 64_800
 
 
 def _log(msg: str) -> None:
@@ -145,10 +148,10 @@ def _write_evidence(
             "wins": depth_agg.get("wins"),
             "losses": depth_agg.get("losses"),
             "draws": depth_agg.get("draws"),
-            "score_rate": depth_agg.get("score_rate"),
-            "elo": depth_agg.get("elo"),
-            "elo_ci_low": depth_agg.get("elo_ci_low"),
-            "elo_ci_high": depth_agg.get("elo_ci_high"),
+            "score_rate": json_safe_number(depth_agg.get("score_rate")),
+            "elo": json_safe_number(depth_agg.get("elo")),
+            "elo_ci_low": json_safe_number(depth_agg.get("elo_ci_low")),
+            "elo_ci_high": json_safe_number(depth_agg.get("elo_ci_high")),
             "status": (depth_report or {}).get("status"),
             "checkpoint": str(CHECKPOINT),
         },
@@ -156,7 +159,9 @@ def _write_evidence(
         "gates_passed": ["D-12", "TOOL-04"] if d12_pass else [],
         "gates_failed": [] if d12_pass else ["D-12", "TOOL-04"],
     }
-    EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+    EVIDENCE.write_text(
+        json.dumps(evidence, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
     _log(f"wrote {EVIDENCE} d12_pass={d12_pass}")
     return evidence
 
@@ -187,11 +192,26 @@ def main() -> int:
         return 2
 
     _save_state("probe_200")
-    probe = run_elo_probe(
-        ENGINE_NET,
-        n_games=PROBE_GAMES,
-        out_dir=PHASE_DIR / "probe-200",
-    )
+    try:
+        probe = run_elo_probe(
+            ENGINE_NET,
+            n_games=PROBE_GAMES,
+            out_dir=PHASE_DIR / "probe-200",
+            budget_seconds=PROBE_BUDGET_SECONDS,
+        )
+    except Exception as exc:  # noqa: BLE001
+        _log(f"200-game probe raised: {type(exc).__name__}: {exc}")
+        ckpt = PHASE_DIR / "probe-200" / "probe-checkpoint.json"
+        probe = json.loads(ckpt.read_text(encoding="utf-8")) if ckpt.is_file() else {}
+        evidence = _write_evidence(
+            diagnostics=diagnostics,
+            probe=probe,
+            depth_report=None,
+            clock_report=None,
+            corpus_meta={"net_source": str(net_src), "error": str(exc)},
+        )
+        _save_state("probe_error", error=str(exc))
+        return 2 if evidence.get("gates_failed") else 1
     probe_agg = probe.get("aggregate") or {}
     if not (
         probe_agg.get("n_games", 0) >= PROBE_GAMES

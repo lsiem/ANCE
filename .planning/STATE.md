@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 current_phase_name: quiet-data-nnue-strength-gap
-status: in_progress
+status: "Phase 06 verified — TOOL-04 failed; next is Phase 7 discuss/plan"
 stopped_at: —
-last_updated: "2026-07-20T12:52:00.000Z"
-last_activity: 2026-07-20
-last_activity_desc: "Merged main; Phase 6 strength-run net installed; 05-03 closed with honest gates_failed"
+last_updated: "2026-09-06T14:10:00.000Z"
+last_activity: 2026-09-06
+last_activity_desc: "/gsd-progress --next → verify-work 06; 3/4 criteria, TOOL-04 failed"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 34
-  completed_plans: 33
-  percent: 97
+  total_plans: 35
+  completed_plans: 35
+  percent: 100
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
-Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
-Plan: Phase 6 harness complete; strength-run trained (Lichess 2013-01); next `post_train_close_06.py`
-Status: Strength-run net installed into `ance/eval/nnue/net.safetensors` — probe/TOOL-04 re-gate pending
-Last activity: 2026-07-20 — resolved merge with main; kept Phase-6 STATE + scale-run metrics; installed quiet-data net
+Phase: 06 (quiet-data-nnue-strength-gap) — VERIFIED (failed TOOL-04)
+Prior: Phase 05 GAP (D-12 failed)
+Plan: 06-VERIFICATION.md written; do not complete-phase
+Status: Harness 3/4 pass; 200-game probe 0–200; next is Phase 7 discuss/plan
+Last activity: 2026-09-06 — `/gsd-progress --next` ran verify-work
 
 Progress: [██████████] 97%
 
@@ -90,18 +90,19 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-See: `.planning/todos/pending/2026-07-18-scale-train-and-05-03.md` (superseded — 05-03 closed; Phase 6 closer next)
+See: `.planning/todos/done/2026-09-06-phase06-quiet-data-closer.md`
 
 1. ~~05-03 evidence~~ — committed with `gates_failed` (honest).
-2. ~~Phase 6 harness + strength-run train~~ — `strength-run/net.safetensors` installed.
-3. **Run `post_train_close_06.py`** — diagnostics → 200-game probe → ≥1000 TOOL-04.
-4. Write `06-*-SUMMARY` / evidence; sync ROADMAP when gates settle.
+2. ~~Phase 6 harness + strength-run train~~ — quiet-data net installed.
+3. ~~Run `post_train_close_06.py`~~ — 200-game probe 0–200; ≥1000 skipped.
+4. ~~Write `06-06-SUMMARY` / evidence~~ — honest `gates_failed` (D-12, TOOL-04).
 
 ### Blockers/Concerns
 
 - [Phase 4] MPS `torch.backends.mps.is_available()` has regressed on recent macOS majors — a smoke test + CPU-vs-MPS numeric parity check must be the first task of the training harness (CPU training is a viable fallback for this tiny net).
 - [Phase 4/5] WDL scaling constant K (~360–400) and the exact Stockfish labeling command (normalized UCI cp ≠ internal eval) must be pinned/measured before generating the dataset.
-- [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus is the recovery path.
+- [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus was the recovery path; 200-game probe still 0–200.
+- [Phase 6] Quiet 2013-01 corpus (`n_merged=19866`) is diagnostically signed but far weaker than handcrafted at depth 3. Next strength attempt needs a much larger result-bearing dump or a different recipe.
 - [Phase 5] Depth-3 NNUE vs HC wall-clock on some hosts ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
 
 ## Deferred Items
@@ -114,8 +115,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T12:52:00.000Z
-Stopped at: Merge conflicts with main resolved; Phase 6 strength net installed; `post_train_close_06` remaining
-Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-NOTES.md`
-Gauntlet checkpoint: `.planning/phases/05-nnue-swap-in-elo-gauntlet/05-gauntlet-checkpoint.json` (Phase 5; historical)
-Phase 6 closer: `.planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py`
+Last session: 2026-09-06T14:10:00.000Z
+Stopped at: Phase 6 verify-work complete; TOOL-04 still open
+Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-VERIFICATION.md`
+Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`
+Next: `/gsd-discuss-phase` or `/gsd-plan-phase` for Phase 7 strength recovery

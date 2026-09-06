@@ -31,9 +31,11 @@ python -m training.run_pipeline \
 3. ≥1000-game TOOL-04 (`post_train_close_06.py`)
 4. Optional clock/nodes note + accumulator parity (already unit-tested)
 
-## Active run (2026-07-20)
+## Active run (2026-09-05)
 
-- tmux: `ance-strength-06`
-- out: `strength-run/`
-- data: `data/lichess_db_standard_rated_2013-01.pgn.zst` (~34k eval samples)
-- elo probes during train: disabled (`--elo-probe-every 0`); use closer after export
+- Branch: `cursor/phase06-quiet-data-closer-0af2`
+- Net: installed `ance/eval/nnue/net.safetensors` (quiet-data, `n_merged=19866`, epoch 18, K≈451)
+- Closer: `post_train_close_06.py` (diagnostics polarity-only; probe budget 18h)
+- Prior train: Lichess 2013-01 quiet corpus; no `strength-run/` dir in this checkout (net already copied into the engine package)
+- Probe **complete**: 200/200, NNUE 0–200 (all checkmate), score 0.0, Elo −∞ / JSON null, CI high −686.6, ~141 s/game, ~16 h wall
+- ≥1000 TOOL-04 skipped; `06-GAUNTLET-EVIDENCE.json` records honest `gates_failed`

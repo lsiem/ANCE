@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "git_commit": "2e257a8e9ac4f98fd6a7fce2803a4ffc79da2a1d",
+  "captured_utc": "2026-09-06T12:00:10.680203+00:00",
+  "corpus": {
+    "net_source": "/workspace/ance/eval/nnue/net.safetensors",
+    "finalized_utc": "2026-09-06T12:00:10.678910+00:00",
+    "note": "200-game depth-3 probe completed; \u22651000 TOOL-04 skipped because elo_ci_low was not > 0",
+    "n_train": "19013",
+    "feature_set": "board768",
+    "git_sha": "2732d7853dc72e5c8819d169739ed5e02f701759",
+    "format_version": "1",
+    "best_val_loss": "0.02801143331453204",
+    "best_elo": "None",
+    "batch_size": "256",
+    "n_merged": "19866",
+    "arch_id": "768x2-256-1",
+    "labeling_command": "unknown",
+    "seed": "42",
+    "mode": "bounded",
+    "best_epoch": "18",
+    "n_val": "853",
+    "k_scale": "451.4537847482053"
+  },
+  "diagnostics": [
+    {
+      "name": "startpos_near_zero",
+      "ok": true,
+      "detail": "cp=13 tol=50"
+    },
+    {
+      "name": "material_signs",
+      "ok": true,
+      "detail": "rook_up=160 queen_up=138"
+    },
+    {
+      "name": "color_flip",
+      "ok": true,
+      "detail": "a=12 b=12 tol=30"
+    }
+  ],
+  "probe_200": {
+    "n_games": 200,
+    "wins": 0,
+    "losses": 200,
+    "draws": 0,
+    "score_rate": 0.0,
+    "wilson_low": 0.0,
+    "wilson_high": 0.018846005918320894,
+    "elo": null,
+    "elo_ci_low": null,
+    "elo_ci_high": -686.6071411804116,
+    "status": "completed",
+    "elapsed_s": 28142.624157079208
+  },
+  "gauntlet": {
+    "games": null,
+    "mode": "fixed_depth",
+    "depth": 3,
+    "wins": null,
+    "losses": null,
+    "draws": null,
+    "score_rate": null,
+    "elo": null,
+    "elo_ci_low": null,
+    "elo_ci_high": null,
+    "status": null,
+    "checkpoint": "/workspace/.planning/phases/06-quiet-data-nnue-strength-gap/06-gauntlet-checkpoint.json"
+  },
+  "clock_gauntlet": null,
+  "gates_passed": [],
+  "gates_failed": [
+    "D-12",
+    "TOOL-04"
+  ]
+}

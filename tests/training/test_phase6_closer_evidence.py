@@ -47,3 +47,50 @@ def test_write_evidence_schema(tmp_path, monkeypatch) -> None:
     assert loaded["schema_version"] == 1
     assert "gauntlet" in loaded
     assert loaded["gauntlet"]["games"] == 1000
+
+
+def test_shutout_probe_serializes_without_nan(tmp_path, monkeypatch) -> None:
+    mod_path = Path(
+        ".planning/phases/06-quiet-data-nnue-strength-gap/post_train_close_06.py"
+    )
+    mod = SourceFileLoader("post_train_close_06", str(mod_path)).load_module()
+    monkeypatch.setattr(mod, "EVIDENCE", tmp_path / "06-GAUNTLET-EVIDENCE.json")
+    monkeypatch.setattr(mod, "CHECKPOINT", tmp_path / "ckpt.json")
+    diagnostics = [
+        SimpleNamespace(name="startpos_near_zero", ok=True, detail="cp=0"),
+        SimpleNamespace(name="material_signs", ok=True, detail="ok"),
+        SimpleNamespace(name="color_flip", ok=True, detail="ok"),
+    ]
+    probe = {
+        "status": "completed",
+        "aggregate": {
+            "n_games": 200,
+            "wins": 0,
+            "losses": 200,
+            "draws": 0,
+            "score_rate": 0.0,
+            "wilson_low": 0.0,
+            "wilson_high": 0.0188,
+            "elo": float("-inf"),
+            "elo_ci_low": float("-inf"),
+            "elo_ci_high": -686.6,
+            "elapsed_s": 28142.0,
+        },
+    }
+    evidence = mod._write_evidence(
+        diagnostics=diagnostics,
+        probe=probe,
+        depth_report=None,
+        clock_report=None,
+        corpus_meta={"n_merged": 19866},
+    )
+    raw = mod.EVIDENCE.read_text()
+    assert "Infinity" not in raw
+    assert "NaN" not in raw
+    loaded = json.loads(raw)
+    assert loaded["probe_200"]["n_games"] == 200
+    assert loaded["probe_200"]["wins"] == 0
+    assert loaded["probe_200"]["elo"] is None
+    assert loaded["probe_200"]["elo_ci_low"] is None
+    assert loaded["gates_failed"] == ["D-12", "TOOL-04"]
+    assert evidence["probe_200"]["elo"] is None
