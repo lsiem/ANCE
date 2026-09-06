@@ -264,3 +264,25 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
 | 6. Quiet-Data NNUE Strength Gap | 6/6 | Verified — Gap (TOOL-04 failed) | 2026-09-06 |
+
+### Phase 7: NNUE strength recovery
+
+**Goal:** Retrain `768x2-256-1` from scratch on an HF-primary quiet corpus (padded 4-field FENs, modest 2013-01 Lichess fill) and re-gate TOOL-04 at fixed depth 3 via diagnostics → 16-game smoke → 200 → ≥1000, with honest blocked or useful-fail evidence if the Phase 7 net is missing or weak.
+**Requirements**: TOOL-04
+**Depends on:** Phase 6
+**Plans:** 4 plans
+
+Plans:
+
+**Wave 1** *(parallel — ingest harness + measure closer)*
+
+- [ ] 07-01-PLAN.md — Wave 0 ingest harness: 4-field FEN pad, --lichess-max-samples, max_kept, mix 0.15
+- [ ] 07-02-PLAN.md — Measure closer: smoke abort, sidecar gate, evidence schema tests
+
+**Wave 2** *(blocked on 07-01 harness flags)*
+
+- [ ] 07-03-PLAN.md — Arch lock + M4 from-scratch train recipe and sidecar commit
+
+**Wave 3** *(blocked on closer + train contract)*
+
+- [ ] 07-04-PLAN.md — Cloud measure closer run (blocked, useful-fail, or TOOL-04)
