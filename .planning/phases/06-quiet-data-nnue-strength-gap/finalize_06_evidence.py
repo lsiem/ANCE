@@ -40,6 +40,12 @@ def main() -> int:
     probe = _load(PROBE_CKPT)
     depth_report = _load(GAUNTLET_CKPT)
     clock_report = _load(CLOCK_CKPT)
+    net_meta: dict = {}
+    if ENGINE_NET.is_file():
+        from safetensors import safe_open
+
+        with safe_open(ENGINE_NET, framework="numpy") as handle:
+            net_meta = dict(handle.metadata() or {})
     closer._write_evidence(
         diagnostics=diagnostics,
         probe=probe,
@@ -48,7 +54,11 @@ def main() -> int:
         corpus_meta={
             "net_source": str(ENGINE_NET),
             "finalized_utc": datetime.now(UTC).isoformat(),
-            "note": "finalize_06_evidence.py snapshot of closer artifacts",
+            "note": (
+                "200-game depth-3 probe completed; ≥1000 TOOL-04 skipped "
+                "because elo_ci_low was not > 0"
+            ),
+            **net_meta,
         },
     )
     print(f"wrote {closer.EVIDENCE}")

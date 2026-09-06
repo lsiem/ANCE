@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 from ance.tools import gauntlet  # noqa: E402
 from training.diagnostics_eval import run_diagnostics  # noqa: E402
-from training.elo_probe import probe_summary, run_elo_probe  # noqa: E402
+from training.elo_probe import json_safe_number, probe_summary, run_elo_probe  # noqa: E402
 
 PHASE_DIR = ROOT / ".planning/phases/06-quiet-data-nnue-strength-gap"
 STRENGTH_NET = PHASE_DIR / "strength-run" / "net.safetensors"
@@ -148,10 +148,10 @@ def _write_evidence(
             "wins": depth_agg.get("wins"),
             "losses": depth_agg.get("losses"),
             "draws": depth_agg.get("draws"),
-            "score_rate": depth_agg.get("score_rate"),
-            "elo": depth_agg.get("elo"),
-            "elo_ci_low": depth_agg.get("elo_ci_low"),
-            "elo_ci_high": depth_agg.get("elo_ci_high"),
+            "score_rate": json_safe_number(depth_agg.get("score_rate")),
+            "elo": json_safe_number(depth_agg.get("elo")),
+            "elo_ci_low": json_safe_number(depth_agg.get("elo_ci_low")),
+            "elo_ci_high": json_safe_number(depth_agg.get("elo_ci_high")),
             "status": (depth_report or {}).get("status"),
             "checkpoint": str(CHECKPOINT),
         },
@@ -159,7 +159,9 @@ def _write_evidence(
         "gates_passed": ["D-12", "TOOL-04"] if d12_pass else [],
         "gates_failed": [] if d12_pass else ["D-12", "TOOL-04"],
     }
-    EVIDENCE.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+    EVIDENCE.write_text(
+        json.dumps(evidence, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
     _log(f"wrote {EVIDENCE} d12_pass={d12_pass}")
     return evidence
 
