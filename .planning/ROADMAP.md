@@ -263,4 +263,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 | 3. Search Acceleration & Time Management | 6/6 | Complete    | 2026-07-11 |
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
-| 6. Quiet-Data NNUE Strength Gap | 6/6 | Gap (D-12 failed) | 2026-09-06 |
+| 6. Quiet-Data NNUE Strength Gap | 6/6 | Verified — Gap (TOOL-04 failed) | 2026-09-06 |

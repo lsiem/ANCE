@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 current_phase_name: quiet-data-nnue-strength-gap
-status: "Phase 06 closed with honest gates_failed (200-game probe 0-200)"
+status: "Phase 06 verified — TOOL-04 failed; next is Phase 7 discuss/plan"
 stopped_at: —
-last_updated: "2026-09-06T12:00:00.000Z"
+last_updated: "2026-09-06T14:10:00.000Z"
 last_activity: 2026-09-06
-last_activity_desc: "06-06 closer complete: diagnostics pass, probe 0-200, TOOL-04 failed honestly"
+last_activity_desc: "/gsd-progress --next → verify-work 06; 3/4 criteria, TOOL-04 failed"
 progress:
   total_phases: 6
   completed_phases: 4
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 06 (quiet-data-nnue-strength-gap) — IN PROGRESS
-Prior: Phase 05 GAP (D-12 failed; 05-GAUNTLET-EVIDENCE.json committed)
-Plan: 06-06 closer complete — honest `gates_failed`
-Status: Quiet-data net measured 0–200 vs handcrafted at depth 3; TOOL-04 not met
-Last activity: 2026-09-06 — 200-game probe finished; ≥1000 gauntlet skipped
+Phase: 06 (quiet-data-nnue-strength-gap) — VERIFIED (failed TOOL-04)
+Prior: Phase 05 GAP (D-12 failed)
+Plan: 06-VERIFICATION.md written; do not complete-phase
+Status: Harness 3/4 pass; 200-game probe 0–200; next is Phase 7 discuss/plan
+Last activity: 2026-09-06 — `/gsd-progress --next` ran verify-work
 
 Progress: [██████████] 97%
 
@@ -115,7 +115,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T12:00:00.000Z
-Stopped at: Phase 6 closer written; TOOL-04 failed honestly (0–200 probe)
-Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-06-SUMMARY.md`
+Last session: 2026-09-06T14:10:00.000Z
+Stopped at: Phase 6 verify-work complete; TOOL-04 still open
+Resume file: `.planning/phases/06-quiet-data-nnue-strength-gap/06-VERIFICATION.md`
 Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`
+Next: `/gsd-discuss-phase` or `/gsd-plan-phase` for Phase 7 strength recovery
