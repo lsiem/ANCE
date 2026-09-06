@@ -602,22 +602,25 @@ Phase 6 baseline to beat (useful-fail compare), from `06-GAUNTLET-EVIDENCE.json`
 | A4 | Logistic Elo + Wilson remains the D-12 definition | TOOL-04 | Same as Phases 5–6; do not switch to BayesElo |
 | A5 | Official dump listing 17,761,302 bytes / sha256 is current | Lichess month | Re-check `sha256sums.txt` on the M4 before curl |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Quiet-filter keep rate on padded HF (unknown until M4 ingest)**
+1. **RESOLVED: Quiet-filter keep rate on padded HF (unknown until M4 ingest)**
    - What we know: 4-field FENs are 100% `early_ply` today; qsearch/capture rates after pad are unmeasured.
    - What's unclear: whether 750k → 120k kept is easy or the filter is still brutal.
    - Recommendation: log `QuietFilterStats` by `source`; if kept HF < 30k after a sitting, fail honestly (D-11) — do not start a second train.
+   - **Resolved by:** Plan 07-03 contingency — log `kept_by_source`; if kept HF < 30k after quiet, stop honestly and do not start a second train (D-11).
 
-2. **Does M4 already have the 2013-01 zst + HF shard cache?**
+2. **RESOLVED: Does M4 already have the 2013-01 zst + HF shard cache?**
    - What we know: this cloud checkout has the Phase 6 net, not a `strength-run/` tree (06-NOTES).
    - What's unclear: M4 disk/cache state.
    - Recommendation: planner’s M4 train task starts with dump sha256 check + `hf-ingest` extra check.
+   - **Resolved by:** Plan 07-03 contingency — confirm `hf-ingest` extras (`pip install -e '.[hf-ingest]'` if missing) and Lichess 2013-01 dump sha256 `aa40b3671fa3cf1072eb182892cd90b0e1e003a4a5943492f64b77e7f3fd1635` before the sitting.
 
-3. **In-train probe venue**
+3. **RESOLVED: In-train probe venue**
    - What we know: `elo_probe` uses the same Python gauntlet (depth 3).
    - What's unclear: M4 s/game.
    - Recommendation: first probe is the calibration; if one probe > 25 min, drop to 8 games for the rest of the run (still D-07).
+   - **Resolved by:** Plan 07-03 contingency — if the first in-train probe exceeds 25 min, drop remaining probes to 8 games (still D-07).
 
 ## Environment Availability
 
