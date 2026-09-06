@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: 06
-current_phase_name: quiet-data-nnue-strength-gap
+current_phase: 7
+current_phase_name: NNUE strength recovery
 status: Phase 06 verified — TOOL-04 failed; next is Phase 7 discuss/plan
 stopped_at: Phase 7 context gathered
-last_updated: "2026-09-06T16:04:06.531Z"
+last_updated: "2026-09-06T16:38:27.690Z"
 last_activity: 2026-09-06
 last_activity_desc: /gsd-progress --next → verify-work 06; 3/4 criteria, TOOL-04 failed
-state_head: 962004ab1d7367e54e40f9da4ef0cb36d0bbb43a
+state_head: ef9ffadaf6931507f0a1c5994e44b8aefe2d369b
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 35
+  total_plans: 39
   completed_plans: 35
 milestone_name: milestone
 ---
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 06 (quiet-data-nnue-strength-gap) — VERIFIED (failed TOOL-04)
+Phase: 7 (NNUE strength recovery) — READY TO EXECUTE
 Prior: Phase 05 GAP (D-12 failed)
 Plan: 06-VERIFICATION.md written; do not complete-phase
 Status: Harness 3/4 pass; 200-game probe 0–200; next is Phase 7 discuss/plan
