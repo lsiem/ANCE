@@ -41,17 +41,17 @@ class TestMateMapping:
     def test_mate_positive_white_to_move(self) -> None:
         sample = row_to_sample(_row(fen=_WHITE_FEN, cp=None, mate=3))
         assert sample is not None
-        assert sample["cp"] == 99_997.0
+        assert sample["cp"] == 10_000.0
 
     def test_mate_positive_black_to_move(self) -> None:
         sample = row_to_sample(_row(fen=_BLACK_FEN, cp=None, mate=3))
         assert sample is not None
-        assert sample["cp"] == -99_997.0
+        assert sample["cp"] == -10_000.0
 
     def test_mate_negative_white_to_move(self) -> None:
         sample = row_to_sample(_row(fen=_WHITE_FEN, cp=None, mate=-2))
         assert sample is not None
-        assert sample["cp"] == -99_998.0
+        assert sample["cp"] == -10_000.0
 
 
 class TestQualityFilter:
@@ -156,7 +156,7 @@ class TestParquetStreaming:
             "cp": 10,
             "mate": None,
         },
-        # passes via depth; mate mapping, white to move -> +99_997
+        # passes via depth; mate mapping, white to move -> clamped +10_000
         {
             "fen": "rnbqkbnr/ppppp1pp/8/5p2/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
             "line": "d1h5",
@@ -190,7 +190,7 @@ class TestParquetStreaming:
         samples = list(
             iter_parquet_samples(path, min_depth=20, min_knodes=1000, n_buckets=1000)
         )
-        assert [s["cp"] for s in samples] == [20.0, -150.0, 99_997.0]
+        assert [s["cp"] for s in samples] == [20.0, -150.0, 10_000.0]
         assert all(s["source"] == "lichess-hf" for s in samples)
         assert all(s["game_result"] is None for s in samples)
 
