@@ -236,3 +236,64 @@ def test_run_bounded_lichess_wins_fen_dedup_over_hf(tmp_path, monkeypatch) -> No
     winner = next(row for row in merged if row["fen"] == shared_fen)
     assert winner["source"] == "lichess"
     assert winner["game_result"] == 1.0
+
+
+def test_lichess_sample_cap_none_keeps_time_cap() -> None:
+    assert run_pipeline._lichess_sample_cap(time_cap=50000, lichess_max_samples=None) == 50000
+
+
+def test_lichess_sample_cap_explicit_larger_than_time_keeps_time() -> None:
+    assert run_pipeline._lichess_sample_cap(time_cap=50000, lichess_max_samples=80000) == 50000
+
+
+def test_lichess_sample_cap_explicit_smaller_than_time_wins() -> None:
+    assert run_pipeline._lichess_sample_cap(time_cap=200000, lichess_max_samples=80000) == 80000
+
+
+def test_lichess_max_samples_argparse_default_none(monkeypatch) -> None:
+    captured: dict = {}
+
+    def fake_run_bounded(out_dir, **kwargs):
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(run_pipeline, "run_bounded", fake_run_bounded)
+    rc = run_pipeline.main(["--out-dir", "/tmp/unused-07-01", "--fresh-n-games", "0"])
+    assert rc == 0
+    assert captured["lichess_max_samples"] is None
+
+
+def test_lichess_max_samples_argparse_sets_80000(monkeypatch) -> None:
+    captured: dict = {}
+
+    def fake_run_bounded(out_dir, **kwargs):
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(run_pipeline, "run_bounded", fake_run_bounded)
+    rc = run_pipeline.main(
+        [
+            "--lichess-max-samples",
+            "80000",
+            "--out-dir",
+            "/tmp/unused-07-01",
+            "--fresh-n-games",
+            "0",
+        ]
+    )
+    assert rc == 0
+    assert captured["lichess_max_samples"] == 80000
+
+
+def test_ingest_lichess_truncates_to_sample_cap(monkeypatch) -> None:
+    games = [{"id": i} for i in range(10)]
+    monkeypatch.setattr(run_pipeline, "iter_games", lambda path: iter(games))
+
+    def fake_extract(game, game_id=None):
+        return [{"fen": f"f{game['id']}-{i}", "cp": 0.0} for i in range(3)]
+
+    monkeypatch.setattr(run_pipeline, "extract_samples", fake_extract)
+    samples = run_pipeline._ingest_lichess(
+        "fake.zst", sample_cap=5, deadline_monotonic=time.monotonic() + 60.0
+    )
+    assert len(samples) == 5
