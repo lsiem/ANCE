@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 7
 current_phase_name: NNUE strength recovery
-status: Phase 06 verified — TOOL-04 failed; next is Phase 7 discuss/plan
-stopped_at: Phase 7 context gathered
-last_updated: "2026-09-06T16:38:27.690Z"
-last_activity: 2026-09-06
-last_activity_desc: /gsd-progress --next → verify-work 06; 3/4 criteria, TOOL-04 failed
+status: executing
+stopped_at: Phase 7 Wave 1 execute-phase started
+last_updated: "2026-09-07T16:55:00.000Z"
+last_activity: 2026-09-07
+last_activity_desc: /gsd-execute-phase 7 — Wave 1 starting (07-01 ingest harness, 07-02 measure closer)
 state_head: ef9ffadaf6931507f0a1c5994e44b8aefe2d369b
 progress:
   total_phases: 7
@@ -24,15 +24,15 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 06 — quiet-data NNUE strength gap
+**Current focus:** Phase 7 — NNUE strength recovery
 
 ## Current Position
 
-Phase: 7 (NNUE strength recovery) — READY TO EXECUTE
-Prior: Phase 05 GAP (D-12 failed)
-Plan: 06-VERIFICATION.md written; do not complete-phase
-Status: Harness 3/4 pass; 200-game probe 0–200; next is Phase 7 discuss/plan
-Last activity: 2026-09-06 — `/gsd-progress --next` ran verify-work
+Phase: 7 (NNUE strength recovery) — EXECUTING
+Prior: Phase 06 verified — TOOL-04 failed (do not complete-phase 6)
+Plan: Wave 1 — 07-01 ingest harness + 07-02 measure closer
+Status: Execute-phase started; 0/4 plans complete
+Last activity: 2026-09-07 — `/gsd-execute-phase 7` Wave 1
 
 Progress: [██████████] 97%
 
