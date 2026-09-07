@@ -12,6 +12,7 @@ from training.data.hf_ingest import iter_parquet_samples, row_to_sample
 
 _WHITE_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 _BLACK_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+_HF_CARD_FEN = "2bq1rk1/pr3ppn/1p2p3/7P/2pP1B1P/2P5/PPQ2PB1/R3R1K1 w - -"
 
 
 def _row(
@@ -81,6 +82,35 @@ class TestSkipRow:
             match=rf"n_buckets must be a positive integer, got {n_buckets}",
         ):
             row_to_sample(_row(), n_buckets=n_buckets)
+
+
+class TestFourFieldFenPad:
+    def test_official_card_fen_pads_to_six_fields(self) -> None:
+        sample = row_to_sample(_row(fen=_HF_CARD_FEN))
+        assert sample is not None
+        assert len(sample["fen"].split()) == 6
+        assert sample["fen"].endswith(" 0 16")
+        assert sample["game_result"] is None
+        assert sample["source"] == "lichess-hf"
+
+    def test_padded_fen_is_not_early_ply(self) -> None:
+        from training.data.quiet_filter import is_quiet_fen, ply_from_fen
+
+        sample = row_to_sample(_row(fen=_HF_CARD_FEN))
+        assert sample is not None
+        assert ply_from_fen(sample["fen"]) >= 8
+        _ok, reason = is_quiet_fen(
+            sample["fen"], min_ply=8, bestmove_capture_fn=lambda b: False
+        )
+        assert reason != "early_ply"
+
+    def test_crc32_game_id_uses_padded_fen(self) -> None:
+        sample = row_to_sample(_row(fen=_HF_CARD_FEN))
+        assert sample is not None
+        padded = _HF_CARD_FEN + " 0 16"
+        expected_bucket = zlib.crc32(padded.encode("utf-8")) % 1000
+        assert sample["game_id"] == f"hf-{expected_bucket:04d}"
+        assert sample["game_id"].startswith("hf-")
 
 
 class TestPseudoGameId:

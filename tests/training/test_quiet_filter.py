@@ -100,3 +100,61 @@ def test_enforce_strength_requires_results() -> None:
     ]
     with pytest.raises(RuntimeError, match="has_result"):
         enforce_corpus_mix(samples, strength_corpus=True, min_has_result_rate=0.50)
+
+
+def test_enforce_strength_allows_015_when_enough_results() -> None:
+    """3 of 20 results pass at 0.15; 2 of 20 still raises (D-02)."""
+    three_of_twenty = [
+        *[
+            {"fen": f"hf-{i}", "cp": 0, "source": "lichess-hf", "game_result": None}
+            for i in range(17)
+        ],
+        *[
+            {"fen": f"lic-{i}", "cp": 0, "source": "lichess", "game_result": 1.0}
+            for i in range(3)
+        ],
+    ]
+    enforce_corpus_mix(three_of_twenty, strength_corpus=True, min_has_result_rate=0.15)
+
+    two_of_twenty = [
+        *[
+            {"fen": f"hf-{i}", "cp": 0, "source": "lichess-hf", "game_result": None}
+            for i in range(18)
+        ],
+        {"fen": "lic-0", "cp": 0, "source": "lichess", "game_result": 1.0},
+        {"fen": "lic-1", "cp": 0, "source": "lichess", "game_result": 0.0},
+    ]
+    with pytest.raises(RuntimeError, match="has_result"):
+        enforce_corpus_mix(two_of_twenty, strength_corpus=True, min_has_result_rate=0.15)
+
+
+def test_tracer_padded_hf_plus_modest_fill_passes_mix_015() -> None:
+    """One padded official-card HF row plus modest Lichess fill at 0.15."""
+    from training.data.hf_ingest import row_to_sample
+
+    card_fen = "2bq1rk1/pr3ppn/1p2p3/7P/2pP1B1P/2P5/PPQ2PB1/R3R1K1 w - -"
+    hf_row = {
+        "fen": card_fen,
+        "line": "e2e4",
+        "depth": 30,
+        "knodes": 5,
+        "cp": 20,
+        "mate": None,
+    }
+    hf_sample = row_to_sample(hf_row)
+    assert hf_sample is not None
+    assert hf_sample["fen"].endswith(" 0 16")
+    assert hf_sample["game_result"] is None
+
+    samples = [hf_sample]
+    samples.extend(
+        {"fen": f"hf-{i}", "cp": 0, "source": "lichess-hf", "game_result": None}
+        for i in range(16)
+    )
+    samples.extend(
+        {"fen": f"lic-{i}", "cp": 0, "source": "lichess", "game_result": 1.0}
+        for i in range(3)
+    )
+    assert len(samples) == 20
+    assert sum(1 for s in samples if s.get("game_result") is not None) == 3
+    enforce_corpus_mix(samples, strength_corpus=True, min_has_result_rate=0.15)
