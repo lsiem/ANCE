@@ -554,6 +554,7 @@ def run_bounded(
                     merged,
                     engine=engine,
                     skip_capture_filter=engine is None,
+                    max_kept=120_000 if strength_corpus else None,
                 )
                 record_event(
                     str(manifest),
@@ -564,6 +565,8 @@ def run_bounded(
                     rejected_capture_bestmove=qstats.rejected_capture_bestmove,
                     rejected_qsearch=qstats.rejected_qsearch,
                     capture_filter=engine is not None,
+                    truncated=qstats.truncated,
+                    kept_by_source=qstats.kept_by_source,
                 )
             finally:
                 if engine is not None:

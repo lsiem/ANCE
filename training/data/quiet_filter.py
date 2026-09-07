@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import chess
 import chess.engine
@@ -34,6 +34,8 @@ class QuietFilterStats:
     rejected_capture_bestmove: int
     rejected_qsearch: int
     rejected_illegal: int
+    truncated: bool = False
+    kept_by_source: dict[str, int] = field(default_factory=dict)
 
     @property
     def rejected(self) -> int:
@@ -135,6 +137,7 @@ def filter_quiet_samples(
     capture_skip_depth: int = DEFAULT_CAPTURE_SKIP_DEPTH,
     bestmove_capture_fn: Callable[[chess.Board], bool] | None = None,
     skip_capture_filter: bool = False,
+    max_kept: int | None = None,
 ) -> tuple[list[dict], QuietFilterStats]:
     """Filter sample dicts that have a ``fen`` key."""
     kept: list[dict] = []
@@ -143,6 +146,8 @@ def filter_quiet_samples(
     rejected_capture = 0
     rejected_qsearch = 0
     rejected_illegal = 0
+    truncated = False
+    kept_by_source: dict[str, int] = {}
 
     capture_fn = None if skip_capture_filter else bestmove_capture_fn
     eng = None if skip_capture_filter else engine
@@ -162,6 +167,11 @@ def filter_quiet_samples(
         )
         if ok:
             kept.append(sample)
+            source = sample.get("source") or "unknown"
+            kept_by_source[source] = kept_by_source.get(source, 0) + 1
+            if max_kept is not None and len(kept) >= max_kept:
+                truncated = True
+                break
             continue
         if reason == "check":
             rejected_check += 1
@@ -181,6 +191,8 @@ def filter_quiet_samples(
         rejected_capture_bestmove=rejected_capture,
         rejected_qsearch=rejected_qsearch,
         rejected_illegal=rejected_illegal,
+        truncated=truncated,
+        kept_by_source=kept_by_source,
     )
     return kept, stats
 
