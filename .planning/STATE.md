@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 7
 current_phase_name: NNUE strength recovery
-status: executing
-stopped_at: Completed 07-04-PLAN.md (blocked evidence)
-last_updated: "2026-09-07T17:32:18.000Z"
+status: human_needed
+stopped_at: Phase 7 execute-phase complete; M4 train + TOOL-04 pending
+last_updated: "2026-09-07T17:40:00.000Z"
 last_activity: 2026-09-07
-last_activity_desc: "Phase 7 closer wrote blocked 07-GAUNTLET-EVIDENCE (sidecar missing; TOOL-04 open)"
+last_activity_desc: "Phase 7 execute-phase: 4/4 plans; blocked 07-GAUNTLET-EVIDENCE (D-14); TOOL-04 open"
 state_head: 2b2b517a9a032a7a92e0cbe08cab0080ee15ec99
 progress:
   total_phases: 7
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 7 (NNUE strength recovery) — EXECUTING (measurement blocked)
+Phase: 7 (NNUE strength recovery) — EXECUTED (human_needed)
 Prior: Phase 06 verified — TOOL-04 failed (do not complete-phase 6)
-Plan: Wave 3 — 07-04 closer wrote blocked 07-GAUNTLET-EVIDENCE.json
-Status: 4/4 plans executed; TOOL-04 still open (D-14 blocked)
-Last activity: 2026-09-07 — Phase 7 closer blocked 07-GAUNTLET-EVIDENCE (no sidecar)
+Plan: 4/4 plans complete; closer wrote blocked 07-GAUNTLET-EVIDENCE.json
+Status: Harness + closer + sidecar helper landed; M4 train pending; TOOL-04 open (D-14)
+Last activity: 2026-09-07 — execute-phase verification (`07-VERIFICATION.md`)
 
 Progress: [██████████] 100% (plans executed; TOOL-04 not satisfied)
 

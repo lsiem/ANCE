@@ -254,7 +254,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may proceed in parallel with 2–3; Phase 5 requires both 3 and 4; Phase 6 follows honest Phase 5 evidence).
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 (Phase 4 may proceed in parallel with 2–3; Phase 5 requires both 3 and 4; Phase 6 follows honest Phase 5 evidence; Phase 7 follows honest Phase 6 TOOL-04 failure).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -264,6 +264,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 | 4. Offline NNUE Training Pipeline | 7/7 | Complete    | 2026-07-18 |
 | 5. NNUE Swap-In & Elo Gauntlet | 2/3 | Gap (D-12 failed) | 2026-07-20 |
 | 6. Quiet-Data NNUE Strength Gap | 6/6 | Verified — Gap (TOOL-04 failed) | 2026-09-06 |
+| 7. NNUE strength recovery | 4/4 | Executed — Gap (TOOL-04 blocked D-14) | 2026-09-07 |
 
 ### Phase 7: NNUE strength recovery
 
