@@ -158,3 +158,72 @@ def test_tracer_padded_hf_plus_modest_fill_passes_mix_015() -> None:
     assert len(samples) == 20
     assert sum(1 for s in samples if s.get("game_result") is not None) == 3
     enforce_corpus_mix(samples, strength_corpus=True, min_has_result_rate=0.15)
+
+
+_KEEPABLE_LATE = [
+    "6k1/5ppp/8/8/8/8/5PPP/6K1 w - - 0 30",
+    "4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 20",
+    "4k3/8/8/8/8/8/8/4K3 w - - 0 20",
+]
+
+
+def test_filter_quiet_samples_max_kept_truncates() -> None:
+    samples = [
+        {"fen": _KEEPABLE_LATE[0], "cp": 0.0, "source": "lichess-hf"},
+        {"fen": _KEEPABLE_LATE[1], "cp": 0.0, "source": "lichess"},
+        {"fen": _KEEPABLE_LATE[2], "cp": 0.0, "source": "lichess-hf"},
+    ]
+    kept, stats = filter_quiet_samples(
+        samples,
+        min_ply=0,
+        bestmove_capture_fn=lambda b: False,
+        max_kept=2,
+    )
+    assert len(kept) == 2
+    assert stats.truncated is True
+    assert stats.kept_by_source == {"lichess-hf": 1, "lichess": 1}
+
+
+def test_filter_quiet_samples_kept_by_source_unknown() -> None:
+    samples = [
+        {"fen": _KEEPABLE_LATE[0], "cp": 0.0},
+        {"fen": _KEEPABLE_LATE[1], "cp": 0.0, "source": "lichess"},
+        {"fen": _KEEPABLE_LATE[2], "cp": 0.0, "source": "lichess"},
+    ]
+    kept, stats = filter_quiet_samples(
+        samples,
+        min_ply=0,
+        bestmove_capture_fn=lambda b: False,
+        max_kept=2,
+    )
+    assert len(kept) == 2
+    assert stats.kept_by_source.get("unknown") == 1
+    assert stats.kept_by_source.get("lichess") == 1
+
+
+def test_reject_reason_strings_unchanged() -> None:
+    check_fen = "rnbqkbnr/pppp1Qpp/8/4p3/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 0 2"
+    _, check_reason = is_quiet_fen(
+        check_fen, min_ply=0, bestmove_capture_fn=lambda b: False
+    )
+    _, early_reason = is_quiet_fen(
+        chess.STARTING_FEN, min_ply=8, bestmove_capture_fn=lambda b: False
+    )
+    _, capture_reason = is_quiet_fen(
+        "4k3/8/8/4q3/8/8/8/4R3 w - - 0 1",
+        min_ply=0,
+        bestmove_capture_fn=lambda b: True,
+    )
+    _, qsearch_reason = is_quiet_fen(
+        "4k3/8/8/4q3/8/8/8/4R3 w - - 0 20",
+        min_ply=0,
+        bestmove_capture_fn=lambda b: False,
+    )
+    _, illegal_reason = is_quiet_fen(
+        "not-a-fen", min_ply=0, bestmove_capture_fn=lambda b: False
+    )
+    assert check_reason == "check"
+    assert early_reason == "early_ply"
+    assert capture_reason == "capture_bestmove"
+    assert qsearch_reason == "qsearch"
+    assert illegal_reason == "illegal"
