@@ -162,6 +162,13 @@ def _pick_depth(
     return max(rates, key=rates.get)
 
 
+def _lichess_sample_cap(time_cap: int, lichess_max_samples: int | None) -> int:
+    """Keep the time-derived cap unless an explicit Lichess count cap is smaller."""
+    if lichess_max_samples is None:
+        return time_cap
+    return min(time_cap, lichess_max_samples)
+
+
 def _ingest_lichess(
     zst_path: str,
     sample_cap: int,
@@ -289,6 +296,7 @@ def run_bounded(
     resume_from_checkpoint: str | None = None,
     elo_probe_every: int = 5,
     elo_probe_games: int = 100,
+    lichess_max_samples: int | None = None,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest = out_dir / "run_manifest.json"
@@ -329,6 +337,7 @@ def run_bounded(
             remaining = max(0.0, deadline - time.monotonic())
             # Cheap ingest: cap by remaining wall clock (rough positions/sec floor).
             sample_cap = max(1_000, int(remaining * 20))
+            sample_cap = _lichess_sample_cap(sample_cap, lichess_max_samples)
             lichess_samples = _ingest_lichess(lichess_zst, sample_cap, deadline)
             _save_json(lichess_path, lichess_samples)
             record_event(
@@ -741,6 +750,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional Lichess .pgn.zst dump (skipped when omitted)",
     )
     parser.add_argument(
+        "--lichess-max-samples",
+        type=int,
+        default=None,
+        help="Cap on samples ingested from --lichess-zst (default: time-derived cap)",
+    )
+    parser.add_argument(
         "--fresh-n-games",
         type=int,
         default=200,
@@ -908,6 +923,7 @@ def main(argv: list[str] | None = None) -> int:
             resume_from_checkpoint=args.resume_from_checkpoint,
             elo_probe_every=args.elo_probe_every,
             elo_probe_games=args.elo_probe_games,
+            lichess_max_samples=args.lichess_max_samples,
         )
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
