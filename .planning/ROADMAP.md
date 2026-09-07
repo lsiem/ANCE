@@ -281,7 +281,7 @@ Plans:
 
 **Wave 2** *(blocked on 07-01 harness flags)*
 
-- [ ] 07-03-PLAN.md — Arch lock + M4 from-scratch train recipe and sidecar commit
+- [x] 07-03-PLAN.md — Arch lock + M4 from-scratch train recipe and sidecar commit
 
 **Wave 3** *(blocked on closer + train contract)*
 

@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 7
 current_phase_name: NNUE strength recovery
 status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-09-07T17:20:10.000Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-09-07T17:27:43.000Z"
 last_activity: 2026-09-07
-last_activity_desc: 07-02 measure closer complete (sidecar gate, 16-game smoke abort, RFC evidence schema); TOOL-04 still open
-state_head: 70c0e40855bf102b57aeda0d9666175523c054f9
+last_activity_desc: 07-03 sidecar helper complete, M4 train blocked
+state_head: a18e023b3b98eba1edb9fede33799a5dd907931a
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
 milestone_name: milestone
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 7 (NNUE strength recovery) — EXECUTING
 Prior: Phase 06 verified — TOOL-04 failed (do not complete-phase 6)
-Plan: Wave 1 — 07-01 ingest harness complete; 07-02 measure closer complete; 07-03 next
-Status: Execute-phase in progress; 2/4 plans complete
-Last activity: 2026-09-07 — 07-02 measure closer complete (TOOL-04 not claimed)
+Plan: Wave 2 — 07-03 sidecar helper complete; M4 train blocked; 07-04 next
+Status: Execute-phase in progress; 3/4 plans complete
+Last activity: 2026-09-07 — 07-03 sidecar helper complete, M4 train blocked
 
 Progress: [██████████] 97%
 
@@ -91,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Phase 3 popen_uci mocks accept **kwargs for EngineSpec.env merge — Required so env= kwarg does not break clock-mode harness tests
 - [Phase 05 / 2026-07-19]: Cloud resume used HF-primary train (`--fresh-n-games 0`, 250k positions) as scale-label substitute; resulting net failed D-14/D-16 goldens and lost 4/4 smoke games. Restored Phase-4 / later scale-run nets for evidence. Expect honest `gates_failed` without quiet/result-bearing data (Phase 6).
 - [Phase 06]: Quiet-data strength gap — Lichess primary + quiet filter + λ schedule; re-gate TOOL-04 after strength-run.
+- [Phase 07]: D-05 keep-768x2-256-1 — ARCH_ID / FEATURE_SET read from nnue_format.schema; no schema or trainer edits.
+- [Phase 07]: M4 from-scratch train blocked on this CPU-only host (mps_available False). D-14 forbids a reduced CPU train; 07-04 writes blocked evidence.
 
 ### Pending Todos
 
@@ -108,6 +110,7 @@ See: `.planning/todos/done/2026-09-06-phase06-quiet-data-closer.md`
 - [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus was the recovery path; 200-game probe still 0–200.
 - [Phase 6] Quiet 2013-01 corpus (`n_merged=19866`) is diagnostically signed but far weaker than handcrafted at depth 3. Next strength attempt needs a much larger result-bearing dump or a different recipe.
 - [Phase 5] Depth-3 NNUE vs HC wall-clock on some hosts ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
+- [Phase 7] M4 sitting required for Phase 7 net + 07-NET-SIDECAR.json. Cloud host is CPU-only; no fake sidecar. 07-04 must write blocked evidence.
 
 ## Deferred Items
 
@@ -119,8 +122,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-07T17:20:10Z
-Stopped at: Completed 07-02-PLAN.md (measure closer script + unit tests)
-Resume file: .planning/phases/07-nnue-strength-recovery/07-03-PLAN.md
+Last session: 2026-09-07T17:27:43Z
+Stopped at: Completed 07-03-PLAN.md (sidecar helper + blocked M4 resume)
+Resume file: .planning/phases/07-nnue-strength-recovery/07-04-PLAN.md
 Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`
-Next: 07-03 M4 from-scratch train recipe — do not claim TOOL-04; do not complete-phase 6
+Next: 07-04 cloud measure closer — expect blocked evidence; do not claim TOOL-04; do not complete-phase 6
