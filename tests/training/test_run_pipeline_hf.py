@@ -230,6 +230,7 @@ def test_run_bounded_lichess_wins_fen_dedup_over_hf(tmp_path, monkeypatch) -> No
         hf_dataset="fake/repo",
         hf_max_positions=60,
         epochs=1,
+        quiet_filter=False,
     )
 
     merged = json.loads((tmp_path / "merged_samples.json").read_text(encoding="utf-8"))
