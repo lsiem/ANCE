@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 7
 current_phase_name: NNUE strength recovery
 status: executing
-stopped_at: Phase 7 Wave 1 execute-phase started
-last_updated: "2026-09-07T16:55:00.000Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-09-07T17:12:16.000Z"
 last_activity: 2026-09-07
-last_activity_desc: /gsd-execute-phase 7 — Wave 1 starting (07-01 ingest harness, 07-02 measure closer)
-state_head: ef9ffadaf6931507f0a1c5994e44b8aefe2d369b
+last_activity_desc: 07-01 ingest harness complete (4-field FEN pad, --lichess-max-samples, max_kept); TOOL-04 still open
+state_head: 46b38b3e79e319f4c840836f575adbc4a327f1e6
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 39
-  completed_plans: 35
+  completed_plans: 36
 milestone_name: milestone
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 7 (NNUE strength recovery) — EXECUTING
 Prior: Phase 06 verified — TOOL-04 failed (do not complete-phase 6)
-Plan: Wave 1 — 07-01 ingest harness + 07-02 measure closer
-Status: Execute-phase started; 0/4 plans complete
-Last activity: 2026-09-07 — `/gsd-execute-phase 7` Wave 1
+Plan: Wave 1 — 07-01 ingest harness complete; 07-02 measure closer next
+Status: Execute-phase in progress; 1/4 plans complete
+Last activity: 2026-09-07 — 07-01 ingest harness complete (TOOL-04 not claimed)
 
 Progress: [██████████] 97%
 
@@ -119,8 +119,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T16:04:06.436Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-nnue-strength-recovery/07-CONTEXT.md
+Last session: 2026-09-07T17:12:16Z
+Stopped at: Completed 07-01-PLAN.md (wave 0 ingest harness)
+Resume file: .planning/phases/07-nnue-strength-recovery/07-02-PLAN.md
 Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`
-Next: `/gsd-discuss-phase` or `/gsd-plan-phase` for Phase 7 strength recovery
+Next: 07-02 measure closer — do not claim TOOL-04; do not complete-phase 6

@@ -276,7 +276,7 @@ Plans:
 
 **Wave 1** *(parallel — ingest harness + measure closer)*
 
-- [ ] 07-01-PLAN.md — Wave 0 ingest harness: 4-field FEN pad, --lichess-max-samples, max_kept, mix 0.15
+- [x] 07-01-PLAN.md — Wave 0 ingest harness: 4-field FEN pad, --lichess-max-samples, max_kept, mix 0.15
 - [ ] 07-02-PLAN.md — Measure closer: smoke abort, sidecar gate, evidence schema tests
 
 **Wave 2** *(blocked on 07-01 harness flags)*
