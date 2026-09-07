@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may pr
 **Goal:** Retrain `768x2-256-1` from scratch on an HF-primary quiet corpus (padded 4-field FENs, modest 2013-01 Lichess fill) and re-gate TOOL-04 at fixed depth 3 via diagnostics → 16-game smoke → 200 → ≥1000, with honest blocked or useful-fail evidence if the Phase 7 net is missing or weak.
 **Requirements**: TOOL-04
 **Depends on:** Phase 6
-**Plans:** 4 plans
+**Plans:** 4/4 executed (measurement blocked honestly — D-14)
 
 Plans:
 
@@ -285,4 +285,4 @@ Plans:
 
 **Wave 3** *(blocked on closer + train contract)*
 
-- [ ] 07-04-PLAN.md — Cloud measure closer run (blocked, useful-fail, or TOOL-04)
+- [x] 07-04-PLAN.md — Cloud measure closer run — blocked 07-GAUNTLET-EVIDENCE (D-14 / TOOL-04; sidecar missing)

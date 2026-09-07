@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 7
 current_phase_name: NNUE strength recovery
 status: executing
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-09-07T17:27:43.000Z"
+stopped_at: Completed 07-04-PLAN.md (blocked evidence)
+last_updated: "2026-09-07T17:32:18.000Z"
 last_activity: 2026-09-07
-last_activity_desc: 07-03 sidecar helper complete, M4 train blocked
-state_head: a18e023b3b98eba1edb9fede33799a5dd907931a
+last_activity_desc: "Phase 7 closer wrote blocked 07-GAUNTLET-EVIDENCE (sidecar missing; TOOL-04 open)"
+state_head: 2b2b517a9a032a7a92e0cbe08cab0080ee15ec99
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 39
-  completed_plans: 38
+  completed_plans: 39
 milestone_name: milestone
 ---
 
@@ -28,13 +28,13 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 7 (NNUE strength recovery) — EXECUTING
+Phase: 7 (NNUE strength recovery) — EXECUTING (measurement blocked)
 Prior: Phase 06 verified — TOOL-04 failed (do not complete-phase 6)
-Plan: Wave 2 — 07-03 sidecar helper complete; M4 train blocked; 07-04 next
-Status: Execute-phase in progress; 3/4 plans complete
-Last activity: 2026-09-07 — 07-03 sidecar helper complete, M4 train blocked
+Plan: Wave 3 — 07-04 closer wrote blocked 07-GAUNTLET-EVIDENCE.json
+Status: 4/4 plans executed; TOOL-04 still open (D-14 blocked)
+Last activity: 2026-09-07 — Phase 7 closer blocked 07-GAUNTLET-EVIDENCE (no sidecar)
 
-Progress: [██████████] 97%
+Progress: [██████████] 100% (plans executed; TOOL-04 not satisfied)
 
 ## Performance Metrics
 
@@ -92,7 +92,7 @@ Recent decisions affecting current work:
 - [Phase 05 / 2026-07-19]: Cloud resume used HF-primary train (`--fresh-n-games 0`, 250k positions) as scale-label substitute; resulting net failed D-14/D-16 goldens and lost 4/4 smoke games. Restored Phase-4 / later scale-run nets for evidence. Expect honest `gates_failed` without quiet/result-bearing data (Phase 6).
 - [Phase 06]: Quiet-data strength gap — Lichess primary + quiet filter + λ schedule; re-gate TOOL-04 after strength-run.
 - [Phase 07]: D-05 keep-768x2-256-1 — ARCH_ID / FEATURE_SET read from nnue_format.schema; no schema or trainer edits.
-- [Phase 07]: M4 from-scratch train blocked on this CPU-only host (mps_available False). D-14 forbids a reduced CPU train; 07-04 writes blocked evidence.
+- [Phase 07]: M4 from-scratch train blocked on this CPU-only host (mps_available False). D-14 forbids a reduced CPU train; 07-04 wrote blocked 07-GAUNTLET-EVIDENCE.json.
 
 ### Pending Todos
 
@@ -110,7 +110,7 @@ See: `.planning/todos/done/2026-09-06-phase06-quiet-data-closer.md`
 - [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus was the recovery path; 200-game probe still 0–200.
 - [Phase 6] Quiet 2013-01 corpus (`n_merged=19866`) is diagnostically signed but far weaker than handcrafted at depth 3. Next strength attempt needs a much larger result-bearing dump or a different recipe.
 - [Phase 5] Depth-3 NNUE vs HC wall-clock on some hosts ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
-- [Phase 7] M4 sitting required for Phase 7 net + 07-NET-SIDECAR.json. Cloud host is CPU-only; no fake sidecar. 07-04 must write blocked evidence.
+- [Phase 7] 07-04 closer wrote blocked 07-GAUNTLET-EVIDENCE.json (`phase7_net_not_installed`, gates_failed D-14 and TOOL-04). M4 sitting still required for a Phase 7 net + sidecar. Do not complete-phase 6.
 
 ## Deferred Items
 
@@ -122,8 +122,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-07T17:27:43Z
-Stopped at: Completed 07-03-PLAN.md (sidecar helper + blocked M4 resume)
-Resume file: .planning/phases/07-nnue-strength-recovery/07-04-PLAN.md
+Last session: 2026-09-07T17:32:18Z
+Stopped at: Completed 07-04-PLAN.md (blocked 07-GAUNTLET-EVIDENCE; TOOL-04 open)
+Resume file: .planning/phases/07-nnue-strength-recovery/07-USER-SETUP.md
 Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`
-Next: 07-04 cloud measure closer — expect blocked evidence; do not claim TOOL-04; do not complete-phase 6
+Phase 7 evidence: `.planning/phases/07-nnue-strength-recovery/07-GAUNTLET-EVIDENCE.json` (blocked)
+Next: M4 sitting for Phase 7 net + sidecar, then re-run post_train_close_07.py. Do not claim TOOL-04. Do not complete-phase 6.
