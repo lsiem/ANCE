@@ -48,6 +48,13 @@ __pycache__/
 .planning/phases/06-quiet-data-nnue-strength-gap/post-train-close-state.json
 .planning/phases/06-quiet-data-nnue-strength-gap/post-train-close.log
 .planning/phases/06-quiet-data-nnue-strength-gap/probe-200/
+.planning/phases/07-nnue-strength-recovery/07-post-train-close-state.json
+.planning/phases/07-nnue-strength-recovery/07-post-train-close.log
+.planning/phases/07-nnue-strength-recovery/07-gauntlet-checkpoint.json
+.planning/phases/07-nnue-strength-recovery/07-gauntlet-live.json
+.planning/phases/07-nnue-strength-recovery/probe-smoke/
+.planning/phases/07-nnue-strength-recovery/probe-200/
+.planning/phases/07-nnue-strength-recovery/strength-run/
 .planning/phases/06-quiet-data-nnue-strength-gap/strength-run/
 .planning/phases/06-quiet-data-nnue-strength-gap/data/
 .planning/async-jobs/

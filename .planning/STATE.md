@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 7
 current_phase_name: NNUE strength recovery
-status: Phase 06 verified — TOOL-04 failed; next is Phase 7 discuss/plan
-stopped_at: Phase 7 context gathered
-last_updated: "2026-09-06T16:38:27.690Z"
-last_activity: 2026-09-06
-last_activity_desc: /gsd-progress --next → verify-work 06; 3/4 criteria, TOOL-04 failed
-state_head: ef9ffadaf6931507f0a1c5994e44b8aefe2d369b
+status: human_needed
+stopped_at: Phase 7 execute-phase complete; M4 train + TOOL-04 pending
+last_updated: "2026-09-07T17:40:00.000Z"
+last_activity: 2026-09-07
+last_activity_desc: "Phase 7 execute-phase: 4/4 plans; blocked 07-GAUNTLET-EVIDENCE (D-14); TOOL-04 open"
+state_head: 2b2b517a9a032a7a92e0cbe08cab0080ee15ec99
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 39
-  completed_plans: 35
+  completed_plans: 39
 milestone_name: milestone
 ---
 
@@ -24,17 +24,17 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** The engine plays legal, tactically sound chess through a clean UCI interface, and gets measurably stronger when a trained NNUE evaluation replaces the handcrafted one.
-**Current focus:** Phase 06 — quiet-data NNUE strength gap
+**Current focus:** Phase 7 — NNUE strength recovery
 
 ## Current Position
 
-Phase: 7 (NNUE strength recovery) — READY TO EXECUTE
-Prior: Phase 05 GAP (D-12 failed)
-Plan: 06-VERIFICATION.md written; do not complete-phase
-Status: Harness 3/4 pass; 200-game probe 0–200; next is Phase 7 discuss/plan
-Last activity: 2026-09-06 — `/gsd-progress --next` ran verify-work
+Phase: 7 (NNUE strength recovery) — EXECUTED (human_needed)
+Prior: Phase 06 verified — TOOL-04 failed (do not complete-phase 6)
+Plan: 4/4 plans complete; closer wrote blocked 07-GAUNTLET-EVIDENCE.json
+Status: Harness + closer + sidecar helper landed; M4 train pending; TOOL-04 open (D-14)
+Last activity: 2026-09-07 — execute-phase verification (`07-VERIFICATION.md`)
 
-Progress: [██████████] 97%
+Progress: [██████████] 100% (plans executed; TOOL-04 not satisfied)
 
 ## Performance Metrics
 
@@ -91,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Phase 3 popen_uci mocks accept **kwargs for EngineSpec.env merge — Required so env= kwarg does not break clock-mode harness tests
 - [Phase 05 / 2026-07-19]: Cloud resume used HF-primary train (`--fresh-n-games 0`, 250k positions) as scale-label substitute; resulting net failed D-14/D-16 goldens and lost 4/4 smoke games. Restored Phase-4 / later scale-run nets for evidence. Expect honest `gates_failed` without quiet/result-bearing data (Phase 6).
 - [Phase 06]: Quiet-data strength gap — Lichess primary + quiet filter + λ schedule; re-gate TOOL-04 after strength-run.
+- [Phase 07]: D-05 keep-768x2-256-1 — ARCH_ID / FEATURE_SET read from nnue_format.schema; no schema or trainer edits.
+- [Phase 07]: M4 from-scratch train blocked on this CPU-only host (mps_available False). D-14 forbids a reduced CPU train; 07-04 wrote blocked 07-GAUNTLET-EVIDENCE.json.
 
 ### Pending Todos
 
@@ -108,6 +110,7 @@ See: `.planning/todos/done/2026-09-06-phase06-quiet-data-closer.md`
 - [Phase 5] Prior nets too weak for D-12 at depth 3. Phase 6 quiet corpus was the recovery path; 200-game probe still 0–200.
 - [Phase 6] Quiet 2013-01 corpus (`n_merged=19866`) is diagnostically signed but far weaker than handcrafted at depth 3. Next strength attempt needs a much larger result-bearing dump or a different recipe.
 - [Phase 5] Depth-3 NNUE vs HC wall-clock on some hosts ~150 s/game → ~41 h for 1000 games (above RESEARCH 4–8 h).
+- [Phase 7] 07-04 closer wrote blocked 07-GAUNTLET-EVIDENCE.json (`phase7_net_not_installed`, gates_failed D-14 and TOOL-04). M4 sitting still required for a Phase 7 net + sidecar. Do not complete-phase 6.
 
 ## Deferred Items
 
@@ -119,8 +122,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T16:04:06.436Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-nnue-strength-recovery/07-CONTEXT.md
+Last session: 2026-09-07T17:32:18Z
+Stopped at: Completed 07-04-PLAN.md (blocked 07-GAUNTLET-EVIDENCE; TOOL-04 open)
+Resume file: .planning/phases/07-nnue-strength-recovery/07-USER-SETUP.md
 Phase 6 evidence: `.planning/phases/06-quiet-data-nnue-strength-gap/06-GAUNTLET-EVIDENCE.json`
-Next: `/gsd-discuss-phase` or `/gsd-plan-phase` for Phase 7 strength recovery
+Phase 7 evidence: `.planning/phases/07-nnue-strength-recovery/07-GAUNTLET-EVIDENCE.json` (blocked)
+Next: M4 sitting for Phase 7 net + sidecar, then re-run post_train_close_07.py. Do not claim TOOL-04. Do not complete-phase 6.

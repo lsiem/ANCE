@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "git_commit": "99eedb3145dbbbcebf817bd18af262b379f69657",
+  "captured_utc": "2026-09-07T17:31:06.968532+00:00",
+  "corpus": {},
+  "diagnostics": [],
+  "blocked": {
+    "reason": "phase7_net_not_installed",
+    "detail": "missing 07-NET-SIDECAR.json or phase mismatch; refusing to measure the prior net",
+    "engine_net": "ance/eval/nnue/net.safetensors"
+  },
+  "probe_smoke": null,
+  "probe_200": null,
+  "compare_phase6": {
+    "probe_200_wins": 0,
+    "probe_200_losses": 200,
+    "probe_200_draws": 0,
+    "elo_ci_high": -686.6071411804116,
+    "n_merged": "19866",
+    "best_elo": "None"
+  },
+  "gauntlet": {
+    "games": null,
+    "mode": "fixed_depth",
+    "depth": 3,
+    "status": "blocked"
+  },
+  "clock_gauntlet": null,
+  "gates_passed": [],
+  "gates_failed": [
+    "D-14",
+    "TOOL-04"
+  ]
+}

@@ -80,6 +80,12 @@ def row_to_sample(
     fields = fen.split()
     if len(fields) < 2:
         return None
+    if len(fields) == 4:
+        # Official HF card FENs omit clocks. Pad before STM sign-flip so
+        # ply_from_fen sees six fields (fullmove 16 → ply ≥ DEFAULT_MIN_PLY).
+        # Do not use chess.Board(fen).fen() — that rewrites clocks to 0 1.
+        fen = fen + " 0 16"
+        fields = fen.split()
     if fields[1] == "b":
         # Lichess evals are white-relative; the sample contract is STM-relative.
         score = -score
